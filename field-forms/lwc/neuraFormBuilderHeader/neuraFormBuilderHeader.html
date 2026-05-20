@@ -75,6 +75,15 @@
                 </lightning-combobox>
             </div>
             <div class="slds-builder-toolbar__actions" aria-label="Document actions">
+                    <template if:true={showAIButton}>
+                        <lightning-button
+                            label="Generate with AI"
+                            icon-name="utility:einstein"
+                            variant="neutral"
+                            onclick={handleAIGenerate}
+                            class="slds-m-right_x-small"
+                        ></lightning-button>
+                    </template>
                     <lightning-button label="Save As" data-action="saveas" onclick={handleClick} variant="neutral"></lightning-button>
                     <lightning-button label="Save" data-action="save" onclick={handleClick} variant="brand" class="slds-m-left_x-small"></lightning-button>
             </div>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Enable_AI_Features__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Opt-in gate for AI-assisted authoring features (e.g. generate form from prompt). Requires the org to have Einstein Generative AI enabled and the running user to have access to the Einstein Models API. Off by default so customers without Einstein do not see a broken AI button.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Turn on AI-assisted form authoring. Requires Einstein Generative AI in the org.</inlineHelpText>
+    <label>Enable AI Features</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

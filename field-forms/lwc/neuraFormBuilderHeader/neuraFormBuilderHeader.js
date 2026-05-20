@@ -1,7 +1,10 @@
-import { LightningElement, api } from 'lwc';
+import { LightningElement, api, wire } from 'lwc';
 import saveAsModal from 'c/neuraFormBuilderHeaderModal';
+import aiGenerateModal from 'c/neuraFormAIGenerate';
+import isAIEnabled from '@salesforce/apex/NeuraFormAIController.isAIEnabled';
+import { NavigationMixin } from 'lightning/navigation';
 
-export default class NeuraFormBuilderHeader extends LightningElement {
+export default class NeuraFormBuilderHeader extends NavigationMixin(LightningElement) {
 
     @api builderName;
     @api dropdownTitle;
@@ -16,6 +19,15 @@ export default class NeuraFormBuilderHeader extends LightningElement {
     // copied, even when the paste would be a no-op (e.g. copied a Component,
     // selected a Page).
     @api copyStructure;
+
+    // Driven by NeuraFormAIController.isAIEnabled(). Hides the AI button when
+    // the org has not opted in via Enable_AI_Features__c.
+    @wire(isAIEnabled)
+    aiEnabledResult;
+
+    get showAIButton() {
+        return this.aiEnabledResult?.data === true;
+    }
 
     screenSizeDefault = 'desktop-view';
     screenSizeOptions = [
@@ -83,5 +95,25 @@ export default class NeuraFormBuilderHeader extends LightningElement {
         this.dispatchEvent(customEvent);
     }
 
-
+    /**
+     * Open the AI generation modal. On success, navigate the user to the new
+     * Form_Template - simpler than trying to merge the AI output into the
+     * currently-open template (which would risk overwriting unsaved work).
+     */
+    async handleAIGenerate() {
+        const result = await aiGenerateModal.open({
+            size: 'medium',
+            label: 'Generate form with Einstein'
+        });
+        if (result?.action === 'generated' && result.formTemplateId) {
+            this[NavigationMixin.Navigate]({
+                type: 'standard__recordPage',
+                attributes: {
+                    recordId: result.formTemplateId,
+                    objectApiName: 'Form_Template__c',
+                    actionName: 'view'
+                }
+            });
+        }
+    }
 }

@@ -1,0 +1,79 @@
+<template>
+    <lightning-modal-header label="Generate form with Einstein"></lightning-modal-header>
+    <lightning-modal-body>
+        <p class="slds-text-body_regular slds-m-bottom_medium">
+            Describe the form you want and Einstein will build it. The result lands as a new template you can edit, not a replacement of the current one.
+        </p>
+
+        <lightning-textarea
+            label="What kind of form do you need?"
+            placeholder="e.g. HVAC inspection form for residential service calls. Three pages: pre-visit, on-site, sign-off."
+            value={prompt}
+            onchange={handlePromptChange}
+            disabled={isGenerating}
+            rows="4"
+            required
+        ></lightning-textarea>
+
+        <lightning-textarea
+            class="slds-m-top_medium"
+            label="Extra context (optional)"
+            placeholder="Industry, audience, regulatory frame, anything else useful."
+            value={context}
+            onchange={handleContextChange}
+            disabled={isGenerating}
+            rows="2"
+        ></lightning-textarea>
+
+        <div class="slds-m-top_medium">
+            <p class="slds-text-title slds-m-bottom_xx-small">Or try an example:</p>
+            <div class="slds-grid slds-wrap slds-gutters_xx-small">
+                <template for:each={examples} for:item="ex" for:index="i">
+                    <div key={ex.label} class="slds-m-right_x-small slds-m-bottom_x-small">
+                        <lightning-button
+                            label={ex.label}
+                            variant="neutral"
+                            data-index={i}
+                            onclick={handleExampleClick}
+                            disabled={isGenerating}
+                        ></lightning-button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <template if:true={errorMessage}>
+            <div class="slds-m-top_medium">
+                <c-neura-inline-message
+                    message={errorMessage}
+                    variant="error"
+                    closable="true"
+                ></c-neura-inline-message>
+            </div>
+        </template>
+
+        <template if:true={isGenerating}>
+            <div class="slds-m-top_medium slds-is-relative" style="min-height: 4rem;">
+                <lightning-spinner alternative-text="Generating" size="small"></lightning-spinner>
+                <p class="slds-text-body_small slds-text-align_center slds-m-top_xx-large">
+                    {spinnerMessage}
+                </p>
+            </div>
+        </template>
+    </lightning-modal-body>
+    <lightning-modal-footer>
+        <lightning-button
+            label="Cancel"
+            onclick={handleCancel}
+            disabled={isGenerating}
+        ></lightning-button>
+        <lightning-button
+            class="slds-m-left_x-small"
+            label="Generate"
+            variant="brand"
+            icon-name="utility:einstein"
+            onclick={handleGenerate}
+            disabled={disableGenerate}
+        ></lightning-button>
+    </lightning-modal-footer>
+</template>
