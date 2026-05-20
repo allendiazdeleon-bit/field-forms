@@ -18,6 +18,6 @@ trigger FormQuestionTrigger on Form_Question__c (after insert, after update, aft
 
     // Access the value of the field
     if(!mySetting.Disable_Form_Template_JSON_Trigger__c){
-        NeuraFormLogic.processTemplates(parentIds);
+        NeuraFormLogic.enqueueSnapshotRebuild(parentIds);
     }
 }

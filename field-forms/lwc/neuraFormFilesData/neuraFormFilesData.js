@@ -100,20 +100,33 @@ export default class NeuraFormFilesData extends LightningElement {
     processFieldValues(node) {
         let property = {};
         for (let field in node) {
-            //field with _drafts is coming only on mobile
-            //Don't know the reason of it, that's the method was not getting implemented
-            if(field !== '_drafts') {
-                const obj = node[field];
-                let value;
-                if (field === 'Id') {
-                    value = obj;
-                } else if (obj.value) {
-                    value = obj.value;
-                } else {
-                    value = this.processFieldValues(obj);
-                }
-                property[field] = value;
+            // _drafts is the LDS draft-overlay node returned by uiGraphQLApi
+            // when records exist only in the on-device draft queue (e.g. files
+            // uploaded offline that haven't yet synced). Shape:
+            //   { _drafts: { created, edited, deleted, isDraft } }
+            // We surface it as `isDraft` on the parent record so consumers can
+            // badge files as "pending sync" rather than dropping the metadata.
+            if (field === '_drafts') {
+                const draftInfo = node[field];
+                property.isDraft = Boolean(
+                    draftInfo?.isDraft?.value ??
+                    draftInfo?.created?.value ??
+                    draftInfo?.edited?.value
+                );
+                property.draftInfo = draftInfo;
+                continue;
             }
+
+            const obj = node[field];
+            let value;
+            if (field === 'Id') {
+                value = obj;
+            } else if (obj && obj.value !== undefined) {
+                value = obj.value;
+            } else {
+                value = this.processFieldValues(obj);
+            }
+            property[field] = value;
         }
 
         return property;

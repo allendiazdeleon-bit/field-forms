@@ -20,6 +20,8 @@ trigger FormPageTrigger on Form_Page__c (after insert, after update, after delet
 
     // Access the value of the field
     if(!mySetting.Disable_Form_Template_JSON_Trigger__c){
-        NeuraFormLogic.processTemplates(parentIds);
+        // Coalesce snapshot regeneration into a single async job per transaction
+        // so a sync of N offline edits doesn't trigger N synchronous re-serialisations.
+        NeuraFormLogic.enqueueSnapshotRebuild(parentIds);
     }
 }

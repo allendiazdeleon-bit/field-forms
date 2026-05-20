@@ -19,6 +19,6 @@ trigger FormSectionTrigger on Form_Section__c (after insert, after update, after
 
     // Access the value of the field
     if(!mySetting.Disable_Form_Template_JSON_Trigger__c){
-        NeuraFormLogic.processTemplates(parentIds);
+        NeuraFormLogic.enqueueSnapshotRebuild(parentIds);
     }
 }

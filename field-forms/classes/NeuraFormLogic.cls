@@ -7,6 +7,42 @@ public with sharing class NeuraFormLogic {
 
     private static Set<Id> processedTemplates = new Set<Id>();
 
+    // Per-transaction guard: ensures only one NeuraFormSnapshotQueueable is
+    // enqueued per request even if Form_Page/Section/Question triggers all fire.
+    @TestVisible private static Boolean snapshotEnqueued = false;
+    @TestVisible private static Set<Id> pendingSnapshotIds = new Set<Id>();
+
+    /**
+     * Buffer template Ids whose JSON snapshots need rebuilding and enqueue a
+     * single Queueable for the transaction. Trigger entry point.
+     *
+     * Skips re-entry inside an existing Queueable (System.isQueueable()) so the
+     * snapshot job doesn't spawn another snapshot job when it updates the
+     * Form_Template parent row at the end.
+     */
+    public static void enqueueSnapshotRebuild(Set<Id> templateIds) {
+        if (templateIds == null || templateIds.isEmpty()) return;
+        if (System.isQueueable() || System.isBatch() || System.isFuture()) {
+            // We are already async; just rebuild synchronously to avoid
+            // queueable chaining and depth limits.
+            processTemplates(templateIds);
+            return;
+        }
+
+        pendingSnapshotIds.addAll(templateIds);
+        if (snapshotEnqueued) return;
+
+        // Limits.getQueueableJobs() defaults to 50 per transaction; we only need 1.
+        if (Limits.getLimitQueueableJobs() - Limits.getQueueableJobs() <= 0) {
+            // Fallback to synchronous when no queueable slot is available.
+            processTemplates(pendingSnapshotIds);
+            return;
+        }
+
+        System.enqueueJob(new NeuraFormSnapshotQueueable(pendingSnapshotIds));
+        snapshotEnqueued = true;
+    }
+
     public static void deleteFileRecords(List<Form_Answer__c> formAnswerList) {
         List<Id> answerId = new List<Id>();
         

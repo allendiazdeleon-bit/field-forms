@@ -57,73 +57,88 @@ export default class NeuraFormMobile extends LightningElement {
         isClosable: false
     }
     
+    @track selectedLinkedFormId;
+
     @wire(graphql, {
-    query:  "$query",
-    variables: "$variables"})
-    graphqlQueryResult(result){
-        const {data, errors} = result;
-        this.graphqlData = result;
+        query: '$listQuery',
+        variables: '$listVariables'
+    })
+    listQueryResult(result) {
+        const { data, errors } = result;
+        this.listGraphqlData = result;
 
-        this.setLoading(LOADING_TOKENS.DATA_LOAD, true);
-        if(data && !this.runOnce){
-            this.setCriticalInlineMessage(null, null);
-            if(this.graphqlQueryResultCalledTimes <= 1) {
-                const tempRecordId = this.recordId;
-
-                this.recordId = null;
-
-                this.recordId = tempRecordId;
-
-                this.graphqlQueryResultCalledTimes++;
-            }
-
-            if(this.graphqlQueryResultCalledTimes === 2) {
-                this.graphqlData = result;
-                refreshGraphQL(this.graphqlData);
-
-                this.setLoading(LOADING_TOKENS.REFRESH_LOAD, true);
-
-                this.graphqlQueryResultCalledTimes++;
-
-                setTimeout(() => {
-                    this.setLoading(LOADING_TOKENS.REFRESH_LOAD, false);
-                }, 2000);
-            }
-
-            if(this.graphqlQueryResultCalledTimes === 3) {
-                this.initializeForms(data.uiapi.query);
-            }
-        } else if(isChangeInDataForGraphQLResult(result, this.graphqlData) && this.shouldDoRefreshGraphQl) {
-            this.setLoading(LOADING_TOKENS.DATA_LOAD, true);
-
-            this.formData = [];
-            this.loadAnswerFiles = false;
-            this.formOptions = [];
-            this.showSelector = false;
-
-            setTimeout(() => {
-                this.initializeForms(data.uiapi.query);
-            }, 1);
-        } else if (errors) {
+        if (errors) {
             this.setCriticalInlineMessage(reduceError(errors), MESSAGE_VARIANT.ERROR);
             this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
-        } else {
-            console.log('graphqlQueryResult: no data and no errors');
+            return;
+        }
+        if (!data) return;
+
+        const next = data.uiapi.query;
+        if (this.listInitialised && !isChangeInDataForGraphQLResult(result, this._lastListResult)) {
+            return;
+        }
+        this._lastListResult = result;
+        this.setCriticalInlineMessage(null, null);
+
+        try {
+            this.formData = this.transformListData(next);
+            this.formAdditionalStructures(this.formData);
+            this.showSelector = true;
+            this.listInitialised = true;
+        } catch (e) {
+            this.setCriticalInlineMessage(reduceError(e), MESSAGE_VARIANT.ERROR);
+        } finally {
             this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
         }
     }
 
+    @wire(graphql, {
+        query: '$detailsQuery',
+        variables: '$detailsVariables'
+    })
+    detailsQueryResult(result) {
+        const { data, errors } = result;
+        this.detailsGraphqlData = result;
+
+        if (errors) {
+            this.setCriticalInlineMessage(reduceError(errors), MESSAGE_VARIANT.ERROR);
+            this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
+            return;
+        }
+        if (!data) return;
+
+        try {
+            const queryData = data.uiapi.query;
+            const fullForm = this.transformDetailData(queryData);
+            if (!fullForm) return;
+
+            // Replace the lightweight entry in formData with the full structure.
+            this.formData = this.formData.map(f =>
+                f?.linkedForm?.Id === fullForm.linkedForm.Id ? fullForm : f
+            );
+            this.selectedForm = fullForm;
+            this.showForm = true;
+            this.showSelector = false;
+
+            this.loadAnswerFiles = this.answersId.length > 0;
+        } catch (e) {
+            this.setCriticalInlineMessage(reduceError(e), MESSAGE_VARIANT.ERROR);
+        } finally {
+            this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
+        }
+    }
+
+    // Retained for backwards-compat callers; legacy mobile builds expected this
+    // single bootstrap method. The new wire pipeline calls transformListData
+    // directly, so this is now a thin shim.
     initializeForms(queryData) {
         try {
-            this.runOnce = true;
-            this.showSelector = true;
-
-            this.formData = this.transformData(queryData)
-            console.log(JSON.stringify(this.formData));
+            this.formData = this.transformListData(queryData);
             this.formAdditionalStructures(this.formData);
-
-            this.loadAnswerFiles = this.answersId.length ? true : false;
-        } catch(error) {
+            this.showSelector = true;
+            this.listInitialised = true;
+        } catch (error) {
             this.setCriticalInlineMessage(reduceError(error), MESSAGE_VARIANT.ERROR);
         } finally {
             this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
@@ -213,37 +228,61 @@ export default class NeuraFormMobile extends LightningElement {
         return newInput;
     }
 
-    transformData(graphqlData) {
-         let newTemplates = graphqlData[OBJECTS.Linked_Form__c.objectApiName].edges.map(templateEdge => {
+    // Lightweight transform — builds selector/list data without the heavy JSON
+    // snapshot fields or Form_Answers. Pages start empty; they're populated by
+    // transformDetailData when the user picks a form.
+    transformListData(graphqlData) {
+        const edges = graphqlData?.[OBJECTS.Linked_Form__c.objectApiName]?.edges || [];
+        return edges.map(templateEdge => {
             const linkedTemplate = this.standardTransform(templateEdge);
+            const formTemplate = this.relatedTransform(linkedTemplate, 'Form_Template__r') || {};
+            return this.constructFormObject(linkedTemplate, formTemplate, []);
+        });
+    }
 
-            // TO DO: REVIEW for __r relationships.
-            let formTemplate = this.relatedTransform(linkedTemplate, 'Form_Template__r');
+    // Heavy transform — runs only for the single selected Linked_Form. Builds
+    // the full pages/sections/questions/answers structure consumed by the
+    // renderer. Same shape as the prior transformData() return value.
+    transformDetailData(graphqlData) {
+        const edges = graphqlData?.[OBJECTS.Linked_Form__c.objectApiName]?.edges || [];
+        if (!edges.length) return undefined;
 
-            let answers = this.transformEdges(linkedTemplate?.Form_Answers__r);
+        const templateEdge = edges[0];
+        const linkedTemplate = this.standardTransform(templateEdge);
+        const formTemplate = this.relatedTransform(linkedTemplate, 'Form_Template__r');
 
-            if (linkedTemplate?.Form_Answers__r?.edges?.length >= FORM_ANSWER_FETCH_LIMIT) {
-                this.setCriticalInlineMessage(
-                    `Only the first ${FORM_ANSWER_FETCH_LIMIT} answers were loaded for this form. Some previous answers may be missing.`,
-                    MESSAGE_VARIANT.WARN
-                );
-            }
+        const answers = this.transformEdges(linkedTemplate?.Form_Answers__r);
 
-            this.updateAnswerIds(answers);
-            let questionJSONArray = [formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON.fieldApiName], formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON1.fieldApiName], formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON2.fieldApiName]];
-            let questions = this.combineAndTransformJSON(questionJSONArray, answers, 'answers', OBJECTS.Form_Question__c.objectApiName);
-            questions = this.updateRenderingConditions(questions, formTemplate[FIELDS.Form_Template__c.QuestionConditions.fieldApiName]);
+        if (linkedTemplate?.Form_Answers__r?.edges?.length >= FORM_ANSWER_FETCH_LIMIT) {
+            this.setCriticalInlineMessage(
+                `Only the first ${FORM_ANSWER_FETCH_LIMIT} answers were loaded for this form. Some previous answers may be missing.`,
+                MESSAGE_VARIANT.WARN
+            );
+        }
 
-            let sections = this.transformJSON(formTemplate?.[FIELDS.Form_Template__c.SectionsJSON.fieldApiName], questions, 'questions', OBJECTS.Form_Section__c.objectApiName);
-            sections = this.updateRenderingConditions(sections, formTemplate[FIELDS.Form_Template__c.SectionConditions.fieldApiName]);
-            
-            let pages = this.transformJSON(formTemplate?.[FIELDS.Form_Template__c.PagesJSON.fieldApiName], sections, 'sections', OBJECTS.Form_Page__c.objectApiName);
-            pages = this.updateRenderingConditions(pages, formTemplate[FIELDS.Form_Template__c.PageConditions.fieldApiName]);
+        this.updateAnswerIds(answers);
 
-            return this.constructFormObject(linkedTemplate, formTemplate, pages);
-         });
- 
-         return newTemplates;
+        const questionJSONArray = [
+            formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON.fieldApiName],
+            formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON1.fieldApiName],
+            formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON2.fieldApiName]
+        ];
+        let questions = this.combineAndTransformJSON(questionJSONArray, answers, 'answers', OBJECTS.Form_Question__c.objectApiName);
+        questions = this.updateRenderingConditions(questions, formTemplate[FIELDS.Form_Template__c.QuestionConditions.fieldApiName]);
+
+        let sections = this.transformJSON(formTemplate?.[FIELDS.Form_Template__c.SectionsJSON.fieldApiName], questions, 'questions', OBJECTS.Form_Section__c.objectApiName);
+        sections = this.updateRenderingConditions(sections, formTemplate[FIELDS.Form_Template__c.SectionConditions.fieldApiName]);
+
+        let pages = this.transformJSON(formTemplate?.[FIELDS.Form_Template__c.PagesJSON.fieldApiName], sections, 'sections', OBJECTS.Form_Page__c.objectApiName);
+        pages = this.updateRenderingConditions(pages, formTemplate[FIELDS.Form_Template__c.PageConditions.fieldApiName]);
+
+        return this.constructFormObject(linkedTemplate, formTemplate, pages);
+    }
+
+    // Back-compat shim. External callers (and our own legacy code paths) may
+    // still invoke transformData(); route them to the list transform.
+    transformData(graphqlData) {
+        return this.transformListData(graphqlData);
     }
 
     updateRenderingConditions(jsonObject, conditionJson) {
@@ -386,147 +425,109 @@ export default class NeuraFormMobile extends LightningElement {
         };
     }
 
-    get query(){
-        if(!this.recordId) return undefined;
+    // The mobile component issues two separate GraphQL queries to stay under the
+    // 32 KB offline GraphQL response limit:
+    //
+    //   listQuery     — lightweight: Linked_Form rows + Form_Template selector
+    //                   metadata. Drives the form-picker UI. Always running.
+    //   detailsQuery  — heavy: JSON snapshot fields and Form_Answers for ONE
+    //                   selected Linked_Form. Only fires after handleFormSelected
+    //                   sets selectedLinkedFormId.
+    //
+    // The previous implementation fetched both in a single query per parent,
+    // which pulled five long-text fields (each up to 131,072 chars) plus 500
+    // answers in a single round trip — far over the offline limit.
 
-        if(this.objectApiName === 'WorkOrder') {
-            return gql`query getFormTemplatesAndAnswers($recordId: ID!) {
-                uiapi {
-                    query {
-                        Linked_Form__c(
-                            where: { Work_Order__c : { eq: $recordId } }
-                        ) {
-                            edges {
-                                node {
-                                    Id
-                                    Name { value }
-                                    Form_Template__c { value }
-                                    Current_Page__c { value }
-                                    Status__c { value }
-                                    Form_Template__r : Form_Template__r { 
-                                        Id 
-                                        Name { value }
-                                        Selector_Color__c { value }
-                                        Pages_JSON__c { value }
-                                        Sections_JSON__c { value }
-                                        Questions_JSON__c { value }
-                                        Questions_JSON_1__c { value }
-                                        Questions_JSON_2__c { value }
-                                        Page_Conditions__c { value }
-                                        Section_Conditions__c { value }
-                                        Question_Conditions__c { value }
-                                    }
-                                    Form_Answers__r : Form_Answers__r(first: 500) {
-                                        edges {
-                                            node {
-                                                Id
-                                                Name { value }
-                                                Form_Question__c { value }
-                                                Answer__c { value }
-                                                Related_Comment__c { value }
-                                                Type__c { value }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }`;
-        } else if(this.objectApiName === 'WorkOrderLineItem') {
-            return gql`query getFormTemplatesAndAnswers($recordId: ID!) {
-                uiapi {
-                    query {
-                        Linked_Form__c(
-                            where: { Work_Order_Line_Item__c : { eq: $recordId } }
-                        ) {
-                            edges {
-                                node {
-                                    Id
-                                    Name { value }
-                                    Form_Template__c { value }
-                                    Current_Page__c { value }
-                                    Status__c { value }
-                                    Form_Template__r : Form_Template__r { 
-                                        Id 
-                                        Name { value }
-                                        Selector_Color__c { value }
-                                        Pages_JSON__c { value }
-                                        Sections_JSON__c { value }
-                                        Questions_JSON__c { value }
-                                        Questions_JSON_1__c { value }
-                                        Questions_JSON_2__c { value }
-                                        Page_Conditions__c { value }
-                                        Section_Conditions__c { value }
-                                        Question_Conditions__c { value }
-                                    }
-                                    Form_Answers__r : Form_Answers__r(first: 500) {
-                                        edges {
-                                            node {
-                                                Id
-                                                Name { value }
-                                                Form_Question__c { value }
-                                                Answer__c { value }
-                                                Related_Comment__c { value }
-                                                Type__c { value }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }`;
-        } else if(this.objectApiName === 'ServiceAppointment') {
-            return gql`query getFormTemplatesAndAnswers($recordId: ID!) {
-                uiapi {
-                    query {
-                        Linked_Form__c(
-                            where: { Service_Appointment__c : { eq: $recordId } }
-                        ) {
-                            edges {
-                                node {
-                                    Id
-                                    Name { value }
-                                    Form_Template__c { value }
-                                    Current_Page__c { value }
-                                    Status__c { value }
-                                    Form_Template__r : Form_Template__r { 
-                                        Id 
-                                        Name { value }
-                                        Selector_Color__c { value }
-                                        Pages_JSON__c { value }
-                                        Sections_JSON__c { value }
-                                        Questions_JSON__c { value }
-                                        Questions_JSON_1__c { value }
-                                        Questions_JSON_2__c { value }
-                                        Page_Conditions__c { value }
-                                        Section_Conditions__c { value }
-                                        Question_Conditions__c { value }
-                                    }
-                                    Form_Answers__r : Form_Answers__r(first: 500) {
-                                        edges {
-                                            node {
-                                                Id
-                                                Name { value }
-                                                Form_Question__c { value }
-                                                Answer__c { value }
-                                                Related_Comment__c { value }
-                                                Type__c { value }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }`;
+    get parentRelationshipField() {
+        switch (this.objectApiName) {
+            case 'WorkOrder':
+                return 'Work_Order__c';
+            case 'WorkOrderLineItem':
+                return 'Work_Order_Line_Item__c';
+            case 'ServiceAppointment':
+                return 'Service_Appointment__c';
+            default:
+                return undefined;
         }
+    }
 
-        return undefined
+    get listQuery() {
+        if (!this.recordId || !this.parentRelationshipField) return undefined;
+        const parentField = this.parentRelationshipField;
+
+        return gql`query getFormTemplatesList($recordId: ID!) {
+            uiapi {
+                query {
+                    Linked_Form__c(
+                        where: { ${parentField} : { eq: $recordId } }
+                    ) {
+                        edges {
+                            node {
+                                Id
+                                Name { value }
+                                Form_Template__c { value }
+                                Current_Page__c { value }
+                                Status__c { value }
+                                Form_Template__r : Form_Template__r {
+                                    Id
+                                    Name { value }
+                                    Selector_Color__c { value }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }`;
+    }
+
+    get detailsQuery() {
+        if (!this.selectedLinkedFormId) return undefined;
+
+        return gql`query getFormTemplateDetails($linkedFormId: ID!) {
+            uiapi {
+                query {
+                    Linked_Form__c(
+                        where: { Id : { eq: $linkedFormId } }
+                    ) {
+                        edges {
+                            node {
+                                Id
+                                Name { value }
+                                Form_Template__c { value }
+                                Current_Page__c { value }
+                                Status__c { value }
+                                Form_Template__r : Form_Template__r {
+                                    Id
+                                    Name { value }
+                                    Selector_Color__c { value }
+                                    Pages_JSON__c { value }
+                                    Sections_JSON__c { value }
+                                    Questions_JSON__c { value }
+                                    Questions_JSON_1__c { value }
+                                    Questions_JSON_2__c { value }
+                                    Page_Conditions__c { value }
+                                    Section_Conditions__c { value }
+                                    Question_Conditions__c { value }
+                                }
+                                Form_Answers__r : Form_Answers__r(first: 500) {
+                                    edges {
+                                        node {
+                                            Id
+                                            Name { value }
+                                            Form_Question__c { value }
+                                            Answer__c { value }
+                                            Related_Comment__c { value }
+                                            Type__c { value }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }`;
     }
 
     formAdditionalStructures(formTemplates){
@@ -546,19 +547,40 @@ export default class NeuraFormMobile extends LightningElement {
     }
     
     handleFormSelected(event){
-        // set selected form to the one matching the id of the event
+        // event.detail is the Form_Template Id; we need the Linked_Form Id to
+        // drive the details wire.
         this.shouldDoRefreshGraphQl = false;
 
         try{
             this.formId = event.detail;
             if(!this.formId) return;
 
-            this.selectedForm = this.formData.find(form => form.Id === this.formId);
-            
-            this.showForm = true;
-            this.showSelector = false;
+            const targetEntry = this.formData.find(form => form.Id === this.formId);
+            const linkedFormId = targetEntry?.linkedForm?.Id;
+            if (!linkedFormId) {
+                this.setCriticalInlineMessage(
+                    'This form has no linked record yet. Try refreshing.',
+                    MESSAGE_VARIANT.WARN
+                );
+                return;
+            }
+
+            this.setLoading(LOADING_TOKENS.DATA_LOAD, true);
+            // If the same form is already fully loaded, surface it directly;
+            // otherwise let the details wire fetch the heavy payload.
+            if (targetEntry.pages && targetEntry.pages.length > 0) {
+                this.selectedForm = targetEntry;
+                this.showForm = true;
+                this.showSelector = false;
+                this.loadAnswerFiles = this.answersId.length > 0;
+                this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
+            } else {
+                // Triggers $detailsQuery via the reactive wire.
+                this.selectedLinkedFormId = linkedFormId;
+            }
         } catch (err){
             console.error(err);
+            this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
         }
     }
 
@@ -570,6 +592,9 @@ export default class NeuraFormMobile extends LightningElement {
         this.showForm = false;
         this.showSelector = true;
         this.selectedForm = undefined;
+        // Clearing selectedLinkedFormId stops the details wire from re-firing
+        // until the user picks another form.
+        this.selectedLinkedFormId = undefined;
     }
 
     handleFooterClick({ detail }) {
@@ -657,12 +682,21 @@ export default class NeuraFormMobile extends LightningElement {
         };
     }
 
-    get variables() {
-        return {
-          recordId: this.recordId
-        };
+    get listVariables() {
+        return { recordId: this.recordId };
     }
-         
+
+    get detailsVariables() {
+        return this.selectedLinkedFormId
+            ? { linkedFormId: this.selectedLinkedFormId }
+            : undefined;
+    }
+
+    // Back-compat alias for callers that still reference $variables.
+    get variables() {
+        return this.listVariables;
+    }
+
     get showInlineMessage() {
         return this.messageObj.message;
     }
