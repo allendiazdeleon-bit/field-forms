@@ -9,34 +9,71 @@ public with sharing class neuraFormExportController {
         'pages_json__c', 'sections_json__c', 'questions_json__c', 'page_conditions__c', 'section_conditions__c', 'question_conditions__c'
     };
 
+    // Hard cap on how many templates a single export can include. Larger
+    // exports can blow past the SOQL row limit when their children (pages,
+    // sections, questions) cascade. Picked conservatively; raise if real
+    // customer use cases push past it.
+    @TestVisible private static Integer EXPORT_TEMPLATE_LIMIT = 50;
+
     @AuraEnabled(cacheable=false)
     public static String fetchTemplatesData(List<String> templateIds) {
-        try{
-            // Fetch templates
-            List<Form_Template__c> templates = Database.query('SELECT ' + generateFieldList('Form_Template__c') + ' FROM Form_Template__c WHERE Id IN :templateIds');
-            
-            // Fetch pages
-            List<Form_Page__c> pages = Database.query('SELECT ' + generateFieldList('Form_Page__c') + ' FROM Form_Page__c WHERE Form_Template__c IN :templateIds');
-            
-            // Fetch sections
-            List<Form_Section__c> sections = Database.query('SELECT ' + generateFieldList('Form_Section__c') + ' FROM Form_Section__c WHERE Form_Template__c IN :templateIds');
-            
-            // Fetch questions
-            List<Form_Question__c> questions = Database.query('SELECT ' + generateFieldList('Form_Question__c') + ' FROM Form_Question__c WHERE Form_Template__c IN :templateIds'); 
-            
-            // Create maps to store related objects by template ID
+        try {
+            if (templateIds == null || templateIds.isEmpty()) {
+                throw new AuraHandledException('No templates selected.');
+            }
+            if (templateIds.size() > EXPORT_TEMPLATE_LIMIT) {
+                throw new AuraHandledException(
+                    'Export limit is ' + EXPORT_TEMPLATE_LIMIT + ' templates per file. ' +
+                    'Select fewer templates and export in batches.'
+                );
+            }
+
+            // Fetch each level, then strip any fields the running user can't
+            // read (audit item I6). `with sharing` on the class enforces
+            // record-level access; stripInaccessible adds field-level
+            // enforcement on top.
+            List<Form_Template__c> templates = Database.query(
+                'SELECT ' + generateFieldList('Form_Template__c') +
+                ' FROM Form_Template__c WHERE Id IN :templateIds'
+            );
+            templates = (List<Form_Template__c>) Security.stripInaccessible(
+                AccessType.READABLE, templates
+            ).getRecords();
+
+            List<Form_Page__c> pages = Database.query(
+                'SELECT ' + generateFieldList('Form_Page__c') +
+                ' FROM Form_Page__c WHERE Form_Template__c IN :templateIds'
+            );
+            pages = (List<Form_Page__c>) Security.stripInaccessible(
+                AccessType.READABLE, pages
+            ).getRecords();
+
+            List<Form_Section__c> sections = Database.query(
+                'SELECT ' + generateFieldList('Form_Section__c') +
+                ' FROM Form_Section__c WHERE Form_Template__c IN :templateIds'
+            );
+            sections = (List<Form_Section__c>) Security.stripInaccessible(
+                AccessType.READABLE, sections
+            ).getRecords();
+
+            List<Form_Question__c> questions = Database.query(
+                'SELECT ' + generateFieldList('Form_Question__c') +
+                ' FROM Form_Question__c WHERE Form_Template__c IN :templateIds'
+            );
+            questions = (List<Form_Question__c>) Security.stripInaccessible(
+                AccessType.READABLE, questions
+            ).getRecords();
+
             Map<Id, List<Form_Page__c>> templateIdToPagesMap = new Map<Id, List<Form_Page__c>>();
             Map<Id, List<Form_Section__c>> templateIdToSectionsMap = new Map<Id, List<Form_Section__c>>();
             Map<Id, List<Form_Question__c>> templateIdToQuestionsMap = new Map<Id, List<Form_Question__c>>();
-        
-            // Initialize maps
+
             for (Form_Template__c template : templates) {
                 templateIdToPagesMap.put(template.Id, new List<Form_Page__c>());
                 templateIdToSectionsMap.put(template.Id, new List<Form_Section__c>());
                 templateIdToQuestionsMap.put(template.Id, new List<Form_Question__c>());
             }
-        
-            // Populate the maps with related records
+
             for (Form_Page__c page : pages) {
                 templateIdToPagesMap.get(page.Form_Template__c).add(page);
             }
@@ -46,8 +83,7 @@ public with sharing class neuraFormExportController {
             for (Form_Question__c question : questions) {
                 templateIdToQuestionsMap.get(question.Form_Template__c).add(question);
             }
-        
-            // Create a list of FormTemplateWrapper instances
+
             List<FormTemplateWrapper> wrappers = new List<FormTemplateWrapper>();
             for (Form_Template__c template : templates) {
                 Id tempId = template.Id;
@@ -58,11 +94,32 @@ public with sharing class neuraFormExportController {
                     (List<Form_Question__c>) addExternalIdValues(templateIdToQuestionsMap.get(tempId))
                 ));
             }
-        
+
             return JSON.serialize(wrappers);
+        } catch (AuraHandledException e) {
+            throw e;
         } catch (Exception e) {
-            throw new AuraHandledException(e.getMessage());
+            AuraHandledException ahe = new AuraHandledException(e.getMessage());
+            ahe.setMessage(e.getMessage());
+            throw ahe;
         }
+    }
+
+    /**
+     * Fallback when the export LWC's getListUi wire errors (e.g. the "All"
+     * list view was deleted or restricted). Returns templates the running
+     * user can see, capped at 200 to keep response sizes manageable.
+     * cacheable=true so repeated calls don't re-hit SOQL.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<Form_Template__c> listAccessibleTemplates() {
+        return [
+            SELECT Id, Name, External_Reference__c
+            FROM Form_Template__c
+            WITH SECURITY_ENFORCED
+            ORDER BY Name ASC
+            LIMIT 200
+        ];
     }
 
     public static SObject addExternalIdValue(SObject record){

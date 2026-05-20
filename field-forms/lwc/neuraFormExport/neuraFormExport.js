@@ -1,18 +1,22 @@
 import { LightningElement, wire } from 'lwc';
 import fetchTemplatesData from '@salesforce/apex/neuraFormExportController.fetchTemplatesData';
+import listAccessibleTemplates from '@salesforce/apex/neuraFormExportController.listAccessibleTemplates';
 import { getListInfoByName } from 'lightning/uiListsApi';
-import { getListUi } from "lightning/uiListApi";
+import { getListUi } from 'lightning/uiListApi';
 import FORM_TEMPLATE_OBJECT from '@salesforce/schema/Form_Template__c';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { reduceError } from 'c/nfCommonUtility';
 
 export default class NeuraFormExport extends LightningElement {
-    templates;
-    columns = []; // For datatable columns
-    records; // For storing fetched records
-    listViewData; // For storing list view metadata
+    columns = [
+        { label: 'Name', fieldName: 'Name', type: 'text', sortable: true },
+        { label: 'External Reference', fieldName: 'External_Reference__c', type: 'text', sortable: true }
+    ];
+    records;
     selectedTemplateIds = [];
     loading = false;
+    usingFallback = false;
+    fallbackMessage;
 
     get templatesNotSelected() {
         return this.selectedTemplateIds.length <= 0;
@@ -21,27 +25,21 @@ export default class NeuraFormExport extends LightningElement {
     get buttonLabel() {
         return 'Export Selected Templates ' + (this.selectedTemplateIds.length > 0 ? '(' + this.selectedTemplateIds.length + ')' : '');
     }
+
+    // Primary path: drive the datatable off the standard List View metadata
+    // so admins see the columns they configured. The wire's column list
+    // overwrites the default columns above.
     @wire(getListInfoByName, { objectApiName: FORM_TEMPLATE_OBJECT.objectApiName, listViewApiName: 'All' })
     listViewInfo({ error, data }) {
         if (data) {
-            this.listViewData = data;
             this.columns = data.displayColumns.map(column => ({
                 label: column.label,
                 fieldName: column.fieldApiName,
                 type: this.determineType(column.type),
                 sortable: true
             }));
-            this.error = undefined;
         } else if (error) {
-            this.listViewData = undefined;
-            this.error = error;
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Error',
-                    message: reduceError(error),
-                    variant: 'error'
-                })
-            );
+            this.activateFallback(error);
         }
     }
 
@@ -50,66 +48,76 @@ export default class NeuraFormExport extends LightningElement {
         if (data) {
             this.records = data.records.records.map(record => ({
                 id: record.id,
-                // Process each field to use displayValue if available, otherwise use value
                 ...Object.keys(record.fields).reduce((acc, fieldName) => {
                     const field = record.fields[fieldName];
                     return {
                         ...acc,
-                        [fieldName]: field.displayValue !== undefined && field.displayValue != null ? field.displayValue : field.value
+                        [fieldName]: field.displayValue !== undefined && field.displayValue !== null ? field.displayValue : field.value
                     };
                 }, {})
             }));
         } else if (error) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Error',
-                    message: reduceError(error),
-                    variant: 'error'
-                })
-            );
+            this.activateFallback(error);
         }
     }
 
+    // Secondary path: query templates via Apex when the List View wires
+    // fail (deleted list view, restricted access, etc.).
+    @wire(listAccessibleTemplates)
+    fallbackTemplates({ error, data }) {
+        if (!this.usingFallback) return;
+        if (data) {
+            this.records = data;
+        } else if (error) {
+            this.dispatchEvent(new ShowToastEvent({
+                title: 'Could not load templates',
+                message: reduceError(error),
+                variant: 'error'
+            }));
+        }
+    }
+
+    activateFallback(error) {
+        if (this.usingFallback) return;
+        this.usingFallback = true;
+        this.fallbackMessage = 'Standard "All" list view was not available; showing accessible templates from a direct query.';
+        this.records = undefined;
+        console.warn('neuraFormExport list view fallback engaged', error);
+    }
 
     handleRowSelection(event) {
         const selectedRows = event.detail.selectedRows;
-        this.selectedTemplateIds = selectedRows.map(row => row.Id);
-        console.log('selectedTemplateIds: ', this.selectedTemplateIds);
+        this.selectedTemplateIds = selectedRows.map(row => row.Id || row.id);
     }
 
     handleExport() {
         this.loading = true;
         fetchTemplatesData({ templateIds: this.selectedTemplateIds })
             .then(result => {
-                let blob = new Blob([result], { type: 'application/json' });
-                let link = document.createElement('a');
+                const blob = new Blob([result], { type: 'application/json' });
+                const link = document.createElement('a');
                 link.href = window.URL.createObjectURL(blob);
                 link.download = 'ExportedTemplates.json';
                 link.click();
 
-                this.dispatchEvent(
-                    new ShowToastEvent({
-                        title: 'Success',
-                        message: 'Data exported successfully!',
-                        variant: 'success'
-                    })
-                );
-
+                this.dispatchEvent(new ShowToastEvent({
+                    title: 'Success',
+                    message: 'Data exported successfully!',
+                    variant: 'success'
+                }));
                 this.loading = false;
             })
             .catch(error => {
                 this.loading = false;
-                this.dispatchEvent(
-                    new ShowToastEvent({
-                        title: 'Error exporting data',
-                        message: reduceError(error),
-                        variant: 'error'
-                    })
-                );
+                this.dispatchEvent(new ShowToastEvent({
+                    title: 'Error exporting data',
+                    message: reduceError(error),
+                    variant: 'error'
+                }));
             });
     }
 
-    // Helper function to map Salesforce field types to lightning-datatable types
+    // Map Salesforce field types to lightning-datatable types.
     determineType(fieldType) {
         switch (fieldType) {
             case 'string':
@@ -132,7 +140,7 @@ export default class NeuraFormExport extends LightningElement {
             case 'integer':
                 return 'number';
             default:
-                return 'text'; // default to text if type is not recognized
+                return 'text';
         }
     }
 }

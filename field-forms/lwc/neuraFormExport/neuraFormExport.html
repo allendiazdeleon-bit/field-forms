@@ -2,6 +2,13 @@
     <template if:true={loading}>
         <lightning-spinner alternative-text="Loading" size="large"></lightning-spinner>
     </template>
+
+    <template if:true={usingFallback}>
+        <div class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_small" role="alert">
+            {fallbackMessage}
+        </div>
+    </template>
+
     <div class="slds-m-vertical_medium">
         <lightning-button label={buttonLabel} onclick={handleExport} disabled={templatesNotSelected}></lightning-button>
     </div>
@@ -10,11 +17,6 @@
         key-field="Id"
         data={records}
         columns={columns}
-        onrowselection={handleRowSelection}
-       >
+        onrowselection={handleRowSelection}>
     </lightning-datatable>
-    <div>
-
-    </div>
-    
 </template>
