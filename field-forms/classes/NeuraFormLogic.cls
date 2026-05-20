@@ -224,14 +224,60 @@ public with sharing class NeuraFormLogic {
     
     @AuraEnabled
     public static List<Form_Answer__c> saveFormAnswers(List<Form_Answer__c> answersToSave) {
-        Database.upsert(answersToSave);
-        
+        if (answersToSave == null || answersToSave.isEmpty()) {
+            return answersToSave;
+        }
+
+        // Enforce FLS on the client-supplied record fields before DML.
+        // Split inserts vs. updates because stripInaccessible uses different
+        // access types for each.
+        List<Form_Answer__c> toInsert = new List<Form_Answer__c>();
+        List<Form_Answer__c> toUpdate = new List<Form_Answer__c>();
+        for (Form_Answer__c a : answersToSave) {
+            if (a.Id == null) {
+                toInsert.add(a);
+            } else {
+                toUpdate.add(a);
+            }
+        }
+
+        if (!toInsert.isEmpty()) {
+            SObjectAccessDecision insertDecision = Security.stripInaccessible(
+                AccessType.CREATABLE, toInsert
+            );
+            insert insertDecision.getRecords();
+        }
+
+        if (!toUpdate.isEmpty()) {
+            SObjectAccessDecision updateDecision = Security.stripInaccessible(
+                AccessType.UPDATABLE, toUpdate
+            );
+            update updateDecision.getRecords();
+        }
+
         return answersToSave;
     }
-    
+
     @AuraEnabled
     public static void deleteFormAnswers(List<Form_Answer__c> answersToDelete) {
-        Database.delete(answersToDelete);
+        if (answersToDelete == null || answersToDelete.isEmpty()) {
+            return;
+        }
+
+        Set<Id> ids = new Set<Id>();
+        for (Form_Answer__c a : answersToDelete) {
+            if (a.Id != null) ids.add(a.Id);
+        }
+        if (ids.isEmpty()) return;
+
+        // Re-query under sharing so the user actually has access to delete these rows;
+        // client-supplied SObjects bypass that check.
+        List<Form_Answer__c> deletable = [
+            SELECT Id FROM Form_Answer__c WHERE Id IN :ids
+        ];
+        if (!deletable.isEmpty()) {
+            delete deletable;
+        }
     }
     
     @AuraEnabled

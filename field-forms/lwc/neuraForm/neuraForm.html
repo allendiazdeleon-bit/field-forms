@@ -1,6 +1,14 @@
 <template>
+    <template if:true={message}>
+        <c-neura-inline-message
+            message={message}
+            variant={messageVariant}
+            closable="true"
+            onclose={handleMessageClose}
+        ></c-neura-inline-message>
+    </template>
     <template if:true={formObject}>
-        <div>
+        <div onmessage={handleRendererMessage}>
             <p>{name}</p>
             <c-neura-form-header indicator-type={indicatorType} step-list={pageArray} total-steps={totalPageCount} current-step-index={currentPageIndex} current-step={currentStep}></c-neura-form-header>
                 <lightning-progress-indicator current-step={firstStepValue} type="base" variant="base">

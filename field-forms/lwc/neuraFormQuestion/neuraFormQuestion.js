@@ -2,6 +2,16 @@ import { LightningElement, api } from 'lwc';
 import { getValue } from 'c/neuraFormUtils';
 import { FIELDS } from 'c/neuraFormSchemaUtils';
 
+// target="_blank" anchors and record-id links don't navigate inside FSL Mobile's
+// WebView (lightning-formatted-rich-text limitation). Strip the target so the
+// link is at least readable in the field; rel="noopener" is added defensively.
+function sanitizeRichTextForOffline(html) {
+    if (!html || typeof html !== 'string') return html;
+    return html
+        .replace(/\starget=("|')_blank\1/gi, ' rel="noopener"')
+        .replace(/\stargetname=("|')_blank\1/gi, '');
+}
+
 export default class NeuraFormQuestion extends LightningElement {
 	@api recordId;
 	@api formQuestion;
@@ -26,11 +36,12 @@ export default class NeuraFormQuestion extends LightningElement {
 	}
 
 	get layoutItemRichText() {
-		return getValue(
+		const raw = getValue(
 			this.formQuestion,
 			FIELDS.Form_Question__c.DisplayRichText.fieldApiName,
 			''
 		);
+		return sanitizeRichTextForOffline(raw);
 	}
 
 	get labelStyle() {

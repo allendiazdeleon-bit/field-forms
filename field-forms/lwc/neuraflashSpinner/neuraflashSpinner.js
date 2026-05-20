@@ -4,12 +4,11 @@
  */
 
 import { LightningElement, api, track } from 'lwc';
-import spinnerImage from '@salesforce/resourceUrl/nfrocket';
 
 const SIZES = {
-    small: 0.5, 
+    small: 0.5,
     medium: 1,
-    large: 1.5  
+    large: 1.5
 }
 
 export default class NeuraflashSpinner extends LightningElement {
@@ -29,10 +28,9 @@ export default class NeuraflashSpinner extends LightningElement {
      */
     @api size = 'medium';
     @track _size;
-    spinnerImg = spinnerImage;
-    
+
     get containerStyle() {
         this._size = SIZES[this.size];
-        return `--size: ${this._size}`; 
+        return `--size: ${this._size}`;
     }
 }

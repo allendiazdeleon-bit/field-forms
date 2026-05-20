@@ -159,8 +159,22 @@ export default class NeuraForm extends LightningElement {
     handleFooterButtonClick(event) {
     }
 
+    message;
+    messageVariant;
+
+    handleRendererMessage(event) {
+        const detail = event.detail || {};
+        this.message = detail.message ?? '';
+        this.messageVariant = detail.variant || 'info';
+    }
+
+    handleMessageClose() {
+        this.message = undefined;
+        this.messageVariant = undefined;
+    }
+
     connectedCallback(){
         console.log('connectedCallback');
-        console.log(JSON.stringify(this.formObject));   
+        console.log(JSON.stringify(this.formObject));
     }
 }

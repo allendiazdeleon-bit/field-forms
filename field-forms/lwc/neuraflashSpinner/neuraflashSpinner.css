@@ -14,12 +14,13 @@
     visibility: hidden;
 }
 
-.image {    
+.image {
     visibility: visible;
     width: calc(60px * var(--size));
-    height: calc(68px * var(--size)); 
+    height: calc(68px * var(--size));
+    color: #0070d2;
     animation: spin 3s linear infinite;
-} 
+}
 
 @keyframes spin {
     from {

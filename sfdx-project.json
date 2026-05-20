@@ -12,7 +12,7 @@
   ],
   "namespace": "NFForms",
   "sfdcLoginUrl": "https://login.salesforce.com",
-  "sourceApiVersion": "59.0",
+  "sourceApiVersion": "62.0",
   "packageAliases": {
     "Field Forms": "0HoHq000000k9d9KAA",
     "Field Forms@0.1.0-3": "04tHq000000lt2jIAA",

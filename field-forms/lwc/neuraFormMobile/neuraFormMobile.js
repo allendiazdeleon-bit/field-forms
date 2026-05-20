@@ -1,6 +1,7 @@
 import { LightningElement, api, wire, track } from 'lwc';
 import { gql, graphql, refreshGraphQL } from 'lightning/uiGraphQLApi';
-import { LOADING_TOKENS, MESSAGE_VARIANT } from './constants';
+import formFactorPropertyName from '@salesforce/client/formFactor';
+import { LOADING_TOKENS, MESSAGE_VARIANT, FORM_ANSWER_FETCH_LIMIT } from './constants';
 import LinkedFormIdField from '@salesforce/schema/Linked_Form__c.Id';
 import LinkedFormStatusField from '@salesforce/schema/Linked_Form__c.Status__c';
 import LinkedFormPageField from '@salesforce/schema/Linked_Form__c.Current_Page__c';
@@ -13,10 +14,16 @@ const DEFAULT_STATUS = 'Not Started';
 const DEFAULT_COLOR = 'blue';
 
 export default class NeuraFormMobile extends LightningElement {
-    @api recordId; 
+    @api recordId;
     @api objectApiName;
 
-    @api isDesktop = false;
+    // Drive layout from the runtime form factor instead of a build-time admin toggle.
+    // formFactorPropertyName returns "Large" on Lightning Experience desktop, "Medium"
+    // on tablets, and "Small" on phones AND in LWC Offline (FSL Mobile) regardless of
+    // device, which is the behavior we want here.
+    get isDesktop() {
+        return formFactorPropertyName === 'Large';
+    }
 
     selectedRecordId;
     formOptions;
@@ -215,6 +222,13 @@ export default class NeuraFormMobile extends LightningElement {
 
             let answers = this.transformEdges(linkedTemplate?.Form_Answers__r);
 
+            if (linkedTemplate?.Form_Answers__r?.edges?.length >= FORM_ANSWER_FETCH_LIMIT) {
+                this.setCriticalInlineMessage(
+                    `Only the first ${FORM_ANSWER_FETCH_LIMIT} answers were loaded for this form. Some previous answers may be missing.`,
+                    MESSAGE_VARIANT.WARN
+                );
+            }
+
             this.updateAnswerIds(answers);
             let questionJSONArray = [formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON.fieldApiName], formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON1.fieldApiName], formTemplate?.[FIELDS.Form_Template__c.QuestionsJSON2.fieldApiName]];
             let questions = this.combineAndTransformJSON(questionJSONArray, answers, 'answers', OBJECTS.Form_Question__c.objectApiName);
@@ -356,6 +370,20 @@ export default class NeuraFormMobile extends LightningElement {
 
     handleFormRendererError({detail}) {
         this.setCriticalInlineMessage(reduceError(detail), MESSAGE_VARIANT.ERROR);
+    }
+
+    handleFormRendererMessage({ detail }) {
+        const variant = detail?.variant === 'error'
+            ? MESSAGE_VARIANT.ERROR
+            : detail?.variant === 'warning'
+                ? MESSAGE_VARIANT.WARN
+                : MESSAGE_VARIANT.INFO;
+
+        this.messageObj = {
+            message: detail?.message ?? '',
+            variant,
+            isClosable: true
+        };
     }
 
     get query(){

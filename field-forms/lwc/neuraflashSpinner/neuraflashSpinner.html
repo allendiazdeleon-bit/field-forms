@@ -1,7 +1,10 @@
 <template>
     <div class="container" style={containerStyle}>
         <div class="spinner">
-            <img src={spinnerImg} class="image">
+            <svg class="image" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" aria-hidden="true">
+                <path fill="currentColor" d="M12 0C8 5 6 10 6 15v8H4l-2 5h6l2 4h4l2-4h6l-2-5h-2v-8c0-5-2-10-6-15z"/>
+                <circle fill="#ffffff" cx="12" cy="12" r="2"/>
+            </svg>
         </div>
     </div>
     <template if:true={message}>
@@ -10,6 +13,6 @@
                 <span class="loading-text">{message}</span>
                 <span class="ellipsis" data-js="ellipsis"></span>
             </div>
-        </div>    
+        </div>
     </template>
 </template>

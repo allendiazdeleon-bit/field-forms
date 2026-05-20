@@ -21,8 +21,6 @@ import {
 	ELEMENT_TYPE
 } from './constants';
 
-import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-
 import { saveAnswers, deleteAnswers } from './databaseLayer';
 
 import { reduceError } from 'c/nfCommonUtility';
@@ -380,10 +378,10 @@ export default class NeuraFormRenderer extends LightningElement {
 
 	showToastMessage(title, message, variant) {
 		this.dispatchEvent(
-			new ShowToastEvent({
-				title: title,
-				message: message,
-				variant: variant
+			new CustomEvent('message', {
+				detail: { title, message, variant },
+				bubbles: true,
+				composed: true
 			})
 		);
 	}

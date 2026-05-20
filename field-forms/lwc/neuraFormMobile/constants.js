@@ -10,3 +10,8 @@ export const MESSAGE_VARIANT = {
     INFO: 'info',
     WARN: 'warning'
 }
+
+// GraphQL pagination cap for Form_Answers__r per Linked_Form.
+// If a completed form has more answers than this, the user is warned
+// that older answers were truncated rather than failing silently.
+export const FORM_ANSWER_FETCH_LIMIT = 500;

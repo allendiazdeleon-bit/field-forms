@@ -1,6 +1,5 @@
 import { LightningElement, track, api } from 'lwc';
 import { getLocationService } from 'lightning/mobileCapabilities';
-import formFactorPropertyName from "@salesforce/client/formFactor";
 
 export default class NeuraFormAnswerInputGeolocation extends LightningElement {
     @api get val() {
@@ -17,8 +16,23 @@ export default class NeuraFormAnswerInputGeolocation extends LightningElement {
     @track latitude;
     @track longitude;
 
+    // Cache the Nimbus location service handle. isAvailable() is the only reliable
+    // way to detect the FSL mobile runtime; @salesforce/client/formFactor returns
+    // "Small" in LWC Offline regardless of device, so it cannot be used here.
+    _locationService;
+
+    get locationService() {
+        if (this._locationService === undefined) {
+            try {
+                this._locationService = getLocationService();
+            } catch (e) {
+                this._locationService = null;
+            }
+        }
+        return this._locationService;
+    }
+
     captureGeolocation(event) {
-        // Prevent the default form submission behavior
         event.preventDefault();
 
         this.dispatchEvent(new CustomEvent('capturelocation', {
@@ -27,10 +41,10 @@ export default class NeuraFormAnswerInputGeolocation extends LightningElement {
             bubbles: true
         }));
 
-        if(formFactorPropertyName === 'Large') {
-            this.getGeolocationOnDesktop();
-        } else {
+        if (this.locationService && this.locationService.isAvailable()) {
             this.getGeolocationOnOtherDevices();
+        } else {
+            this.getGeolocationOnDesktop();
         }
     }
 
@@ -71,8 +85,8 @@ export default class NeuraFormAnswerInputGeolocation extends LightningElement {
     }
 
     async getGeolocationOnOtherDevices() {
-        // Request the device's current geolocation
-        getLocationService()
+        // Request the device's current geolocation via Nimbus plugin
+        this.locationService
             .getCurrentPosition({ enableHighAccuracy: true })
             .then((result) => {
                 // Extract latitude and longitude from the result
