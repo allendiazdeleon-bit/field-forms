@@ -111,6 +111,8 @@ import QuestionType from '@salesforce/schema/Form_Question__c.Type__c';
 import ValueSet from '@salesforce/schema/Form_Question__c.Value_Set__c';
 import DisplayRichText from '@salesforce/schema/Form_Question__c.Display_Rich_Text__c';
 import LayoutItemCheckbox from '@salesforce/schema/Form_Question__c.Layout_Item__c';
+import DefaultValueSource from '@salesforce/schema/Form_Question__c.Default_Value_Source__c';
+import DefaultValueStatic from '@salesforce/schema/Form_Question__c.Default_Value_Static__c';
 
 import QuestionObjectConditions from '@salesforce/schema/Form_Question__c.Conditions__c';
 import ExternalReferenceQuestion from '@salesforce/schema/Form_Question__c.External_Reference__c';
@@ -288,6 +290,8 @@ export const FIELDS = {
         ValueSet,
         DisplayRichText,
         LayoutItemCheckbox,
+        DefaultValueSource,
+        DefaultValueStatic,
         ExternalReference: ExternalReferenceQuestion,
         Conditions : QuestionObjectConditions
     }

@@ -54,10 +54,12 @@
 
 
         <template if:true={showForm}>
-            <c-neura-form-renderer 
-                record-id={recordId} 
-                form-object={selectedForm} 
-                onreturnhome={handleReturnToHome} 
+            <c-neura-form-renderer
+                record-id={recordId}
+                form-object={selectedForm}
+                host-record-id={recordId}
+                host-object-api-name={objectApiName}
+                onreturnhome={handleReturnToHome}
                 onfooterclick={handleFooterClick}
                 oncapturelocation={handleCaptureGeolocation}
                 onupdatelinkedformdetails={handleUpdateLinkedFormDetails}
@@ -66,7 +68,7 @@
                 onerror={handleFormRendererError}
                 onmessage={handleFormRendererMessage}
             >
-            </c-neura-form-renderer >
+            </c-neura-form-renderer>
         </template>
     </div>
 </template>

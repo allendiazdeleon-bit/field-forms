@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Default_Value_Source__c</fullName>
+    <description>Field path on the host record (e.g. Service_Appointment.Account.Name, WorkOrder.Subject) read at runtime to pre-fill this question. Spanning lookups are supported. Empty answers are populated; existing answers are not overwritten.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Field path on the host record to pre-fill this question (e.g. WorkOrder.Subject or Service_Appointment.Account.Name).</inlineHelpText>
+    <label>Default Value Source</label>
+    <length>500</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

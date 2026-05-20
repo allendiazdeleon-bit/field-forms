@@ -1,5 +1,5 @@
 import { LightningElement, api } from 'lwc';
-import { updateRecord } from 'lightning/uiRecordApi';
+import { updateRecord, getRecord } from 'lightning/uiRecordApi';
 
 import AnswerField from '@salesforce/schema/Form_Answer__c.Answer__c';
 import CommentField from '@salesforce/schema/Form_Answer__c.Related_Comment__c';
@@ -43,6 +43,14 @@ export default class NeuraFormRenderer extends LightningElement {
 	@api
 	isDesktop = false;
 
+	// Host record context (passed by the mobile parent: Work_Order /
+	// Work_Order_Line_Item / Service_Appointment). Used by
+	// applyHostRecordDefaults to pre-fill empty answers from the host's
+	// fields. Undefined on the desktop preview path, in which case
+	// pre-population is skipped.
+	@api hostRecordId;
+	@api hostObjectApiName;
+
 	get isLoaded() {
 		return this._loaded && !this._completed;
 	}
@@ -70,10 +78,134 @@ export default class NeuraFormRenderer extends LightningElement {
 			try {
 				this.setInitialValues();
 				this.loadComplete();
+				// Best-effort prefill from the host record. Errors here are
+				// non-fatal - we still render the form so the user can fill
+				// it manually.
+				this.applyHostRecordDefaults().catch((error) => {
+					console.error('applyHostRecordDefaults failed', error);
+				});
 			} catch (error) {
 				this.dispatchEvent(new CustomEvent('error', { detail: error }));
 			}
 		}
+	}
+
+	/**
+	 * For each question with a Default_Value_Source__c field path or a
+	 * Default_Value_Static__c literal, pre-fill an empty answer. Source wins
+	 * over static; static is the fallback when the source resolves to null.
+	 *
+	 * Existing answers (from a partially-completed Linked_Form) are not
+	 * overwritten. The resolved value is stored in questionAnswerMap with
+	 * uploadCompleted=false so it persists on the next save like any other
+	 * user-entered answer.
+	 *
+	 * Skipped entirely on the desktop preview path (no hostRecordId).
+	 */
+	async applyHostRecordDefaults() {
+		if (!this._formObject || !this.hostRecordId || !this.hostObjectApiName) {
+			return;
+		}
+
+		// Collect questions that need defaults and aren't already answered.
+		const defaultsFieldSource = FIELDS.Form_Question__c.DefaultValueSource?.fieldApiName;
+		const defaultsFieldStatic = FIELDS.Form_Question__c.DefaultValueStatic?.fieldApiName;
+		if (!defaultsFieldSource && !defaultsFieldStatic) return;
+
+		const pendingSourceFields = new Set();
+		const candidates = [];
+		this._formObject.pages.forEach((page) => {
+			page.sections.forEach((section) => {
+				section.questions.forEach((question) => {
+					if (this.questionAnswerMap.has(question.Id)) return; // already answered
+					const sourcePath = question[defaultsFieldSource];
+					const staticVal = question[defaultsFieldStatic];
+					if (!sourcePath && !staticVal) return;
+					candidates.push({ question, sourcePath, staticVal });
+					if (sourcePath) {
+						// uiRecordApi expects field paths qualified by object,
+						// e.g. WorkOrder.Account.Name. If the admin entered a
+						// bare path, prefix the host object so callers do not
+						// need to repeat it.
+						const qualified = sourcePath.includes('.')
+							? sourcePath
+							: `${this.hostObjectApiName}.${sourcePath}`;
+						pendingSourceFields.add(qualified);
+					}
+				});
+			});
+		});
+
+		if (candidates.length === 0) return;
+
+		// Fetch the host record once with the union of all field paths.
+		let hostRecord;
+		if (pendingSourceFields.size > 0) {
+			try {
+				hostRecord = await getRecord({
+					recordId: this.hostRecordId,
+					fields: Array.from(pendingSourceFields)
+				});
+			} catch (e) {
+				// Some paths may not be primed offline or the user may lack
+				// FLS - degrade gracefully to static defaults.
+				console.warn('Host record getRecord failed; using static defaults only.', e);
+			}
+		}
+
+		for (const c of candidates) {
+			let value;
+			if (c.sourcePath) {
+				value = this.resolveFieldPath(hostRecord, c.sourcePath);
+			}
+			if ((value === undefined || value === null || value === '') && c.staticVal) {
+				value = c.staticVal;
+			}
+			if (value === undefined || value === null || value === '') continue;
+
+			const tempAns = { uploadCompleted: false };
+			this.assignFieldValues(tempAns, AnswerField.fieldApiName, String(value));
+			this.assignFieldValues(tempAns, FormQuestionField.fieldApiName, c.question.Id);
+			this.assignFieldValues(
+				tempAns,
+				TypeField.fieldApiName,
+				c.question[FIELDS.Form_Question__c.Type.fieldApiName]
+			);
+			this.questionAnswerMap.set(c.question.Id, tempAns);
+		}
+
+		// Force a render so prefilled inputs reflect their new values.
+		this._formObject = { ...this._formObject };
+	}
+
+	/**
+	 * Walks a getRecord result via a dotted path like
+	 * "WorkOrder.Account.Name". Returns the resolved primitive, or undefined.
+	 *
+	 * uiRecordApi nests spanning lookups under `fields.<lookup>.value.fields`
+	 * - this walker handles both shapes: bare values and the nested-record
+	 * containers. Tolerant to missing intermediates.
+	 */
+	resolveFieldPath(record, fullPath) {
+		if (!record || !fullPath) return undefined;
+		// Drop the leading object name if present (WorkOrder.Account.Name -> Account.Name).
+		const parts = fullPath.split('.');
+		if (parts.length > 1 && parts[0] === record.apiName) parts.shift();
+
+		let current = record.fields;
+		for (let i = 0; i < parts.length; i++) {
+			if (!current) return undefined;
+			const node = current[parts[i]];
+			if (node === undefined) return undefined;
+			const isLast = i === parts.length - 1;
+			if (isLast) {
+				// Leaf: extract .value or the bare value.
+				return node && typeof node === 'object' && 'value' in node ? node.value : node;
+			}
+			// Spanning: follow into the related record's fields.
+			current = node?.value?.fields ?? node?.fields ?? undefined;
+		}
+		return undefined;
 	}
 	loadComplete() {
 		this._loaded = true;

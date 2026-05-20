@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Default_Value_Static__c</fullName>
+    <description>Literal default value applied when the answer is empty. If both Default Value Source and Default Value Static are set, Source wins and Static is used only when the source resolves to null.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Literal default for this question (used when Default Value Source is empty or returns null).</inlineHelpText>
+    <label>Default Value (Static)</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
