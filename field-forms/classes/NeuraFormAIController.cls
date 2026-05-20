@@ -55,18 +55,18 @@ public with sharing class NeuraFormAIController {
             // consumed by the existing import pipeline, then delegate to it
             // so all the FLS / sharing / upsert behavior is shared.
             String wrapperJson = transformSpecToImportJson(spec);
-            List<Form_Template__c> created = neuraFormExportController.importTemplates(wrapperJson);
+            // importTemplates now returns ImportResult and handles snapshot
+            // rebuild internally, so we no longer need a follow-up
+            // processTemplates call.
+            neuraFormExportController.ImportResult imported =
+                neuraFormExportController.importTemplates(wrapperJson);
 
-            if (created == null || created.isEmpty()) {
+            if (imported == null || imported.templates == null || imported.templates.isEmpty()) {
                 throw new AuraHandledException('Import succeeded but no template was returned.');
             }
-            // Rebuild snapshot fields immediately so the new template is
-            // ready for the runtime (no need to wait for a child DML).
-            Set<Id> ids = new Set<Id>{ created[0].Id };
-            NeuraFormLogic.processTemplates(ids);
 
             GenerationResult result = new GenerationResult();
-            result.formTemplateId = created[0].Id;
+            result.formTemplateId = imported.templates[0].Id;
             result.formTemplateName = (String) spec.get('name');
             result.pageCount = pagesIn(spec).size();
             result.questionCount = countQuestions(spec);

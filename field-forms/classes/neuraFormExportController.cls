@@ -86,35 +86,6 @@ public with sharing class neuraFormExportController {
     }
 
 
-    public static List<Form_Template__c> addExternalIdValuesOld(List<Form_Template__c> templates) {
-        for (Form_Template__c template : templates) {
-            if (template.External_Reference__c == null) {
-                template.External_Reference__c = template.Id;
-            }
-            template.Id = null;
-            for (Form_Page__c page : template.Form_Pages__r) {
-                if (page.External_Reference__c == null) {
-                    page.External_Reference__c = page.Id;
-                }
-                page.Id = null;
-            }
-            for (Form_Section__c section : template.Form_Sections__r) {
-                if (section.External_Reference__c == null) {
-                    section.External_Reference__c = section.Id;
-                }
-                section.Id = null;
-            }
-            for(Form_Question__c question : template.Form_Questions__r) {
-                if (question.External_Reference__c == null) {
-                    question.External_Reference__c = question.Id;
-                }
-                question.Id = null;
-            }
-        }
-        return templates;
-    }
-
-
     public static String generateFieldList(String objectName) {
         // add namespace to the objectName
         objectName = NeuraFormUtils.getNamespacePrefix() + objectName;
@@ -137,18 +108,69 @@ public with sharing class neuraFormExportController {
         return String.join(customFieldsRemoved, ', ');
     }
     /**
-     * Imports form templates from a JSON string.
-     * 
-     * @param jsonContent The JSON string containing form templates and related objects.
-     * @return A list of imported Form_Template__c records.
-     * @throws AuraHandledException If any error occurs during the import process.
+     * Result of an import. Includes the imported template records plus
+     * created/updated counts and any warnings that should be surfaced to the
+     * admin (e.g. conditions referencing questions that weren't in the JSON).
+     */
+    public class ImportResult {
+        @AuraEnabled public List<Form_Template__c> templates;
+        @AuraEnabled public Integer createdCount = 0;
+        @AuraEnabled public Integer updatedCount = 0;
+        @AuraEnabled public List<String> warnings = new List<String>();
+    }
+
+    /**
+     * Imports form templates from a JSON string. Wraps every DML in a single
+     * Savepoint so a failure at any step (templates / pages / sections /
+     * questions / conditions rewrite) rolls back the whole import - no more
+     * orphan half-imported templates.
+     *
+     * Snapshot rebuild is run synchronously at the end (inside the same
+     * transaction) so the LWC doesn't have to issue a second Apex call and
+     * the new templates render immediately.
+     *
+     * Returns an ImportResult (not raw templates) so the LWC can surface
+     * created/updated counts and any non-fatal warnings (e.g. condition
+     * references that couldn't be resolved).
      */
     @AuraEnabled(cacheable=false)
-    public static List<Form_Template__c> importTemplates(String jsonContent){
+    public static ImportResult importTemplates(String jsonContent) {
+        return importTemplatesInternal(jsonContent, /* importAsNew */ false);
+    }
+
+    private static ImportResult importTemplatesInternal(String jsonContent, Boolean importAsNew) {
+        if (String.isBlank(jsonContent)) {
+            AuraHandledException e = new AuraHandledException('Import payload was empty.');
+            e.setMessage('Import payload was empty.');
+            throw e;
+        }
+
+        List<FormTemplateWrapper> wrappers;
         try {
-            List<FormTemplateWrapper> wrappers = (List<FormTemplateWrapper>) JSON.deserialize(jsonContent, List<FormTemplateWrapper>.class);
-            String externalReferenceField = NeuraFormUtils.getNamespacePrefix() + 'External_Reference__c';
-            // Build a list of each type of object to upsert
+            wrappers = (List<FormTemplateWrapper>) JSON.deserialize(
+                jsonContent, List<FormTemplateWrapper>.class
+            );
+        } catch (Exception e) {
+            AuraHandledException ahe = new AuraHandledException(
+                'Could not parse import JSON: ' + e.getMessage()
+            );
+            ahe.setMessage('Could not parse import JSON: ' + e.getMessage());
+            throw ahe;
+        }
+        if (wrappers == null || wrappers.isEmpty()) {
+            AuraHandledException e = new AuraHandledException('No templates in payload.');
+            e.setMessage('No templates in payload.');
+            throw e;
+        }
+
+        ImportResult result = new ImportResult();
+        String externalReferenceField = NeuraFormUtils.getNamespacePrefix() + 'External_Reference__c';
+
+        // Single Savepoint so a failure at any step rolls back the entire
+        // import. Previously a section-upsert failure left templates+pages
+        // committed and pointing nowhere.
+        Savepoint sp = Database.setSavepoint();
+        try {
             List<Form_Template__c> templates = new List<Form_Template__c>();
             List<Form_Page__c> pages = new List<Form_Page__c>();
             List<Form_Section__c> sections = new List<Form_Section__c>();
@@ -161,60 +183,182 @@ public with sharing class neuraFormExportController {
                 questions.addAll(wrapper.questions);
             }
 
-            upsert templates Form_Template__c.External_Reference__c;
+            // "Import as new" regenerates External_Reference__c on every
+            // record so the upsert creates fresh rows instead of overwriting
+            // any existing rows that share the source-org Id. Caller passes
+            // true via importTemplatesAsNew().
+            if (importAsNew) {
+                regenerateExternalReferences(templates, pages, sections, questions, externalReferenceField);
+            }
+
+            // Track created vs. updated by checking Id presence before upsert.
+            // upsert with an external key returns Database.UpsertResult[] when
+            // the typed wrapper isn't used, so we use the Database.upsert
+            // overload to capture per-row outcomes.
+            Schema.SObjectField extRefSchema = Form_Template__c.SObjectType
+                .getDescribe().fields.getMap().get(externalReferenceField);
+            Database.UpsertResult[] tplResults = Database.upsert(templates, extRefSchema, false);
+            throwOnFailures(tplResults, 'Form Template');
+            for (Database.UpsertResult r : tplResults) {
+                if (r.isCreated()) result.createdCount++;
+                else result.updatedCount++;
+            }
             Map<String, Id> templateIdMap = createIdMap(templates, externalReferenceField);
 
-
             for (Form_Page__c page : pages) {
-
-                page.Form_Template__c = templateIdMap.get(page.Form_Template__c); // Set the reference to the new template ID
+                page.Form_Template__c = templateIdMap.get((String) page.Form_Template__c);
             }
-
-            upsert pages Form_Page__c.External_Reference__c;
-
+            Schema.SObjectField pageExt = Form_Page__c.SObjectType
+                .getDescribe().fields.getMap().get(externalReferenceField);
+            Database.UpsertResult[] pageResults = Database.upsert(pages, pageExt, false);
+            throwOnFailures(pageResults, 'Form Page');
             Map<String, Id> pageIdMap = createIdMap(pages, externalReferenceField);
 
-
             for (Form_Section__c section : sections) {
-                section.Form_Template__c = templateIdMap.get(section.Form_Template__c); // Set the reference to the new template ID
-                section.Form_Page__c = pageIdMap.get(section.Form_Page__c); // Set the reference to the new page ID
+                section.Form_Template__c = templateIdMap.get((String) section.Form_Template__c);
+                section.Form_Page__c = pageIdMap.get((String) section.Form_Page__c);
             }
-
-            upsert sections Form_Section__c.External_Reference__c;
+            Schema.SObjectField sectionExt = Form_Section__c.SObjectType
+                .getDescribe().fields.getMap().get(externalReferenceField);
+            Database.UpsertResult[] sectionResults = Database.upsert(sections, sectionExt, false);
+            throwOnFailures(sectionResults, 'Form Section');
             Map<String, Id> sectionIdMap = createIdMap(sections, externalReferenceField);
-            
-            for(Form_Question__c question : questions){
-                question.Form_Template__c = templateIdMap.get(question.Form_Template__c); // Set the reference to the new template ID
-                question.Form_Section__c = sectionIdMap.get(question.Form_Section__c); // Set the reference to the new section ID
-                question.Form_Page__c = pageIdMap.get(question.Form_Page__c); // Set the reference to the new page ID
 
+            for (Form_Question__c question : questions) {
+                question.Form_Template__c = templateIdMap.get((String) question.Form_Template__c);
+                question.Form_Section__c = sectionIdMap.get((String) question.Form_Section__c);
+                question.Form_Page__c = pageIdMap.get((String) question.Form_Page__c);
             }
-
-            upsert questions Form_Question__c.External_Reference__c;
+            Schema.SObjectField questionExt = Form_Question__c.SObjectType
+                .getDescribe().fields.getMap().get(externalReferenceField);
+            Database.UpsertResult[] questionResults = Database.upsert(questions, questionExt, false);
+            throwOnFailures(questionResults, 'Form Question');
             Map<String, Id> questionIdMap = createIdMap(questions, externalReferenceField);
 
-            // TODO: Now we need to go through all the questions, sections, and pages to determine if we need to update the criteria fields.
-            for(Form_Page__c page : pages){
-                page.Conditions__c = modifyCriteria(page.Conditions__c, pageIdMap, sectionIdMap, questionIdMap);
+            // Second pass: rewrite Conditions JSON references from the source
+            // org's Ids/UUIDs to the new org's Ids. Track which records
+            // actually changed so we don't issue a no-op DML wave.
+            List<Form_Page__c> changedPages = new List<Form_Page__c>();
+            for (Form_Page__c page : pages) {
+                CriteriaRewriteResult r = modifyCriteriaWithResult(
+                    page.Conditions__c, pageIdMap, sectionIdMap, questionIdMap
+                );
+                if (r.changed) {
+                    page.Conditions__c = r.json;
+                    changedPages.add(page);
+                }
+                result.warnings.addAll(r.warnings);
+            }
+            List<Form_Section__c> changedSections = new List<Form_Section__c>();
+            for (Form_Section__c section : sections) {
+                CriteriaRewriteResult r = modifyCriteriaWithResult(
+                    section.Conditions__c, pageIdMap, sectionIdMap, questionIdMap
+                );
+                if (r.changed) {
+                    section.Conditions__c = r.json;
+                    changedSections.add(section);
+                }
+                result.warnings.addAll(r.warnings);
+            }
+            List<Form_Question__c> changedQuestions = new List<Form_Question__c>();
+            for (Form_Question__c question : questions) {
+                CriteriaRewriteResult r = modifyCriteriaWithResult(
+                    question.Conditions__c, pageIdMap, sectionIdMap, questionIdMap
+                );
+                if (r.changed) {
+                    question.Conditions__c = r.json;
+                    changedQuestions.add(question);
+                }
+                result.warnings.addAll(r.warnings);
             }
 
-            for (Form_Section__c section: sections){
-                section.Conditions__c = modifyCriteria(section.Conditions__c, pageIdMap, sectionIdMap, questionIdMap);
+            if (!changedPages.isEmpty()) update changedPages;
+            if (!changedSections.isEmpty()) update changedSections;
+            if (!changedQuestions.isEmpty()) update changedQuestions;
+
+            // Rebuild the JSON snapshot fields synchronously inside the same
+            // transaction so the LWC doesn't have to issue a second call and
+            // the new templates render immediately. The trigger pipeline may
+            // also enqueue an async snapshot job; that's a harmless duplicate.
+            Set<Id> templateIds = new Set<Id>();
+            for (Form_Template__c t : templates) templateIds.add(t.Id);
+            if (!templateIds.isEmpty()) {
+                NeuraFormLogic.processTemplates(templateIds);
             }
 
-            for(Form_Question__c question: questions){
-                question.Conditions__c = modifyCriteria(question.Conditions__c, pageIdMap, sectionIdMap, questionIdMap);
-            }
-
-            update pages;
-            update sections;
-            update questions;
-
-            return templates;
+            result.templates = templates;
+            return result;
         } catch (Exception e) {
-            System.debug('Error: ' + e.getMessage());
-            System.debug('Stack Trace: ' + e.getStackTraceString());
-            throw new AuraHandledException(e.getMessage());
+            Database.rollback(sp);
+            System.debug(LoggingLevel.ERROR, 'Import rolled back: ' + e.getMessage());
+            System.debug(LoggingLevel.ERROR, e.getStackTraceString());
+            AuraHandledException ahe = new AuraHandledException(
+                'Import failed and was rolled back: ' + e.getMessage()
+            );
+            ahe.setMessage('Import failed and was rolled back: ' + e.getMessage());
+            throw ahe;
+        }
+    }
+
+    /**
+     * Import variant that creates new templates instead of overwriting any
+     * existing ones that share the source-org Id via External_Reference__c.
+     * Each record's external reference is regenerated to a UUID-like value
+     * before the upsert.
+     */
+    @AuraEnabled(cacheable=false)
+    public static ImportResult importTemplatesAsNew(String jsonContent) {
+        return importTemplatesInternal(jsonContent, /* importAsNew */ true);
+    }
+
+    private static void regenerateExternalReferences(
+        List<Form_Template__c> templates,
+        List<Form_Page__c> pages,
+        List<Form_Section__c> sections,
+        List<Form_Question__c> questions,
+        String externalReferenceField
+    ) {
+        // Map old reference -> new reference so we can rewrite FK strings on
+        // children before upsert.
+        Map<String, String> remap = new Map<String, String>();
+        for (SObject record : (List<SObject>) templates) remap.put((String) record.get(externalReferenceField), freshRef('t'));
+        for (SObject record : (List<SObject>) pages)     remap.put((String) record.get(externalReferenceField), freshRef('p'));
+        for (SObject record : (List<SObject>) sections)  remap.put((String) record.get(externalReferenceField), freshRef('s'));
+        for (SObject record : (List<SObject>) questions) remap.put((String) record.get(externalReferenceField), freshRef('q'));
+
+        for (Form_Template__c t : templates) t.put(externalReferenceField, remap.get((String) t.get(externalReferenceField)));
+        for (Form_Page__c p : pages) {
+            p.put(externalReferenceField, remap.get((String) p.get(externalReferenceField)));
+            p.Form_Template__c = remap.get((String) p.Form_Template__c);
+        }
+        for (Form_Section__c s : sections) {
+            s.put(externalReferenceField, remap.get((String) s.get(externalReferenceField)));
+            s.Form_Template__c = remap.get((String) s.Form_Template__c);
+            s.Form_Page__c = remap.get((String) s.Form_Page__c);
+        }
+        for (Form_Question__c q : questions) {
+            q.put(externalReferenceField, remap.get((String) q.get(externalReferenceField)));
+            q.Form_Template__c = remap.get((String) q.Form_Template__c);
+            q.Form_Section__c = remap.get((String) q.Form_Section__c);
+            q.Form_Page__c = remap.get((String) q.Form_Page__c);
+        }
+    }
+
+    private static String freshRef(String prefix) {
+        return 'IMP_' + prefix + '_' + Crypto.getRandomLong() + '_' + System.currentTimeMillis();
+    }
+
+    private static void throwOnFailures(Database.UpsertResult[] results, String label) {
+        List<String> errors = new List<String>();
+        for (Database.UpsertResult r : results) {
+            if (!r.isSuccess()) {
+                for (Database.Error err : r.getErrors()) {
+                    errors.add(label + ': ' + err.getStatusCode() + ' - ' + err.getMessage());
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new DmlException(String.join(errors, '; '));
         }
     }
 
@@ -251,41 +395,100 @@ public with sharing class neuraFormExportController {
         }
     }
 
-    public static String modifyCriteria(String jsonString, Map<String, Id> pageMap, Map<String,Id> sectionMap, Map<String,Id> questionMap) {
+    /**
+     * Carries the result of a single condition-string rewrite: the new JSON,
+     * a flag for whether anything actually changed (so callers can skip the
+     * DML when it didn't), and any warnings (e.g. references that couldn't
+     * be resolved).
+     */
+    public class CriteriaRewriteResult {
+        public String json;
+        public Boolean changed = false;
+        public List<String> warnings = new List<String>();
+    }
 
-        if(String.isBlank(jsonString) || jsonString == null){
-            return jsonString;
+    /**
+     * Backwards-compat shim. The original modifyCriteria silently put null
+     * for missing references, which produced runtime-broken conditions.
+     * Prefer modifyCriteriaWithResult, which surfaces those misses to the
+     * caller and only flags the row as changed when at least one rewrite
+     * succeeded.
+     */
+    public static String modifyCriteria(String jsonString, Map<String, Id> pageMap, Map<String,Id> sectionMap, Map<String,Id> questionMap) {
+        return modifyCriteriaWithResult(jsonString, pageMap, sectionMap, questionMap).json;
+    }
+
+    public static CriteriaRewriteResult modifyCriteriaWithResult(
+        String jsonString,
+        Map<String, Id> pageMap,
+        Map<String, Id> sectionMap,
+        Map<String, Id> questionMap
+    ) {
+        CriteriaRewriteResult result = new CriteriaRewriteResult();
+        result.json = jsonString;
+        if (String.isBlank(jsonString)) return result;
+
+        Map<String, Object> logicMap;
+        try {
+            logicMap = (Map<String, Object>) JSON.deserializeUntyped(jsonString);
+        } catch (Exception e) {
+            result.warnings.add('Could not parse condition JSON; left unchanged: ' + e.getMessage());
+            return result;
         }
 
-        // Deserialize the JSON string into a Map
-        Map<String, Object> logicMap = (Map<String, Object>) JSON.deserializeUntyped(jsonString);
-        
-        // Access the conditions list
         List<Object> conditions = (List<Object>) logicMap.get('conditions');
-        
-        if (conditions != null) {
-            // Iterate over each condition and modify the resource, page, and section values
-            for (Object conditionObj : conditions) {
-                Map<String, Object> conditionMap = (Map<String, Object>) conditionObj;
-                
-                if (conditionMap.containsKey('resource') && conditionMap.get('resource') instanceof String) {
-                    conditionMap.put('resource', questionMap.get((String) conditionMap.get('resource')));
+        if (conditions == null) return result;
+
+        for (Object conditionObj : conditions) {
+            Map<String, Object> conditionMap = (Map<String, Object>) conditionObj;
+
+            if (conditionMap.containsKey('resource') && conditionMap.get('resource') instanceof String) {
+                String oldRef = (String) conditionMap.get('resource');
+                Id newId = questionMap.get(oldRef);
+                if (newId != null) {
+                    conditionMap.put('resource', newId);
+                    result.changed = true;
+                } else if (String.isNotBlank(oldRef)) {
+                    // Leave the old value in place so we don't write null into
+                    // a condition that the renderer will try to evaluate.
+                    result.warnings.add(
+                        'Condition references a question (' + oldRef + ') that was not in the import. ' +
+                        'The condition will not evaluate correctly until the missing record is added.'
+                    );
                 }
-                
-                if (conditionMap.containsKey('page') && conditionMap.get('page') instanceof String) {
-                    conditionMap.put('page', pageMap.get((String) conditionMap.get('page')));
+            }
+
+            if (conditionMap.containsKey('page') && conditionMap.get('page') instanceof String) {
+                String oldRef = (String) conditionMap.get('page');
+                Id newId = pageMap.get(oldRef);
+                if (newId != null) {
+                    conditionMap.put('page', newId);
+                    result.changed = true;
+                } else if (String.isNotBlank(oldRef)) {
+                    result.warnings.add(
+                        'Condition references a page (' + oldRef + ') that was not in the import.'
+                    );
                 }
-                
-                if (conditionMap.containsKey('section') && conditionMap.get('section') instanceof String) {
-                    conditionMap.put('section', sectionMap.get((String) conditionMap.get('section')));
+            }
+
+            if (conditionMap.containsKey('section') && conditionMap.get('section') instanceof String) {
+                String oldRef = (String) conditionMap.get('section');
+                Id newId = sectionMap.get(oldRef);
+                if (newId != null) {
+                    conditionMap.put('section', newId);
+                    result.changed = true;
+                } else if (String.isNotBlank(oldRef)) {
+                    result.warnings.add(
+                        'Condition references a section (' + oldRef + ') that was not in the import.'
+                    );
                 }
             }
         }
-        
-        // Serialize the modified map back to a JSON string
-        String modifiedJsonString = JSON.serialize(logicMap);
-        
-        return modifiedJsonString;
+
+        if (result.changed) {
+            result.json = JSON.serialize(logicMap);
+        }
+        return result;
     }
 
     /**
@@ -328,7 +531,4 @@ public with sharing class neuraFormExportController {
         }
     }
 
-    public class CriteriaWrapper {
-
-    }
 }

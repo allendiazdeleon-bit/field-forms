@@ -4,29 +4,56 @@
     </template>
     <lightning-card title="Import Form Templates" icon-name="custom:custom63">
         <div class="slds-m-around_medium">
-            <!-- Using lightning-input for file upload -->
             <lightning-input type="file"
                              label="Upload JSON File"
                              accept=".json"
                              onchange={handleFileChange}
                              class="slds-m-bottom_medium">
             </lightning-input>
+
             <template if:true={fileName}>
                 <div class="slds-m-top_small">
                     <p><strong>File selected:</strong> {fileName}</p>
+                    <p class="slds-text-body_small slds-text-color_weak">
+                        Contains {parsedTemplateCount} template(s).
+                    </p>
                 </div>
+
+                <lightning-input
+                    type="checkbox"
+                    label="Import as new (create copies instead of updating existing templates)"
+                    checked={importAsNew}
+                    onchange={handleImportAsNewChange}
+                    class="slds-m-top_small">
+                </lightning-input>
+
                 <lightning-button variant="brand"
-                                label="Import"
+                                label={importButtonLabel}
                                 title="Import"
                                 onclick={importData}
                                 class="slds-m-top_medium slds-m-bottom_medium">
                 </lightning-button>
             </template>
-            <!-- Displaying imported templates with datatable -->
+
+            <!-- Post-import summary -->
             <template if:true={importedTemplates}>
                 <div class="slds-m-top_medium">
-                    <lightning-card title="Imported Templates">
+                    <p class="slds-text-title slds-m-bottom_x-small">{countSummary}</p>
 
+                    <template if:true={hasWarnings}>
+                        <div class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_small" role="alert">
+                            <h2 class="slds-text-heading_small">
+                                Import warnings:
+                            </h2>
+                            <ul class="slds-list_dotted slds-m-top_x-small">
+                                <template for:each={importWarnings} for:item="warning" for:index="idx">
+                                    <li key={idx}>{warning}</li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+
+                    <lightning-card title="Imported Templates">
                         <lightning-datatable key-field="Id"
                                             data={importedTemplates}
                                             columns={columns}

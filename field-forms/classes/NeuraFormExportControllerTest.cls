@@ -65,14 +65,21 @@ public class NeuraFormExportControllerTest {
 
         Form_Template__c template = [SELECT Id, External_Reference__c FROM Form_Template__c LIMIT 1];
         String jsonContent = neuraFormExportController.fetchTemplatesData(new List<String>{template.Id});
-        
+
         Test.startTest();
-        List<Form_Template__c> templates = neuraFormExportController.importTemplates(jsonContent);
+        neuraFormExportController.ImportResult result = neuraFormExportController.importTemplates(jsonContent);
         Test.stopTest();
-        
-        // Asserts
-        System.assertEquals(1, templates.size(), 'There should be one template processed');
-        System.assertEquals(template.Id, templates[0].External_Reference__c, 'The external reference should match');
+
+        System.assertNotEquals(null, result, 'ImportResult should be returned');
+        System.assertEquals(1, result.templates.size(), 'There should be one template processed');
+        System.assertEquals(template.Id, result.templates[0].External_Reference__c, 'The external reference should match the source Id');
+        System.assertEquals(0, result.warnings.size(), 'A round-trip of a known-good template should produce no warnings');
+        // The original record was inserted without an External_Reference, so
+        // the export sets it on the in-memory copy only. Re-importing matches
+        // nothing in the DB (existing row still has null External_Reference)
+        // and inserts a new record.
+        System.assertEquals(1, result.createdCount, 'Round-trip should create a new row when the source had a null External_Reference');
+        System.assertEquals(0, result.updatedCount);
     }
 
     // Test method to cover the exception scenario in importTemplates
