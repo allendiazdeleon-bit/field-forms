@@ -825,17 +825,21 @@ export default class NeuraFormBuilder extends LightningElement {
             page.sections.forEach(section => {
                 section.columns.forEach((column, columnIndex) => {
                     column.components.forEach((question, questionIndex) => {
+                        // Always write the parent lookups + position from the
+                        // current in-memory tree. Form_Page__c is included so
+                        // a question whose section was moved to another page
+                        // doesn't keep its old page reference.
+                        const attrs = question.attributes;
+                        attrs[FIELDS.Form_Question__c.Column.fieldApiName] = (columnIndex + 1).toString();
+                        attrs[FIELDS.Form_Question__c.Order.fieldApiName] = questionIndex + 1;
+                        attrs[FIELDS.Form_Question__c.FormSection.fieldApiName] = section.id;
+                        attrs[FIELDS.Form_Question__c.FormPage.fieldApiName] = page.id;
+
                         if (this.isNewRecord(question)) {
-                            question.attributes[FIELDS.Form_Question__c.Column.fieldApiName] = (columnIndex + 1).toString();;
-                            question.attributes[FIELDS.Form_Question__c.Order.fieldApiName] = questionIndex+1;
-                            question.attributes[FIELDS.Form_Question__c.FormSection.fieldApiName] = section.id;
-                            newQuestions.push(question.attributes);
+                            newQuestions.push(attrs);
                         } else if (this.isUpdatedRecord(question)) {
-                            question.parentSectionId = section.id; // Store parent section ID
-                            question.attributes[FIELDS.Form_Question__c.Column.fieldApiName] = (columnIndex + 1).toString();;
-                            question.attributes[FIELDS.Form_Question__c.Order.fieldApiName] = questionIndex+1;
-                            question.attributes[FIELDS.Form_Question__c.FormSection.fieldApiName] = section.id;
-                            updatedQuestions.push(question.attributes);
+                            question.parentSectionId = section.id;
+                            updatedQuestions.push(attrs);
                         }
                     });
                 });

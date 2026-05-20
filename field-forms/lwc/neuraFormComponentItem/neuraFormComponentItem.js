@@ -15,7 +15,7 @@ export default class NeuraFormComponentItem extends LightningElement {
         const dragStartEvent = new CustomEvent('nfdragstart', {
             detail: {
                 title: this.type,
-                iconName: this.id,
+                iconName: this.iconName,
                 structure: this.structure,
                 type : this.type
             },
@@ -32,7 +32,7 @@ export default class NeuraFormComponentItem extends LightningElement {
         const dragEndEvent = new CustomEvent('nfdragend', {
             detail: {
                 title: this.type,
-                iconName: this.id,
+                iconName: this.iconName,
                 structure: this.structure
             },
             bubbles: true

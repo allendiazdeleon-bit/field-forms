@@ -82,7 +82,7 @@ export default class NeuraFormCriteriaLine extends LightningElement {
         "signature": ["isTrue", "isFalse"],
         "slider": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
         "text": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
-        "text Area": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
+        "text area": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
         "time": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
         "toggle": ["equals", "notEquals"]
     }
@@ -169,10 +169,25 @@ export default class NeuraFormCriteriaLine extends LightningElement {
             const selectedQuestion = this.questions.find(q => q.id === selectedResourceId);
 
             if (selectedQuestion) {
-                this.updateOperatorOptions(selectedQuestion.attributes[FIELDS.Form_Question__c.Type.fieldApiName].toLowerCase());
+                const type = selectedQuestion.attributes[FIELDS.Form_Question__c.Type.fieldApiName].toLowerCase();
+                this.updateOperatorOptions(type);
+                this.resetOperatorIfIncompatible(type, index);
             }
         } catch (error) {
             this.handleError(error, 'handleResourceChange');
+        }
+    }
+
+    /**
+     * If the current operator isn't valid for the newly selected question type,
+     * clear it so the user can't save an invalid combination (e.g. `equals` on
+     * a Signature, which only supports isTrue/isFalse).
+     */
+    resetOperatorIfIncompatible(typeLower, index) {
+        const valid = this.validOperators[typeLower] || [];
+        if (this.operator && !valid.includes(this.operator)) {
+            this.operator = null;
+            this.dispatchUpdateEvent('operatorchange', index, null);
         }
     }
 
@@ -239,11 +254,20 @@ export default class NeuraFormCriteriaLine extends LightningElement {
 
             this.filterQuestions(this.section);
 
+            // Clearing the local resource also has to be propagated to the
+            // parent condition - otherwise child UI and parent state diverge
+            // until Done is clicked, and the saved condition keeps the stale
+            // resource Id.
             this.resource = null;
+            this.resourceNotSelected = true;
+            this.operator = null;
+            this.operatorOptions = [];
             const index = event.target.dataset.index;
             this.dispatchUpdateEvent('sectionchange', index, this.section);
+            this.dispatchUpdateEvent('resourcechange', index, null);
+            this.dispatchUpdateEvent('operatorchange', index, null);
         } catch (error) {
-            this.handleError(error, 'handleNarrowResourceChange');
+            this.handleError(error, 'handleNarrowSectionChange');
         }
     }
 
@@ -251,11 +275,13 @@ export default class NeuraFormCriteriaLine extends LightningElement {
         try {
             this.resource = event.detail.value;
             this.resourceNotSelected = !this.resource;
+            const index = event.target.dataset.index;
             const selectedQuestion = this.questions.find(q => q.id === this.resource);
             if (selectedQuestion) {
-                this.updateOperatorOptions(selectedQuestion.attributes[FIELDS.Form_Question__c.Type.fieldApiName].toLowerCase());
+                const type = selectedQuestion.attributes[FIELDS.Form_Question__c.Type.fieldApiName].toLowerCase();
+                this.updateOperatorOptions(type);
+                this.resetOperatorIfIncompatible(type, index);
             }
-            const index = event.target.dataset.index;
             this.dispatchUpdateEvent('resourcechange', index, this.resource);
         } catch (error) {
             this.handleError(error, 'handleNarrowResourceChange');
@@ -263,11 +289,18 @@ export default class NeuraFormCriteriaLine extends LightningElement {
     }
 
     handleNarrowOperatorChange(event) {
+        // Dispatch the change immediately. The previous version only stored it
+        // locally, which meant dismissing the popover by clicking outside
+        // silently discarded the user's operator selection.
         this.operator = event.detail.value;
+        const index = event.target?.dataset?.index;
+        this.dispatchUpdateEvent('operatorchange', index, this.operator);
     }
 
     handleNarrowValueChange(event) {
         this.value = event.detail.value;
+        const index = event.target?.dataset?.index;
+        this.dispatchUpdateEvent('valuechange', index, this.value);
     }
 
     handleRemoveCondition(event) {
