@@ -193,8 +193,8 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
             const value = event.detail.value;
             const field = this.conditionsField;
             this.sendChangeUpdate(value, field);
-        } catch {
-            console.error('Error updating conditions: ' + JSON.stringify(error));
+        } catch (error) {
+            console.error('Error updating conditions:', error);
         }
     }
 

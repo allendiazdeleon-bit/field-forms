@@ -40,30 +40,29 @@ export default class NeuraFormBuilderHeader extends LightningElement {
 
     async handleSaveAs() {
         const result = await saveAsModal.open({
-            // `label` is not included here in this example.
-            // it is set on lightning-modal-header instead
             size: 'small',
             description: 'A new form will be created with the same structure as the current form. Please enter a name for the new form.',
             content: 'content',
         });
 
-        console.log('Result: ', result);
-
-        if (result.action === 'save') {
-            this.handleModalSave(result);
-        } else {
-            // Do Nothing 
+        // LightningModal returns undefined when dismissed (Escape, X, click-out).
+        // Guard before reading .action.
+        if (!result || result.action !== 'save') {
+            return;
         }
+        this.handleModalSave(result);
     }
 
     handleModalSave(result) {
-        // {actionType: clickedButton, value: this.newFormName }
-        const clickedButton = 'saveas';
-        const newFormName = result.name;
-        const customEvent = new CustomEvent('headerclick', { detail: {actionType: clickedButton, value: newFormName } });
+        const newFormName = (result?.name || '').trim();
+        if (!newFormName) {
+            // Defence-in-depth — the modal's checkValidity should already block
+            // this, but if a future change relaxes the input we don't want to
+            // create an unnamed template.
+            return;
+        }
+        const customEvent = new CustomEvent('headerclick', { detail: { actionType: 'saveas', value: newFormName } });
         this.dispatchEvent(customEvent);
-        console.log('Save As Event Sent');
-        this.newFormName = ''; // Reset the name
     }
 
 

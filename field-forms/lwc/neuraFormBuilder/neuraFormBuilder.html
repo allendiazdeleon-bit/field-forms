@@ -116,7 +116,17 @@
         </div>
 
     <template if:true={loading}>
-            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+        <!-- Modal-style overlay so the spinner actually blocks clicks while
+             a save / load is in flight. lightning-spinner alone does not. -->
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="nf-builder-loading-label" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container" style="background: transparent; box-shadow: none;">
+                <div class="slds-is-relative" style="height: 96px; width: 96px; margin: 0 auto;">
+                    <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                </div>
+                <p id="nf-builder-loading-label" class="slds-text-align_center slds-text-color_inverse slds-m-top_small">Saving…</p>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
     </template>
     </div>
 </template>

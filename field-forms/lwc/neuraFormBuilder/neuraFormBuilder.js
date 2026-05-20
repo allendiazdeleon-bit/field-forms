@@ -19,6 +19,7 @@ import processPageRecords from '@salesforce/apex/neuraFormBuilderController.proc
 import processSectionRecords from '@salesforce/apex/neuraFormBuilderController.processSectionRecords';
 import processQuestionRecords from '@salesforce/apex/neuraFormBuilderController.processQuestionRecords';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import LightningConfirm from 'lightning/confirm';
 
 import { FIELDS } from 'c/neuraFormSchemaUtils';
 
@@ -220,19 +221,23 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     getFormApex(){
         getFormDetails({formTemplateId : this.recordId})
-        .then(data => {
-            if(data){
-                console.dir(data);
-                this.processFormDetails(data);
-                this.loading=false;
-            } else if (error) {
+            .then(data => {
+                if (data) {
+                    this.processFormDetails(data);
+                } else {
+                    this.showToast(
+                        'Form not found',
+                        'No form template was returned for this record. It may have been deleted.',
+                        'error'
+                    );
+                }
+                this.loading = false;
+            })
+            .catch(error => {
                 console.error(error);
-            }
-        })
-        .catch(error => {
-            console.error(error);
-        }
-    );
+                this.showToast('Error loading form', this.errorMessage(error), 'error');
+                this.loading = false;
+            });
     }
 
     /**
@@ -241,30 +246,20 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     getFormMetadataApex(){
         getFormMetadata()
-        .then(data => {
-            if(data){
-                console.log('Form Metadata');
-                console.dir(data);
-                // get all values with Structure__c = 'Component'
-
-                // Check the API Name of the Structure field
-                console.log('Structure Field API Name: ' + FIELDS.Form_Setting__mdt.Structure.fieldApiName);
-                this.componentItems = data.filter(item => item[FIELDS.Form_Setting__mdt.Structure.fieldApiName] === 'Component');
-                // print out component items
-                console.log('Component Items');
-                console.dir(this.componentItems);
-                this.layoutItems = data.filter(item => item[FIELDS.Form_Setting__mdt.Structure.fieldApiName] === 'Layout');
-                // print out layout items
-                console.log('Layout Items');
-                console.dir(this.layoutItems);
-            } else if (error) {
+            .then(data => {
+                if (!data) return;
+                const structureKey = FIELDS.Form_Setting__mdt.Structure.fieldApiName;
+                this.componentItems = data.filter(item => item[structureKey] === 'Component');
+                this.layoutItems = data.filter(item => item[structureKey] === 'Layout');
+            })
+            .catch(error => {
                 console.error(error);
-            }
-        })
-        .catch(error => {
-            console.error(error);
-        }
-    );
+                this.showToast('Error loading metadata', this.errorMessage(error), 'error');
+            });
+    }
+
+    errorMessage(error) {
+        return error?.body?.message || error?.message || 'Unknown error';
     }
 
 
@@ -307,13 +302,14 @@ export default class NeuraFormBuilder extends LightningElement {
         
         console.log(JSON.stringify(this.formSettings));
         this.pageArray = this.formSettings.pages.map(page => (page.attributes[FIELDS.Form_Page__c.Title.fieldApiName]));
-        //MOVED TO GETTER   
-        //this.totalPageCount = this.formSettings.pages.length;
         this.currentPage = this.formSettings.pages[this.historicalPageIndex];
 
         this.updateAllQuestions(this.formSettings);
 
         this.loaded = true;
+        // Initial / post-refresh load. updateFormSettings inside this method
+        // would otherwise have flipped isDirty=true; explicitly clear it.
+        this.isDirty = false;
     }
 
     /**
@@ -396,12 +392,37 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
       
+    // Dirty-state tracking. Flipped to true on any saveState() call (which all
+    // mutating handlers trigger), reset to false after a successful save.
+    // Drives the beforeunload guard and the back-button confirm.
+    isDirty = false;
+
+    _beforeUnloadHandler;
+
     connectedCallback(){
         this.getFormApex();
         this.getFormMetadataApex();
         this.viaBuilder = true;
-        //this.setDefaultFormSettings();
-        
+
+        // Browser-level guard: warn before tab close / refresh / hard navigation
+        // when there are unsaved changes. Standard returnValue=string mechanism
+        // (most browsers display a generic message, not ours, but we set one).
+        this._beforeUnloadHandler = (e) => {
+            if (this.isDirty) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes in the form builder. Leave anyway?';
+                return e.returnValue;
+            }
+            return undefined;
+        };
+        window.addEventListener('beforeunload', this._beforeUnloadHandler);
+    }
+
+    disconnectedCallback() {
+        if (this._beforeUnloadHandler) {
+            window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+            this._beforeUnloadHandler = undefined;
+        }
     }
 
 
@@ -479,7 +500,7 @@ export default class NeuraFormBuilder extends LightningElement {
                     if(this.isValidConditionField(section.attributes, FIELDS.Form_Section__c.Conditions.fieldApiName)){
                         let result = this.updateConditions(section.attributes[FIELDS.Form_Section__c.Conditions.fieldApiName], tempOldPageIdsToNew, tempOldSectionIdsToNew, tempOldQuestionIdsToNew, true);
                         if(result.madeChange){
-                            sectio.attributesn[FIELDS.Form_Section__c.Conditions.fieldApiName] = result.updatedConditions;
+                            section.attributes[FIELDS.Form_Section__c.Conditions.fieldApiName] = result.updatedConditions;
                         }
                     }
                     section.columns.forEach(column => {
@@ -602,9 +623,10 @@ export default class NeuraFormBuilder extends LightningElement {
      * @returns {Promise<void>} A promise that resolves when the save operation is complete.
      */
     async handleSave() {
-        //TODO - optimize this to only update the records that have changed
-
-        // Extract and process all records from the nested structure
+        // Note: incremental dirty tracking (only updating changed records) is
+        // tracked separately (see Wave 6, audit item M2). For now, every existing
+        // record is treated as dirty - see isUpdatedRecord().
+        let lastStep = 'starting save';
         try {
             this.loading = true;
             this.historicalPageIndex = this.currentPageIndex;
@@ -613,74 +635,68 @@ export default class NeuraFormBuilder extends LightningElement {
             const { newSections, updatedSections } = this.processSections(this.formSettings.pages);
             const { newQuestions, updatedQuestions } = this.processQuestions(this.formSettings.pages);
 
-            // Update the Form record
+            lastStep = 'updating form template';
             await this.handleFormOperations();
-            // Handle CRUD operations for each type of entity in sequence
+
+            lastStep = 'saving pages';
             let oldPageIdsToNew = await this.handlePageOperations(newPages, updatedPages);
-
-
-            // update new Sections with the new page Ids
-            if(newPages.length > 0){
+            if (newPages.length > 0) {
                 newSections.forEach(section => {
                     section[FIELDS.Form_Section__c.FormPage.fieldApiName] = oldPageIdsToNew[section[FIELDS.Form_Section__c.FormPage.fieldApiName]];
                 });
-
                 newPages.forEach(page => {
                     page.Id = oldPageIdsToNew[page.Id];
                 });
             }
 
+            lastStep = 'saving sections';
             let oldSectionIdsToNew = await this.handleSectionOperations(newSections, updatedSections);
-
-            // if new Sections is > 0 then update new Questions with the new section Ids
-            if(newSections.length > 0){
+            if (newSections.length > 0) {
                 newQuestions.forEach(question => {
                     question[FIELDS.Form_Question__c.FormSection.fieldApiName] = oldSectionIdsToNew[question[FIELDS.Form_Question__c.FormSection.fieldApiName]];
                 });
-
                 newSections.forEach(section => {
                     section.Id = oldSectionIdsToNew[section.Id];
                 });
             }
 
+            lastStep = 'saving questions';
             let oldQuestionIdsToNew = await this.handleQuestionOperations(newQuestions, updatedQuestions);
-
-            if(newQuestions.length > 0){
-                // update the new Questions with the new question Ids
+            if (newQuestions.length > 0) {
                 newQuestions.forEach(question => {
                     question.Id = oldQuestionIdsToNew[question.Id];
-                })
+                });
             }
 
+            // Resolve UUID references in conditional logic to the real Ids that
+            // the Apex calls just returned.
+            lastStep = 'updating conditional logic';
+            const allPages = [...newPages, ...updatedPages];
+            const allSections = [...newSections, ...updatedSections];
+            const allQuestions = [...newQuestions, ...updatedQuestions];
+            const modifiedPages = this.updateItemsConditions(allPages, FIELDS.Form_Page__c.Conditions.fieldApiName, oldPageIdsToNew, oldSectionIdsToNew, oldQuestionIdsToNew);
+            const modifiedSections = this.updateItemsConditions(allSections, FIELDS.Form_Section__c.Conditions.fieldApiName, oldPageIdsToNew, oldSectionIdsToNew, oldQuestionIdsToNew);
+            const modifiedQuestions = this.updateItemsConditions(allQuestions, FIELDS.Form_Question__c.Conditions.fieldApiName, oldPageIdsToNew, oldSectionIdsToNew, oldQuestionIdsToNew);
+            if (modifiedPages.length > 0) await this.handlePageOperations([], modifiedPages);
+            if (modifiedSections.length > 0) await this.handleSectionOperations([], modifiedSections);
+            if (modifiedQuestions.length > 0) await this.handleQuestionOperations([], modifiedQuestions);
 
-            // CONDITIONS CHECKS 
-            // Now let's find any conditions that reference a UUID and update them to the new question Ids
-            let allPages = [...newPages, ...updatedPages];
-            let allSections = [...newSections, ...updatedSections];
-            let allQuestions = [...newQuestions, ...updatedQuestions];
-
-            let modifiedPages = this.updateItemsConditions(allPages, FIELDS.Form_Page__c.Conditions.fieldApiName, oldPageIdsToNew, oldSectionIdsToNew, oldQuestionIdsToNew);
-            let modifiedSections = this.updateItemsConditions(allSections, FIELDS.Form_Section__c.Conditions.fieldApiName, oldPageIdsToNew, oldSectionIdsToNew, oldQuestionIdsToNew);
-            let modifiedQuestions = this.updateItemsConditions(allQuestions, FIELDS.Form_Question__c.Conditions.fieldApiName, oldPageIdsToNew, oldSectionIdsToNew, oldQuestionIdsToNew);
-
-            // Update the form settings with the new page, section, and question IDs
-            if (modifiedPages.length > 0) {
-                await this.handlePageOperations([], modifiedPages);
-            }
-            if (modifiedSections.length > 0) {
-                await this.handleSectionOperations([], modifiedSections);
-            }
-            if (modifiedQuestions.length > 0) {
-                await this.handleQuestionOperations([], modifiedQuestions);
-            }
-            
-            // refresh all metadata
-            this.getFormApex();
-    }   catch (error) {
-        console.error(error);
-        console.log(JSON.stringify(error.message));
-        this.showToast('Error', 'There was an issue savings. Error Message: ' + error.message, 'error');
-    }       
+            this.isDirty = false;
+            this.showToast('Saved', 'Form template saved successfully.', 'success');
+            this.getFormApex(); // refreshes loading=false on completion
+        } catch (error) {
+            console.error(error);
+            // Pinpoint which sub-step the save was on so admins know what may
+            // have committed before the failure - Apex DML inside one method
+            // rolls back, but across the multi-call save flow, earlier methods
+            // are already committed when a later one throws.
+            this.showToast(
+                'Save failed',
+                `Failed while ${lastStep}. ${this.errorMessage(error)}`,
+                'error'
+            );
+            this.loading = false;
+        }
     }
 
     updateItemsConditions(items, conditionsFieldApiName, pagesOldToNewMap, sectionsOldToNewMap, questionsOldToNewMap) {
@@ -1136,6 +1152,7 @@ export default class NeuraFormBuilder extends LightningElement {
 
     handleReOrderPage(event){
         try {
+            this.saveState();
             const {id, direction} = event.detail;
             const index = this.findPageIndexById(id);
             console.log('In handleReOrderPage');
@@ -1169,8 +1186,9 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     handleDeletePage(event){
-        const {id} = event.detail;
-        this.deletePage(id); 
+        // Route page-item delete through the central handleDelete so the
+        // confirmation prompt and saveState are applied consistently.
+        this.handleDelete({ detail: { id: event.detail.id, type: 'Page' } });
     }
 
     swapPageElements(array, indexA, indexB){
@@ -1236,18 +1254,25 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     /**
-     * Handles the deletion of an element.
-     * @param {Event} event - The event object containing the element ID and type.
-     * @returns {void}
+     * Handles the deletion of an element. Always prompts for confirmation —
+     * deletes cascade (page wipes sections+questions, section wipes questions)
+     * and the only mitigation is undo, which doesn't survive a page refresh.
      */
-    handleDelete(event) {
-        console.log('handleDelete');
+    async handleDelete(event) {
         const elementId = event.detail.id;
-        const elementType = event.detail.type; // Assuming type is passed in the event ('page', 'section', or 'component')
-        console.log('Element ID:', elementId, 'Type:', elementType);
+        const elementType = event.detail.type;
+
+        const confirmMessage = this.buildDeleteConfirmMessage(elementType, elementId);
+        const proceed = await LightningConfirm.open({
+            message: confirmMessage,
+            label: `Delete ${elementType}`,
+            variant: 'header',
+            theme: 'warning'
+        });
+        if (!proceed) return;
+
         this.saveState();
         try {
-            // Handling deletion based on the type
             switch (elementType) {
                 case 'Page':
                     this.deletePage(elementId);
@@ -1266,6 +1291,26 @@ export default class NeuraFormBuilder extends LightningElement {
         } catch (error) {
             console.error('Error in handleDelete:', error.message);
         }
+    }
+
+    buildDeleteConfirmMessage(type, id) {
+        if (type === 'Page') {
+            const page = this.findPageById(id);
+            const sectionCount = page?.sections?.length ?? 0;
+            const questionCount = page?.sections?.reduce(
+                (sum, s) => sum + s.columns.reduce((c, col) => c + col.components.length, 0),
+                0
+            ) ?? 0;
+            return `Delete this page along with its ${sectionCount} section(s) and ${questionCount} question(s)? This cannot be undone after Save.`;
+        }
+        if (type === 'Section') {
+            const section = this.findSectionById(id);
+            const questionCount = section?.columns?.reduce(
+                (sum, col) => sum + col.components.length, 0
+            ) ?? 0;
+            return `Delete this section and its ${questionCount} question(s)? This cannot be undone after Save.`;
+        }
+        return 'Delete this component? This cannot be undone after Save.';
     }
 
     /**
@@ -1400,11 +1445,19 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     /**
-     * Handles going back to the record detail page
-     * 
-     * @returns {void}
+     * Handles going back to the record detail page. Confirms if there are
+     * unsaved changes, since the reload discards them.
      */
-    handleBack(){
+    async handleBack(){
+        if (this.isDirty) {
+            const proceed = await LightningConfirm.open({
+                message: 'You have unsaved changes. Leaving will discard them. Continue?',
+                label: 'Discard unsaved changes',
+                variant: 'header',
+                theme: 'warning'
+            });
+            if (!proceed) return;
+        }
         window.location.reload();
     }
 
@@ -1629,12 +1682,16 @@ export default class NeuraFormBuilder extends LightningElement {
     updateFormSettings() {
         this.formSettings = {
             ...this.formSettings,
-            pages: this.formSettings.pages.map(page => 
+            pages: this.formSettings.pages.map(page =>
                 page.id === this.currentPage.id ? this.currentPage : page
             )
         };
 
         this.updateAllQuestions(this.formSettings);
+        // Attribute edits flow through updateToItem -> updateFormSettings without
+        // ever calling saveState, so mark dirty here to make sure the
+        // beforeunload guard and back-button confirm see the change.
+        this.isDirty = true;
     }
 
     /**
@@ -1899,6 +1956,10 @@ export default class NeuraFormBuilder extends LightningElement {
      * It deep clones the necessary properties of the current state using JSON.parse and JSON.stringify.
      * It also clears the futureStates array to ensure a new action starts a new future state.
      */
+    // Soft cap on the undo stack to prevent unbounded memory growth on long
+    // editing sessions with large templates (each state is a full deep clone).
+    static UNDO_HISTORY_CAP = 50;
+
     saveState() {
         this.pastStates.push({
             formSettings: JSON.parse(JSON.stringify(this.formSettings)),
@@ -1910,13 +1971,14 @@ export default class NeuraFormBuilder extends LightningElement {
             selectionId: this.selectionId,
             selectionStructure: this.selectionStructure,
             pageArray: [...this.pageArray],
-            // MOVED TO GETTER
-            //totalPageCount: this.totalPageCount,
             currentPageIndex: this.currentPageIndex
-
         });
-        console.log('Number of Saved States: ' + this.pastStates.length);
-        // Optionally, clear futureStates if a new action is taken
+        if (this.pastStates.length > NeuraFormBuilder.UNDO_HISTORY_CAP) {
+            // Drop the oldest entries when we exceed the cap.
+            this.pastStates.splice(0, this.pastStates.length - NeuraFormBuilder.UNDO_HISTORY_CAP);
+        }
+        this.isDirty = true;
+        // Any new action invalidates the redo stack.
         this.futureStates = [];
     }
 

@@ -293,9 +293,13 @@ export default class NeuraFormCriteriaBuilder extends LightningElement {
             if (this.isValidIndex(index, this.conditions.length)) {
                 const updatedConditions = [...this.conditions];
                 updatedConditions[index] = { ...updatedConditions[index], [property]: value };
-                const updatedLogic = this.recalculateConditionKeys(updatedConditions);
+                // Re-key the conditions, then rebuild the customLogic STRING from
+                // those keys. The previous version assigned the array of conditions
+                // to customLogic, silently corrupting the expression.
+                const recalculatedConditions = this.recalculateConditionKeys(updatedConditions);
+                const updatedLogic = this.recalculateCustomLogic(recalculatedConditions);
                 this.updateConditionFields({
-                    conditions: updatedConditions,
+                    conditions: recalculatedConditions,
                     customLogic: updatedLogic
                 });
             } else {
