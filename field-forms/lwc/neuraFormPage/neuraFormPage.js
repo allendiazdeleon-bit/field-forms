@@ -7,6 +7,10 @@ export default class NeuraFormPage extends LightningElement {
 	_formPage;
 
 	@api recordId;
+	// Threaded through from the renderer; passed down to questions so any
+	// Calculation question can evaluate its formula against every other
+	// answer on the form. Plain object: { questionId -> answer string }.
+	@api answerMap;
 	formSections;
 
 	answersToSave = [];

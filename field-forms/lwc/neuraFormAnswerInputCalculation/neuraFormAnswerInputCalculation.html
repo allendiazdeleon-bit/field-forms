@@ -1,0 +1,18 @@
+<template>
+    <div class="slds-form-element slds-form-element_stacked">
+        <span class="slds-form-element__label">Calculated</span>
+        <div class="slds-form-element__control">
+            <output class="slds-form-element__static" aria-live="polite">
+                <template if:true={displayValue}>
+                    <span class="slds-text-heading_small">{displayValue}</span>
+                </template>
+                <template if:false={displayValue}>
+                    <span class="slds-text-color_weak">&mdash;</span>
+                </template>
+            </output>
+            <template if:true={errorMessage}>
+                <div class="slds-form-element__help slds-text-color_error">{errorMessage}</div>
+            </template>
+        </div>
+    </div>
+</template>

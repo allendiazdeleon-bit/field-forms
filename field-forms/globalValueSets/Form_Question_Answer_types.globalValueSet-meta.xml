@@ -100,6 +100,11 @@
         <default>false</default>
         <label>Display Text</label>
     </customValue>
+    <customValue>
+        <fullName>Calculation</fullName>
+        <default>false</default>
+        <label>Calculation</label>
+    </customValue>
     <description>Used for form question and answer types</description>
     <masterLabel>Form Question/Answer types</masterLabel>
     <sorted>false</sorted>

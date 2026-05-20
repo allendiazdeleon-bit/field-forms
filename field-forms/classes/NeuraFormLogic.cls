@@ -93,7 +93,7 @@ public with sharing class NeuraFormLogic {
         List<Form_Section__c> formSections = [SELECT Id, Name, Form_Page__c, Order__c, Show_Title__c, Title__c, Background_Color__c, Padding__c, Column_Size__c, Columns__c, Form_Template__c, Conditions__c FROM Form_Section__c WHERE Form_Template__c IN :recordIds];
         // query all related form questions
        
-        List<Form_Question__c> formQuestions = [SELECT Id, Name, Form_Section__c, Order__c, Question__c, Label_Visible__c, Text_Alignment__c, Font_Size__c, Font_Color__c, Value_Set__c, Include_Comment__c, Include_Photo__c, Type__c, Form_Template__c, Layout_Item__c, Display_Rich_Text__c, Conditions__c, Active_Message__c, Inactive_Message__c, Required__c, Decimal_Places__c, Default_Value_Source__c, Default_Value_Static__c FROM Form_Question__c WHERE Form_Template__c IN :recordIds];
+        List<Form_Question__c> formQuestions = [SELECT Id, Name, Form_Section__c, Order__c, Question__c, Label_Visible__c, Text_Alignment__c, Font_Size__c, Font_Color__c, Value_Set__c, Include_Comment__c, Include_Photo__c, Type__c, Form_Template__c, Layout_Item__c, Display_Rich_Text__c, Conditions__c, Active_Message__c, Inactive_Message__c, Required__c, Decimal_Places__c, Default_Value_Source__c, Default_Value_Static__c, Calculation_Formula__c, Calculation_Result_Format__c FROM Form_Question__c WHERE Form_Template__c IN :recordIds];
 
         // Loop over form pages and add the element to the Form Wrapper Map
         for(Form_Page__c page : formPages){

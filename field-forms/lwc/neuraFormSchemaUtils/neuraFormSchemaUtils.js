@@ -113,6 +113,8 @@ import DisplayRichText from '@salesforce/schema/Form_Question__c.Display_Rich_Te
 import LayoutItemCheckbox from '@salesforce/schema/Form_Question__c.Layout_Item__c';
 import DefaultValueSource from '@salesforce/schema/Form_Question__c.Default_Value_Source__c';
 import DefaultValueStatic from '@salesforce/schema/Form_Question__c.Default_Value_Static__c';
+import CalculationFormula from '@salesforce/schema/Form_Question__c.Calculation_Formula__c';
+import CalculationResultFormat from '@salesforce/schema/Form_Question__c.Calculation_Result_Format__c';
 
 import QuestionObjectConditions from '@salesforce/schema/Form_Question__c.Conditions__c';
 import ExternalReferenceQuestion from '@salesforce/schema/Form_Question__c.External_Reference__c';
@@ -292,6 +294,8 @@ export const FIELDS = {
         LayoutItemCheckbox,
         DefaultValueSource,
         DefaultValueStatic,
+        CalculationFormula,
+        CalculationResultFormat,
         ExternalReference: ExternalReferenceQuestion,
         Conditions : QuestionObjectConditions
     }

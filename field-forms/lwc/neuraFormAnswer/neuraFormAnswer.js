@@ -530,6 +530,26 @@ export default class NeuraFormAnswer extends LightningElement {
 		return this.inputType === 'Multiple Choice';
 	}
 
+	get isCalculation() {
+		return this.inputType === 'Calculation';
+	}
+
+	get calculationFormula() {
+		return this.question?.[FIELDS.Form_Question__c.CalculationFormula.fieldApiName] || '';
+	}
+
+	get calculationResultFormat() {
+		return this.question?.[FIELDS.Form_Question__c.CalculationResultFormat.fieldApiName] || 'Decimal';
+	}
+
+	get questionId() {
+		return this.question?.Id;
+	}
+
+	// Map of { questionId -> answer value } passed in by the parent renderer.
+	// The Calculation input subscribes to this for reactivity.
+	@api answerMap;
+
 	get notToCheckRequiredValidation() {
 		return !this.isToggle && !this.isSlider;
 	}

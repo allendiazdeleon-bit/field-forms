@@ -244,6 +244,18 @@
 				></c-neura-form-answer-input-signature>
 			</template>
 
+			<!-- Calculation -->
+			<template if:true={isCalculation}>
+				<c-neura-form-answer-input-calculation
+					data-id="calculation"
+					formula={calculationFormula}
+					format={calculationResultFormat}
+					question-id={questionId}
+					answer-map={answerMap}
+					onchange={handleChange}
+				></c-neura-form-answer-input-calculation>
+			</template>
+
 			<div
 				if:true={showInlineErrorMessage}
 				class="slds-form-element slds-has-error"

@@ -4,6 +4,8 @@ import { FIELDS } from 'c/neuraFormSchemaUtils';
 export default class NeuraFormSection extends LightningElement {
 	@api recordId;
 	@api formSection;
+	// Pass-through for Calculation reactivity. See neuraFormRenderer.answerMap.
+	@api answerMap;
 
 	@api checkValidity() {
 		const allQuestions = this.template.querySelectorAll(

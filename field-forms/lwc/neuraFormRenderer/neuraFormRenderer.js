@@ -51,6 +51,21 @@ export default class NeuraFormRenderer extends LightningElement {
 	@api hostRecordId;
 	@api hostObjectApiName;
 
+	// Plain-object view of questionAnswerMap, keyed by Form_Question Id with
+	// the answer string as the value. Threaded through page -> section ->
+	// question -> answer so Calculation questions can evaluate their formula
+	// against the current state of every other answer on the form. Replaced
+	// (not mutated) on each answerchange so child @api setters re-fire.
+	answerMap = {};
+
+	rebuildAnswerMap() {
+		const next = {};
+		this.questionAnswerMap.forEach((val, key) => {
+			next[key] = val?.[AnswerField.fieldApiName] ?? '';
+		});
+		this.answerMap = next;
+	}
+
 	get isLoaded() {
 		return this._loaded && !this._completed;
 	}
@@ -174,7 +189,9 @@ export default class NeuraFormRenderer extends LightningElement {
 			this.questionAnswerMap.set(c.question.Id, tempAns);
 		}
 
-		// Force a render so prefilled inputs reflect their new values.
+		// Refresh the calculation-visible answer map + force a re-render so
+		// prefilled inputs and any dependent Calculation questions update.
+		this.rebuildAnswerMap();
 		this._formObject = { ...this._formObject };
 	}
 
@@ -251,6 +268,10 @@ export default class NeuraFormRenderer extends LightningElement {
 				});
 			});
 		});
+
+		// Seed the answer map from the existing questionAnswerMap so any
+		// Calculation questions on the first render see their dependencies.
+		this.rebuildAnswerMap();
 	}
 
 	checkCurrentPageToLoadOnLoad() {
@@ -717,6 +738,7 @@ export default class NeuraFormRenderer extends LightningElement {
 		}
 
 		this.questionAnswerMap.set(questionId, answerObject);
+		this.rebuildAnswerMap();
 
 		if (
 			answerObject.hasOwnProperty(FIELDS.Form_Answer__c.Answer.fieldApiName)

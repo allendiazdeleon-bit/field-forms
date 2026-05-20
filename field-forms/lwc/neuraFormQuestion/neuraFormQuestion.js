@@ -15,6 +15,8 @@ function sanitizeRichTextForOffline(html) {
 export default class NeuraFormQuestion extends LightningElement {
 	@api recordId;
 	@api formQuestion;
+	// Pass-through for Calculation reactivity. See neuraFormRenderer.answerMap.
+	@api answerMap;
 
 	@api checkValidity() {
 		return !this.isLayoutItem ? this.refs.formAnswer.checkValidity() : true;
