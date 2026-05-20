@@ -107,6 +107,169 @@ public class NeuraFormExportControllerTest {
         }
     }
 
+    // --- Wave 16+ coverage --------------------------------------------------
+
+    @isTest static void testImportTemplatesAsNew() {
+        // Existing template is round-tripped with the import-as-new variant.
+        // Should always CREATE a fresh row, never UPDATE - the External
+        // References are regenerated server-side.
+        createTestData();
+        Form_Template__c template = [SELECT Id FROM Form_Template__c LIMIT 1];
+        String json = neuraFormExportController.fetchTemplatesData(new List<String>{ template.Id });
+
+        Test.startTest();
+        neuraFormExportController.ImportResult result = neuraFormExportController.importTemplatesAsNew(json);
+        Test.stopTest();
+
+        System.assertEquals(1, result.createdCount, 'import-as-new should always create');
+        System.assertEquals(0, result.updatedCount);
+        System.assertEquals(2, [SELECT COUNT() FROM Form_Template__c], 'Original + clone should both exist');
+        Form_Template__c imported = result.templates[0];
+        System.assertNotEquals(template.Id, imported.External_Reference__c,
+            'import-as-new should regenerate External_Reference');
+    }
+
+    @isTest static void testImportTemplatesRejectsEmpty() {
+        Boolean threw = false;
+        try { neuraFormExportController.importTemplates(null); }
+        catch (AuraHandledException e) { threw = true; }
+        System.assert(threw, 'null payload should be rejected');
+
+        threw = false;
+        try { neuraFormExportController.importTemplates('   '); }
+        catch (AuraHandledException e) { threw = true; }
+        System.assert(threw, 'blank payload should be rejected');
+
+        threw = false;
+        try { neuraFormExportController.importTemplates('[]'); }
+        catch (AuraHandledException e) { threw = true; }
+        System.assert(threw, 'empty array should be rejected');
+    }
+
+    @isTest static void testModifyCriteriaWithResult() {
+        // Missing references become warnings, not silent nulls.
+        String conditions = '{"conditions":[{"resource":"unknownQ1"},{"resource":"knownQ2"}]}';
+        Map<String, Id> questionMap = new Map<String, Id>{
+            'knownQ2' => UserInfo.getUserId() // any Id will do as a stand-in
+        };
+        neuraFormExportController.CriteriaRewriteResult result =
+            neuraFormExportController.modifyCriteriaWithResult(
+                conditions,
+                new Map<String, Id>(),
+                new Map<String, Id>(),
+                questionMap
+            );
+        System.assertEquals(true, result.changed, 'known reference should have been rewritten');
+        System.assertEquals(1, result.warnings.size(), 'one unknown reference -> one warning');
+        System.assert(result.json.contains('unknownQ1'),
+            'unknown ref should remain in the JSON so renderer never sees null');
+    }
+
+    @isTest static void testModifyCriteriaWithResultNoChange() {
+        // No conditions present -> changed stays false so the caller skips DML.
+        neuraFormExportController.CriteriaRewriteResult result =
+            neuraFormExportController.modifyCriteriaWithResult(
+                '{"conditions":[]}',
+                new Map<String, Id>(),
+                new Map<String, Id>(),
+                new Map<String, Id>()
+            );
+        System.assertEquals(false, result.changed);
+        System.assertEquals(0, result.warnings.size());
+    }
+
+    @isTest static void testFetchTemplatesDataRespectsLimit() {
+        neuraFormExportController.EXPORT_TEMPLATE_LIMIT = 2;
+        List<String> ids = new List<String>{ '001000000000001', '001000000000002', '001000000000003' };
+        Boolean threw = false;
+        try { neuraFormExportController.fetchTemplatesData(ids); }
+        catch (AuraHandledException e) { threw = true; }
+        System.assert(threw, 'fetchTemplatesData should reject over-cap requests');
+    }
+
+    @isTest static void testFetchTemplatesDataRejectsEmpty() {
+        Boolean threw = false;
+        try { neuraFormExportController.fetchTemplatesData(new List<String>()); }
+        catch (AuraHandledException e) { threw = true; }
+        System.assert(threw, 'empty list should be rejected');
+    }
+
+    @isTest static void testListAccessibleTemplates() {
+        createTestData();
+        Test.startTest();
+        List<Form_Template__c> result = neuraFormExportController.listAccessibleTemplates();
+        Test.stopTest();
+        System.assert(!result.isEmpty(), 'fallback list should return at least one template');
+    }
+
+    @isTest static void testGetSampleImportJson() {
+        String sample = neuraFormExportController.getSampleImportJson();
+        System.assertNotEquals(null, sample);
+
+        Test.startTest();
+        neuraFormExportController.PreviewResult preview =
+            neuraFormExportController.previewImport(sample);
+        Test.stopTest();
+
+        System.assertEquals(1, preview.templateCount, 'sample has one template');
+        System.assertEquals(1, preview.pageCount);
+        System.assertEquals(1, preview.sectionCount);
+        System.assertEquals(1, preview.questionCount);
+        System.assertEquals(1, preview.toCreateCount,
+            'sample External_Reference does not match anything in the org');
+    }
+
+    @isTest static void testPreviewImportNameCollision() {
+        insert new Form_Template__c(Name = 'Sample Inspection', External_Reference__c = 'OTHER_REF');
+        String sample = neuraFormExportController.getSampleImportJson();
+        Test.startTest();
+        neuraFormExportController.PreviewResult preview =
+            neuraFormExportController.previewImport(sample);
+        Test.stopTest();
+        System.assert(!preview.nameCollisions.isEmpty(),
+            'should warn about existing same-name template with different External_Reference');
+    }
+
+    @isTest static void testPreviewImportSurfacesDanglingConditionRefs() {
+        Map<String, Object> question = new Map<String, Object>{
+            'attributes' => new Map<String, String>{ 'type' => 'Form_Question__c' },
+            'Name' => 'Q1',
+            'External_Reference__c' => 'Q_PRESENT',
+            'Form_Template__c' => 'T1',
+            'Question__c' => 'Test',
+            'Type__c' => 'Text',
+            'Conditions__c' => '{"conditions":[{"resource":"Q_MISSING"}]}'
+        };
+        Map<String, Object> template = new Map<String, Object>{
+            'attributes' => new Map<String, String>{ 'type' => 'Form_Template__c' },
+            'Name' => 'Dangling-ref Template',
+            'External_Reference__c' => 'T1'
+        };
+        String payload = JSON.serialize(new List<Object>{
+            new Map<String, Object>{
+                'template' => template,
+                'pages' => new List<Object>(),
+                'sections' => new List<Object>(),
+                'questions' => new List<Object>{ question }
+            }
+        });
+        Test.startTest();
+        neuraFormExportController.PreviewResult preview =
+            neuraFormExportController.previewImport(payload);
+        Test.stopTest();
+        System.assert(!preview.warnings.isEmpty(),
+            'preview should flag the dangling question reference');
+    }
+
+    @isTest static void testPreviewImportRejectsInvalidJson() {
+        Boolean threw = false;
+        try { neuraFormExportController.previewImport('not json'); }
+        catch (AuraHandledException e) { threw = true; }
+        System.assert(threw, 'preview should reject malformed JSON');
+    }
+
+    // -----------------------------------------------------------------------
+
     // Test method for package-private methods
     @isTest
     static void testPackagePrivateMethods() {
