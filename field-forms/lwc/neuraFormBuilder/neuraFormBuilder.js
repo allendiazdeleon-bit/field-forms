@@ -33,9 +33,16 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     set formSettings(value){
-        
+        // Do NOT rebroadcast structure on every set - attribute edits go
+        // through this setter too, and broadcasting forces every criteria-line
+        // to rebuild its option lists (which was the cause of input lag in
+        // the attributes panel for templates with conditions). Call
+        // broadcastStructure() explicitly from the handlers that actually
+        // change shape (new page, drop, delete, reorder, paste, move).
         this._formSettings = value;
+    }
 
+    broadcastStructure() {
         store.setAllConfig(this._formSettings?.pages ?? []);
     }
 
@@ -337,6 +344,10 @@ export default class NeuraFormBuilder extends LightningElement {
 
         this.loaded = true;
         this.isDirty = false;
+        // Initial broadcast so the criteria-line tree picks up the loaded
+        // template structure (subsequent broadcasts come from mutating
+        // handlers, not from formSettings setter).
+        this.broadcastStructure();
     }
 
     /**
@@ -1146,9 +1157,7 @@ export default class NeuraFormBuilder extends LightningElement {
             pages: [...this.formSettings.pages, newPage]
         };
         this.pageArray.push(newPage.attributes[FIELDS.Form_Page__c.Title.fieldApiName]);
-        
-        // MOVED TO GETTER
-        //this.totalPageCount = this.formSettings.pages.length;
+        this.broadcastStructure();
     }
 
     handleReOrderPage(event){
@@ -1177,6 +1186,7 @@ export default class NeuraFormBuilder extends LightningElement {
 
             // reset the currentPage to have the updated order if it was changed.
             this.currentPage = this.findPageById(this.currentPage.id);
+            this.broadcastStructure();
         } catch (error) {
             console.error('Error in handleReOrderPage: ' + error.message);
         }
@@ -1277,6 +1287,7 @@ export default class NeuraFormBuilder extends LightningElement {
             }
             this.updateFormSettings();
             this.clearSelectionIfNecessary(elementId);
+            this.broadcastStructure();
         } catch (error) {
             console.error('Error in handleDelete:', error.message);
         }
@@ -1349,6 +1360,7 @@ export default class NeuraFormBuilder extends LightningElement {
             }
 
             this.updateFormSettings();
+            this.broadcastStructure();
         } catch (e) {
             console.error('Error in handleMoveItem', e?.message);
         }
@@ -1430,8 +1442,9 @@ export default class NeuraFormBuilder extends LightningElement {
                 this.selectionId = newComponent.id;
                 this.selectionStructure = 'Component';
                 this.settingsPanel = true;
-            } 
+            }
 
+            this.broadcastStructure();
         } catch (error) {
             console.error('Error in Component Drop', error.message);
         }
@@ -1443,41 +1456,45 @@ export default class NeuraFormBuilder extends LightningElement {
      * @returns {void}
      */
     handleSectionDrop(event) {
-        //console.log('Drop Item ID:', event.detail.dropItemId);
-        //console.log('Drag Slot Index:', event.detail.dragSlotIndex);
-    
-        let dropItemId = event.detail?.droppedItemId;
+        const dropItemId = event.detail?.droppedItemId;
         let dragSlotIndex = event.detail.dragSlotIndex;
-    
+
         try {
             this.saveState();
-            const isExistingItem = typeof dropItemId !== "undefined" && this.findSectionById(dropItemId);
-    
-            if (isExistingItem) {
-                // Handling existing item
-                const draggedSection = this.formSettings.pages.find(page => page.sections.find(section => section.id === dropItemId));
-                const draggedSectionIndex = draggedSection.sections.findIndex(section => section.id === dropItemId);
-                // if the draggedSectionIndex is after the dragSlotIndex then we need to decrement the dragSlotIndex
-                if (draggedSectionIndex < dragSlotIndex) {
-                    dragSlotIndex--;
-                }
 
+            // Determine the drag intent precisely:
+            //   - dropItemId provided AND it resolves to an existing section -> move
+            //   - dropItemId provided BUT we can't find the section        -> abort
+            //     (don't fall through to "create new"; that previously caused
+            //      duplicate sections on edge-case drags - audit item N16)
+            //   - dropItemId absent -> palette drop, create new section
+            const hasDropItemId = typeof dropItemId !== 'undefined' && dropItemId !== null && dropItemId !== '';
+            const existingDraggedSection = hasDropItemId
+                ? this.formSettings.pages.find(p => p.sections.some(s => s.id === dropItemId))
+                : undefined;
+
+            if (hasDropItemId && !existingDraggedSection) {
+                console.warn('handleSectionDrop: dropItemId provided but section not found; aborting.', dropItemId);
+                return;
+            }
+
+            if (existingDraggedSection) {
+                const draggedSectionIndex = existingDraggedSection.sections.findIndex(s => s.id === dropItemId);
+                if (draggedSectionIndex < dragSlotIndex) dragSlotIndex--;
                 if (draggedSectionIndex !== -1) {
-                    const [sectionToMove] = draggedSection.sections.splice(draggedSectionIndex, 1);
-                    draggedSection.sections.splice(dragSlotIndex, 0, sectionToMove);
+                    const [sectionToMove] = existingDraggedSection.sections.splice(draggedSectionIndex, 1);
+                    existingDraggedSection.sections.splice(dragSlotIndex, 0, sectionToMove);
                 }
             } else {
-                // Handling new item (section)
                 const newSection = this.createNewSection();
                 const pageWithSection = this.formSettings.pages.find(page => page.id === this.currentPage.id);
                 pageWithSection.sections.splice(dragSlotIndex, 0, newSection);
             }
 
-            // Update the currentPage if it is the same page
             this.currentPage = this.formSettings.pages.find(page => page.id === this.currentPage.id);
+            this.broadcastStructure();
         } catch (error) {
-            console.error(JSON.stringify(error));
-            console.error('Error in handleSectionDrop:', error.message);
+            console.error('Error in handleSectionDrop:', error?.message, error);
         }
     }
 
@@ -1561,6 +1578,11 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     createNewSection(){
         const id = generateUUID();
+        // Compute the next Order based on how many sections already exist on
+        // the current page. processSections() rewrites Order on save anyway,
+        // but the pre-save in-memory value drives canvas rendering, so a stale
+        // "1" caused visible flicker / wrong order on the second+ section.
+        const nextOrder = (this.currentPage?.sections?.length || 0) + 1;
         return {
             id: id,
             type : "Section",
@@ -1572,7 +1594,7 @@ export default class NeuraFormBuilder extends LightningElement {
                 [FIELDS.Form_Section__c.ShowTitle.fieldApiName] : false,
                 [FIELDS.Form_Section__c.TitleAlignment.fieldApiName] : null,
                 [FIELDS.Form_Section__c.Title.fieldApiName] : "Section Title",
-                [FIELDS.Form_Section__c.Order.fieldApiName] : 1,
+                [FIELDS.Form_Section__c.Order.fieldApiName] : nextOrder,
                 Name : "Section Title"
             },
             columns: [this.createNewColumn()]
@@ -1718,6 +1740,7 @@ export default class NeuraFormBuilder extends LightningElement {
         // ever calling saveState, so mark dirty here to make sure the
         // beforeunload guard and back-button confirm see the change.
         this.isDirty = true;
+        this.invalidateConditionIndex();
     }
 
     /**
@@ -1953,17 +1976,22 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     deleteComponent(componentId, trackDeletion = true) {
         if (this.isValidationError('delete', 'question', componentId)) return;
-    
+
         if (trackDeletion && !this.isUUID(componentId)) {
             this.deletedQuestionIds.push(componentId);
         }
-    
-        this.currentPage.sections.forEach(section => {
-            section.columns.forEach(column => {
-                column.components = column.components.filter(component => component.id !== componentId);
+
+        // Walk every page, not just currentPage. handleComponentDrop calls
+        // this with trackDeletion=false to remove the source copy after a
+        // drag; cross-page drags would otherwise leave the original in place
+        // and the question would appear on both pages.
+        this.formSettings.pages.forEach(page => {
+            page.sections.forEach(section => {
+                section.columns.forEach(column => {
+                    column.components = column.components.filter(c => c.id !== componentId);
+                });
             });
         });
-    
     }
 
     /**
@@ -2008,6 +2036,7 @@ export default class NeuraFormBuilder extends LightningElement {
             this.pastStates.splice(0, this.pastStates.length - NeuraFormBuilder.UNDO_HISTORY_CAP);
         }
         this.isDirty = true;
+        this.invalidateConditionIndex();
         // Any new action invalidates the redo stack.
         this.futureStates = [];
     }
@@ -2146,7 +2175,7 @@ export default class NeuraFormBuilder extends LightningElement {
             this.selectionId = newAddition.id;
 
             this.updateFormSettings();
-
+            this.broadcastStructure();
         } catch (error) {
             console.error('Error in handlePaste', error.message);
         }
@@ -2245,50 +2274,74 @@ export default class NeuraFormBuilder extends LightningElement {
         this.dispatchEvent(toastEvent);
     }
 
-    isQuestionUsedInConditions(questionId) {
-        const allConditions = this.getAllConditions();
-        
-        for (let condition of allConditions) {
-            if (condition.resource === questionId) {
-                return true;
-            }
-        }
-        return false;
+    // Indexed set of resource Ids referenced by ANY condition in the template.
+    // Built once per delete-validation sweep so isQuestionUsedInConditions runs
+    // in O(1) per call instead of re-walking and re-parsing every condition
+    // JSON. Invalidated by saveState() / updateFormSettings() / processFormDetails.
+    _referencedQuestionIds = null;
+
+    invalidateConditionIndex() {
+        this._referencedQuestionIds = null;
     }
 
-    getAllConditions() {
-        const allConditions = [];
-        
-        this.formSettings.pages.forEach(page => {
-            // Extract conditions from page level
-            const pageConditionsString = page.attributes[FIELDS.Form_Page__c.Conditions.fieldApiName];
-            if (pageConditionsString) {
-                const pageConditions = JSON.parse(pageConditionsString).conditions;
-                allConditions.push(...pageConditions);
+    isQuestionUsedInConditions(questionId) {
+        if (!this._referencedQuestionIds) {
+            this._referencedQuestionIds = this.buildReferencedQuestionIdSet();
+        }
+        return this._referencedQuestionIds.has(questionId);
+    }
+
+    buildReferencedQuestionIdSet() {
+        const ids = new Set();
+        const collect = (json) => {
+            if (!json) return;
+            try {
+                const parsed = JSON.parse(json);
+                (parsed?.conditions || []).forEach(c => {
+                    if (c?.resource) ids.add(c.resource);
+                });
+            } catch (e) {
+                // Malformed condition JSON - skip rather than blow up the sweep.
             }
-    
+        };
+        this.formSettings.pages.forEach(page => {
+            collect(page.attributes[FIELDS.Form_Page__c.Conditions.fieldApiName]);
             page.sections.forEach(section => {
-                // Extract conditions from section level
-                const sectionConditionsString = section.attributes[FIELDS.Form_Section__c.Conditions.fieldApiName];
-                if (sectionConditionsString) {
-                    const sectionConditions = JSON.parse(sectionConditionsString).conditions;
-                    allConditions.push(...sectionConditions);
-                }
-    
+                collect(section.attributes[FIELDS.Form_Section__c.Conditions.fieldApiName]);
                 section.columns.forEach(column => {
                     column.components.forEach(question => {
-                        // Extract conditions from question level
-                        const questionConditionsString = question.attributes[FIELDS.Form_Question__c.Conditions.fieldApiName];
-                        if (questionConditionsString) {
-                            const questionConditions = JSON.parse(questionConditionsString).conditions;
-                            allConditions.push(...questionConditions);
-                        }
+                        collect(question.attributes[FIELDS.Form_Question__c.Conditions.fieldApiName]);
                     });
                 });
             });
         });
-    
-        return allConditions;
+        return ids;
+    }
+
+    // Kept for any external callers that expected the full list (and so tests
+    // can still observe parsed conditions). Uses the same parser as the set
+    // builder above.
+    getAllConditions() {
+        const all = [];
+        const pushFrom = (json) => {
+            if (!json) return;
+            try {
+                const parsed = JSON.parse(json);
+                if (Array.isArray(parsed?.conditions)) all.push(...parsed.conditions);
+            } catch (e) { /* skip */ }
+        };
+        this.formSettings.pages.forEach(page => {
+            pushFrom(page.attributes[FIELDS.Form_Page__c.Conditions.fieldApiName]);
+            page.sections.forEach(section => {
+                pushFrom(section.attributes[FIELDS.Form_Section__c.Conditions.fieldApiName]);
+                section.columns.forEach(column => {
+                    column.components.forEach(question => {
+                        pushFrom(question.attributes[FIELDS.Form_Question__c.Conditions.fieldApiName]);
+                    });
+                });
+            });
+        });
+        return all;
     }
 
 }

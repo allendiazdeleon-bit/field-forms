@@ -20,8 +20,25 @@ export default class NeuraFormCriteriaLine extends LightningElement {
     @api
     questions = [];
 
+    // allConfiguration is rebroadcast by the store when the builder mutates
+    // the page/section/question structure. Convert the @api property into a
+    // getter/setter so the option lists rebuild every time it changes - the
+    // previous version only computed them in connectedCallback and went
+    // stale once the user edited the form after opening a popover.
+    _allConfiguration = [];
+
     @api
-    allConfiguration = [];
+    get allConfiguration() {
+        return this._allConfiguration;
+    }
+    set allConfiguration(value) {
+        this._allConfiguration = value || [];
+        // Re-derive option lists. Preserve currently-filtered slices by
+        // re-applying the active page/section filters.
+        this.initializeOptions();
+        if (this.page) this.filterSections(this.page);
+        if (this.section) this.filterQuestions(this.section);
+    }
 
     questionOptions = [];
 
@@ -387,21 +404,23 @@ export default class NeuraFormCriteriaLine extends LightningElement {
         const pages = [];
         const sections = [];
         const questions = [];
-        [...this.allConfiguration].forEach(page => {
+        (this._allConfiguration || []).forEach(page => {
             pages.push({ label: page.attributes[FIELDS.Form_Page__c.Title.fieldApiName], value: page.id });
-            this.pageOptions = [...pages];
             page.sections.forEach(section => {
                 sections.push({ label: section.attributes[FIELDS.Form_Section__c.Title.fieldApiName], value: section.id, page: page.id });
-                this.sectionOptions = [...sections];
-                
+
                 section.columns.forEach(column => {
                     column.components.forEach(question => {
-                        questions.push({ label: question.attributes[FIELDS.Form_Question__c.Question.fieldApiName], value: question.id, section: section.id});
-                        this.questionOptions = [...questions];
+                        questions.push({ label: question.attributes[FIELDS.Form_Question__c.Question.fieldApiName], value: question.id, section: section.id });
                     });
                 });
             });
         });
+        // Single assignment per list - the previous version re-assigned inside
+        // the loops on every iteration, producing N intermediate renders.
+        this.pageOptions = pages;
+        this.sectionOptions = sections;
+        this.questionOptions = questions;
     }
 
 }
