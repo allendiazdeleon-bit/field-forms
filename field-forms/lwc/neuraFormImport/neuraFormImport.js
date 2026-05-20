@@ -1,6 +1,8 @@
 import { LightningElement } from 'lwc';
 import importTemplates from '@salesforce/apex/neuraFormExportController.importTemplates';
 import importTemplatesAsNew from '@salesforce/apex/neuraFormExportController.importTemplatesAsNew';
+import previewImport from '@salesforce/apex/neuraFormExportController.previewImport';
+import getSampleImportJson from '@salesforce/apex/neuraFormExportController.getSampleImportJson';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import LightningConfirm from 'lightning/confirm';
 import { reduceError } from 'c/nfCommonUtility';
@@ -86,6 +88,52 @@ export default class NeuraFormImport extends LightningElement {
 
     handleImportAsNewChange(event) {
         this.importAsNew = event.target.checked;
+    }
+
+    // --- Preview (dry-run) state -------------------------------------------
+    preview;
+    showPreview = false;
+    previewing = false;
+
+    get hasPreviewWarnings() {
+        return this.preview?.warnings?.length > 0;
+    }
+    get hasPreviewCollisions() {
+        return this.preview?.nameCollisions?.length > 0;
+    }
+
+    async handlePreview() {
+        if (!this.fileContents) {
+            this.toastError('Select a file', 'Choose a JSON file before previewing.');
+            return;
+        }
+        this.previewing = true;
+        try {
+            this.preview = await previewImport({ jsonContent: this.fileContents });
+            this.showPreview = true;
+        } catch (err) {
+            this.toastError('Preview failed', reduceError(err));
+        } finally {
+            this.previewing = false;
+        }
+    }
+
+    handleClosePreview() {
+        this.showPreview = false;
+    }
+
+    // --- Sample JSON download ----------------------------------------------
+    async handleDownloadSample() {
+        try {
+            const sample = await getSampleImportJson();
+            const blob = new Blob([sample], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = 'sample-field-forms-import.json';
+            link.click();
+        } catch (err) {
+            this.toastError('Could not build sample', reduceError(err));
+        }
     }
 
     async importData() {

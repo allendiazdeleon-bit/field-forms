@@ -177,6 +177,253 @@ public with sharing class neuraFormExportController {
     }
 
     /**
+     * Returns a minimal valid wrapper JSON so admins can hand-edit a sample
+     * to seed a new template instead of staring at a blank file.
+     * cacheable=true; pure construction with no SOQL or DML.
+     */
+    @AuraEnabled(cacheable=true)
+    public static String getSampleImportJson() {
+        String ns = NeuraFormUtils.getNamespacePrefix();
+        String extRef = ns + 'External_Reference__c';
+        String fTpl = ns + 'Form_Template__c';
+        String fPage = ns + 'Form_Page__c';
+        String fSection = ns + 'Form_Section__c';
+        String fOrder = ns + 'Order__c';
+        String fTitle = ns + 'Title__c';
+        String fColumns = ns + 'Columns__c';
+        String fQuestion = ns + 'Question__c';
+        String fType = ns + 'Type__c';
+
+        Map<String, Object> template = new Map<String, Object>{
+            'attributes' => new Map<String, String>{ 'type' => ns + 'Form_Template__c' },
+            'Name' => 'Sample Inspection',
+            extRef => 'SAMPLE_TPL_1'
+        };
+        Map<String, Object> page = new Map<String, Object>{
+            'attributes' => new Map<String, String>{ 'type' => ns + 'Form_Page__c' },
+            'Name' => 'Page 1',
+            extRef => 'SAMPLE_P_1',
+            fTpl => 'SAMPLE_TPL_1',
+            fOrder => 1,
+            fTitle => 'Page 1'
+        };
+        Map<String, Object> section = new Map<String, Object>{
+            'attributes' => new Map<String, String>{ 'type' => ns + 'Form_Section__c' },
+            'Name' => 'Equipment',
+            extRef => 'SAMPLE_S_1',
+            fTpl => 'SAMPLE_TPL_1',
+            fPage => 'SAMPLE_P_1',
+            fOrder => 1,
+            fTitle => 'Equipment',
+            fColumns => '1'
+        };
+        Map<String, Object> question = new Map<String, Object>{
+            'attributes' => new Map<String, String>{ 'type' => ns + 'Form_Question__c' },
+            'Name' => 'Serial number',
+            extRef => 'SAMPLE_Q_1',
+            fTpl => 'SAMPLE_TPL_1',
+            fPage => 'SAMPLE_P_1',
+            fSection => 'SAMPLE_S_1',
+            fOrder => 1,
+            fQuestion => 'Serial number',
+            fType => 'Text'
+        };
+
+        return JSON.serializePretty(new List<Object>{
+            new Map<String, Object>{
+                'template' => template,
+                'pages' => new List<Object>{ page },
+                'sections' => new List<Object>{ section },
+                'questions' => new List<Object>{ question }
+            }
+        });
+    }
+
+    /**
+     * Pre-import dry-run: parses the JSON and reports what the import would
+     * do without committing anything. Surfaces:
+     *   - record counts (templates / pages / sections / questions)
+     *   - how many templates will be CREATED vs UPDATED (by matching
+     *     External_Reference__c against the org)
+     *   - name collisions (incoming template name matches an existing row
+     *     with a different External_Reference - will produce duplicate
+     *     display names that confuse field techs)
+     *   - condition references that won't resolve in this import payload
+     */
+    public class PreviewResult {
+        @AuraEnabled public Integer templateCount = 0;
+        @AuraEnabled public Integer pageCount = 0;
+        @AuraEnabled public Integer sectionCount = 0;
+        @AuraEnabled public Integer questionCount = 0;
+        @AuraEnabled public Integer toCreateCount = 0;
+        @AuraEnabled public Integer toUpdateCount = 0;
+        @AuraEnabled public List<String> warnings = new List<String>();
+        @AuraEnabled public List<String> nameCollisions = new List<String>();
+    }
+
+    @AuraEnabled(cacheable=false)
+    public static PreviewResult previewImport(String jsonContent) {
+        if (String.isBlank(jsonContent)) {
+            AuraHandledException e = new AuraHandledException('Empty payload.');
+            e.setMessage('Empty payload.');
+            throw e;
+        }
+
+        List<FormTemplateWrapper> wrappers;
+        try {
+            wrappers = (List<FormTemplateWrapper>) JSON.deserialize(
+                jsonContent, List<FormTemplateWrapper>.class
+            );
+        } catch (Exception e) {
+            AuraHandledException ahe = new AuraHandledException('Invalid JSON: ' + e.getMessage());
+            ahe.setMessage('Invalid JSON: ' + e.getMessage());
+            throw ahe;
+        }
+
+        PreviewResult preview = new PreviewResult();
+        if (wrappers == null) return preview;
+
+        String externalRefField = NeuraFormUtils.getNamespacePrefix() + 'External_Reference__c';
+
+        // Build sets of all incoming refs so we can:
+        //   1. Query existing rows by External_Reference (create vs update)
+        //   2. Resolve condition references later (warnings)
+        Set<String> incomingTemplateRefs = new Set<String>();
+        Set<String> incomingNames = new Set<String>();
+        Set<String> incomingPageRefs = new Set<String>();
+        Set<String> incomingSectionRefs = new Set<String>();
+        Set<String> incomingQuestionRefs = new Set<String>();
+
+        for (FormTemplateWrapper wrapper : wrappers) {
+            preview.templateCount++;
+            if (wrapper.template != null) {
+                String ref = (String) wrapper.template.get(externalRefField);
+                if (String.isNotBlank(ref)) incomingTemplateRefs.add(ref);
+                if (String.isNotBlank(wrapper.template.Name)) incomingNames.add(wrapper.template.Name);
+            }
+            if (wrapper.pages != null) {
+                for (Form_Page__c p : wrapper.pages) {
+                    preview.pageCount++;
+                    String ref = (String) p.get(externalRefField);
+                    if (String.isNotBlank(ref)) incomingPageRefs.add(ref);
+                }
+            }
+            if (wrapper.sections != null) {
+                for (Form_Section__c s : wrapper.sections) {
+                    preview.sectionCount++;
+                    String ref = (String) s.get(externalRefField);
+                    if (String.isNotBlank(ref)) incomingSectionRefs.add(ref);
+                }
+            }
+            if (wrapper.questions != null) {
+                for (Form_Question__c q : wrapper.questions) {
+                    preview.questionCount++;
+                    String ref = (String) q.get(externalRefField);
+                    if (String.isNotBlank(ref)) incomingQuestionRefs.add(ref);
+                }
+            }
+        }
+
+        // Create vs Update: match incoming External_Reference values against
+        // the org. Anything not found is a CREATE.
+        Map<String, Form_Template__c> existingByRef = new Map<String, Form_Template__c>();
+        if (!incomingTemplateRefs.isEmpty()) {
+            for (Form_Template__c t : [
+                SELECT Id, Name, External_Reference__c
+                FROM Form_Template__c
+                WHERE External_Reference__c IN :incomingTemplateRefs
+                WITH SECURITY_ENFORCED
+            ]) {
+                existingByRef.put(t.External_Reference__c, t);
+            }
+        }
+        for (FormTemplateWrapper wrapper : wrappers) {
+            if (wrapper.template == null) continue;
+            String ref = (String) wrapper.template.get(externalRefField);
+            if (String.isNotBlank(ref) && existingByRef.containsKey(ref)) {
+                preview.toUpdateCount++;
+            } else {
+                preview.toCreateCount++;
+            }
+        }
+
+        // Name collision check: an existing template that shares a display
+        // name but has a different External_Reference. The import will
+        // create a second template with the same name, which confuses field
+        // techs at runtime.
+        if (!incomingNames.isEmpty()) {
+            for (Form_Template__c t : [
+                SELECT Id, Name, External_Reference__c
+                FROM Form_Template__c
+                WHERE Name IN :incomingNames
+                WITH SECURITY_ENFORCED
+                LIMIT 200
+            ]) {
+                // Skip if this existing row IS one of the incoming templates
+                // (same External_Reference - it's an update, not a duplicate).
+                if (String.isNotBlank(t.External_Reference__c)
+                    && incomingTemplateRefs.contains(t.External_Reference__c)) {
+                    continue;
+                }
+                preview.nameCollisions.add(
+                    'A template named "' + t.Name + '" already exists with a different External Reference. ' +
+                    'Importing will create a second template with the same display name.'
+                );
+            }
+        }
+
+        // Condition-reference warnings: any condition that points at a
+        // page/section/question outside the import will not resolve.
+        // Pages and sections are easier: just check the ref set membership.
+        // Questions: we don't have the question Id map here, but we have
+        // their external refs. Same idea - if a condition references a
+        // questionRef that isn't in incomingQuestionRefs, warn.
+        for (FormTemplateWrapper wrapper : wrappers) {
+            if (wrapper.pages != null) for (Form_Page__c p : wrapper.pages) {
+                preview.warnings.addAll(scanConditionForMissing(p.Conditions__c, incomingPageRefs, incomingSectionRefs, incomingQuestionRefs));
+            }
+            if (wrapper.sections != null) for (Form_Section__c s : wrapper.sections) {
+                preview.warnings.addAll(scanConditionForMissing(s.Conditions__c, incomingPageRefs, incomingSectionRefs, incomingQuestionRefs));
+            }
+            if (wrapper.questions != null) for (Form_Question__c q : wrapper.questions) {
+                preview.warnings.addAll(scanConditionForMissing(q.Conditions__c, incomingPageRefs, incomingSectionRefs, incomingQuestionRefs));
+            }
+        }
+        return preview;
+    }
+
+    private static List<String> scanConditionForMissing(
+        String jsonString,
+        Set<String> pageRefs,
+        Set<String> sectionRefs,
+        Set<String> questionRefs
+    ) {
+        List<String> out = new List<String>();
+        if (String.isBlank(jsonString)) return out;
+        Object parsed;
+        try { parsed = JSON.deserializeUntyped(jsonString); } catch (Exception e) { return out; }
+        if (!(parsed instanceof Map<String, Object>)) return out;
+        List<Object> conditions = (List<Object>) ((Map<String, Object>) parsed).get('conditions');
+        if (conditions == null) return out;
+        for (Object c : conditions) {
+            Map<String, Object> cm = (Map<String, Object>) c;
+            Object r = cm.get('resource');
+            Object p = cm.get('page');
+            Object s = cm.get('section');
+            if (r instanceof String && String.isNotBlank((String) r) && !questionRefs.contains((String) r)) {
+                out.add('Condition references question ' + r + ' which is not in the import.');
+            }
+            if (p instanceof String && String.isNotBlank((String) p) && !pageRefs.contains((String) p)) {
+                out.add('Condition references page ' + p + ' which is not in the import.');
+            }
+            if (s instanceof String && String.isNotBlank((String) s) && !sectionRefs.contains((String) s)) {
+                out.add('Condition references section ' + s + ' which is not in the import.');
+            }
+        }
+        return out;
+    }
+
+    /**
      * Imports form templates from a JSON string. Wraps every DML in a single
      * Savepoint so a failure at any step (templates / pages / sections /
      * questions / conditions rewrite) rolls back the whole import - no more
