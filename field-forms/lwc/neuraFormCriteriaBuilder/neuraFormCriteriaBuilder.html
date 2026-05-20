@@ -1,0 +1,79 @@
+<!-- conditionLogicBuilder.html -->
+<template>
+    
+    <div class="slds-p-vertical_medium slds-p-horizontal_xx-small">
+    <div class="slds-expression conditon-builder">
+        <h2 class="slds-expression__title">Conditions</h2>
+        <div class="slds-expression__options">
+            <!-- Logic Dropdown -->
+            <lightning-combobox
+                name="logics"
+                label="Filter When"
+                value={selectedLogic}
+                placeholder="Select Logic"
+                options={logicOptions}
+                onchange={handleLogicChange}>
+            </lightning-combobox>
+            <div if:true={isCustomLogic}>
+                <lightning-textarea
+                    label="Custom Logic (e.g., '(1 AND 2) OR (3)')"
+                    value={customLogic}
+                    onchange={handleCustomLogicChange}>
+                </lightning-textarea>
+            </div>
+        </div>
+        <template lwc:if={isNarrowVariant}>
+            <ol class="slds-list_vertical slds-list_vertical-space condition-item">
+                <template for:each={conditions} for:item="condition" for:index="index">
+                    <li key={condition.id} class="slds-item slds-hint-parent slds-p-top_xx-small">
+                        <c-neura-form-criteria-line
+                            class="condition-row"
+                            variant="narrow"
+                            logical-operator={logicalOperator}
+                            condition={condition}
+                            index={index}
+                            questions={allQuestions}
+                            all-configuration={allConfig}
+                            selection={selection}
+                            onremovecondition={handleRemoveCondition}
+                            onpagechange={handlePageChange}
+                            onsectionchange={handleSectionChange}
+                            onresourcechange={handleResourceChange}
+                            onoperatorchange={handleOperatorChange}
+                            onconditionchange={handleConditionChange}
+                            onvaluechange={handleValueChange}
+                            onerror={handleError}>
+                        </c-neura-form-criteria-line>
+                        </li>
+                </template>
+            </ol>
+        </template>
+        <template lwc:else>
+            <template for:each={conditions} for:item="condition" for:index="index">
+                <c-neura-form-criteria-line
+                    key={condition.id}
+                    logical-operator={logicalOperator}
+                    condition={condition}
+                    index={index}
+                    questions={allQuestions}
+                    all-configuration={allConfig}
+                    question-options={questionOptions}
+                    onremovecondition={handleRemoveCondition}
+                    onresourcechange={handleResourceChange}
+                    onoperatorchange={handleOperatorChange}
+                    onvaluechange={handleValueChange}
+                    onerror={handleError}>
+                    </c-neura-form-criteria-line>
+            </template>
+        </template>
+        <div class="slds-expression__buttons">
+            <lightning-button
+                label="Add Condition"
+                variant="neutral"
+                icon-name="utility:add"
+                onclick={addCondition}>
+            </lightning-button>
+        </div>
+    </div>
+    </div>
+</template>

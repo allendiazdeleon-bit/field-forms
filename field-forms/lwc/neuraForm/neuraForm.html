@@ -1,0 +1,26 @@
+<template>
+    <template if:true={formObject}>
+        <div>
+            <p>{name}</p>
+            <c-neura-form-header indicator-type={indicatorType} step-list={pageArray} total-steps={totalPageCount} current-step-index={currentPageIndex} current-step={currentStep}></c-neura-form-header>
+                <lightning-progress-indicator current-step={firstStepValue} type="base" variant="base">
+                    <template for:each={pageSteps} for:item="step">
+                        <lightning-progress-step label={step.label} value={step.value} key={step.value}></lightning-progress-step>
+                    </template>
+                </lightning-progress-indicator>
+            
+            <template for:item="formPage" for:each={formObject.pages}>
+                <div key={formPage.id} class="form-page">
+                    <c-neura-form-page form-page={formPage} record-id={formPage.id}></c-neura-form-page>
+                </div>
+            </template>
+        </div>
+
+         <!--Navigation next page or previous-->
+         <c-neura-form-footer onbuttonclick={handleFooterButtonClick} total-pages={totalPageCount} current-page-index={currentPageIndex}></c-neura-form-footer>
+    </template>
+    <template if:true={formTemplate.error}>
+        <!-- Handle error state -->
+        <p>Error loading form page.</p>
+    </template>
+</template>

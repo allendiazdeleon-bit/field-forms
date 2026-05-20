@@ -1,0 +1,461 @@
+<template>
+	<!-- No images selected screen -->
+	<div
+		if:true={noImagesSelected}
+		class="no-images-selected-screen slds-grid"
+	>
+		<div
+			if:true={isLayoutLarge}
+			class="photo-container"
+			onclick={handlePhotoOpen}
+		>
+			<lightning-icon
+				class="branded-foreground slds-align_absolute-center"
+				icon-name="utility:photo"
+				size="small"
+				alternative-text="Photo"
+				title="Photo"
+			></lightning-icon>
+			<input
+				class="slds-file-selector__input slds-assistive-text"
+				type="file"
+				multiple=""
+				data-id="file-upload-input"
+				onchange={handleFilesSelected}
+			/>
+			<div>Add Photo</div>
+		</div>
+		<div
+			if:true={isLayoutSmall}
+			class="photo-container-small"
+		>
+			<div class="slds-grid">
+				<div
+					class="slds-col slds-grow-none"
+					onclick={handlePhotoOpen}
+				>
+					<lightning-icon
+						class="branded-foreground"
+						icon-name="action:add_photo_video"
+						size="x-small"
+						alternative-text="Photo"
+						title="Photo"
+					></lightning-icon>
+					<input
+						class="slds-file-selector__input slds-assistive-text"
+						type="file"
+						accept="image/*"
+						multiple=""
+						data-id="file-upload-input"
+						onchange={handleFilesSelected}
+					/>
+					<div
+						class="photo-container-label"
+					>
+						Add Photo
+					</div>
+				</div>
+				<div
+					if:true={showExistingPhotos}
+					class="slds-col slds-grow-none"
+				>
+					<div
+						onclick={handleViewAll}
+						class="slds-align_absolute-center"
+						style="height: 100%"
+					>
+						<span
+							style="
+								color: #8a8a8a;
+								font-size: 14px;
+								font-weight: 400;
+								line-height: 20px;
+								word-wrap: break-word;
+							"
+						>
+							{numberOfPhotos}
+							photos attached
+						</span>
+						<span
+							style="
+								color: #0069a9;
+								font-size: 14px;
+								font-weight: 500;
+								line-height: 20px;
+								word-wrap: break-word;
+								margin-left: 8px;
+							"
+						>
+							View All >
+						</span>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div
+			if:true={isLayoutLarge}
+			class="slds-col slds-grow-none"
+		>
+			<div
+				if:true={showExistingPhotos}
+				onclick={handleViewAll}
+				class="slds-align_absolute-center"
+				style="height: 100%"
+			>
+				<span
+					style="
+						color: #8a8a8a;
+						font-size: 14px;
+						font-weight: 400;
+						line-height: 20px;
+						word-wrap: break-word;
+					"
+				>
+					{numberOfPhotos} photos
+					attached
+				</span>
+				<span
+					style="
+						color: #0069a9;
+						font-size: 14px;
+						font-weight: 500;
+						line-height: 20px;
+						word-wrap: break-word;
+						margin-left: 8px;
+					"
+				>
+					View All >
+				</span>
+			</div>
+		</div>
+	</div>
+
+	<div
+		lwc:if={someImagesSelected}
+		class="page-container phone-container"
+	>
+		<!-- Selected Images Preview class="desktop-body page-body" -->
+		<div
+			data-id="images-list-container"
+			class="page-body desktop-body"
+		>
+			<div
+				class="slds-grid slds-wrap slds-gutters slds-p-vertical_small slds-m-horizontal_small"
+			>
+				<template
+					for:each={allImagesData}
+					for:item="item"
+				>
+					<div
+						key={item.id}
+						class="square slds-col slds-size_1-of-3 slds-small-size_1-of-3 slds-medium-size_1-of-6 slds-large-size_1-of-8 slds-p-bottom_small"
+					>
+						<img src={item.data} />
+						<div
+							class="image-preview-details"
+						>
+							<div
+								class="image-preview-text slds-truncate"
+							>
+								{item.metadata.fileName}
+							</div>
+							<lightning-icon
+								if:false={isViewMode}
+								data-id={item.id}
+								onclick={handleImageSelectedForEditDirectly}
+								icon-name="action:edit"
+								alternative-text="Edit"
+								title="Edit"
+								size="x-small"
+							></lightning-icon>
+							<lightning-icon
+								class="slds-m-left_xx-small"
+								if:false={isViewMode}
+								data-id={item.id}
+								onclick={handleRemoveClicked}
+								icon-name="action:remove"
+								alternative-text="Remove"
+								title="Remove"
+								size="x-small"
+							></lightning-icon>
+						</div>
+					</div>
+				</template>
+			</div>
+		</div>
+		<div
+			class="page-footer phone-footer"
+		>
+			<div
+				style="
+					align-self: stretch;
+					flex-direction: column;
+					justify-content: flex-start;
+					align-items: center;
+					gap: 16px;
+					display: flex;
+				"
+			>
+				<!--<c-neura-mobile-button title="Save" variant="brand" size="stretch" onbuttonclicked={handleUploadClicked}></c-neura-mobile-button>-->
+				<div
+					if:false={isViewMode}
+					onclick={handleUploadClicked}
+					style="
+						align-self: stretch;
+						padding-left: 27px;
+						padding-right: 27px;
+						padding-top: 13px;
+						padding-bottom: 13px;
+						background: #2a7ab0;
+						border-radius: 100px;
+						overflow: hidden;
+						justify-content: center;
+						text-align: center;
+						gap: 10px;
+						display: inline-flex;
+					"
+				>
+					<div
+						style="
+							color: white;
+							font-size: 14px;
+							font-weight: 600;
+							line-height: 20px;
+							word-wrap: break-word;
+						"
+					>
+						Save
+					</div>
+				</div>
+				<div
+					style="
+						align-self: stretch;
+						justify-content: center;
+						align-items: flex-start;
+						gap: 16px;
+						display: inline-flex;
+					"
+				>
+					<div
+						onclick={handleCancel}
+						style="
+							flex: 1 1 0;
+							padding-left: 27px;
+							padding-right: 27px;
+							padding-top: 13px;
+							padding-bottom: 13px;
+							background: white;
+							border-radius: 100px;
+							border: 1px #2a7ab0
+								solid;
+							justify-content: space-between;
+							text-align: center;
+							display: flex;
+						"
+					>
+						<div
+							style="
+								color: #2a7ab0;
+								font-size: 14px;
+								font-weight: 600;
+								line-height: 20px;
+								word-wrap: break-word;
+								width: 100%;
+							"
+						>
+							Cancel
+						</div>
+					</div>
+					<div
+						if:false={isViewMode}
+						onclick={handleBatchRename}
+						style="
+							flex: 1 1 0;
+							padding-left: 27px;
+							padding-right: 27px;
+							padding-top: 13px;
+							padding-bottom: 13px;
+							background: white;
+							border-radius: 100px;
+							border: 1px #2a7ab0
+								solid;
+							justify-content: space-between;
+							text-align: center;
+							display: flex;
+						"
+					>
+						<div
+							style="
+								color: #2a7ab0;
+								font-size: 14px;
+								font-weight: 600;
+								line-height: 20px;
+								word-wrap: break-word;
+								width: 100%;
+							"
+						>
+							Batch Rename
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+
+<!-- TESTING 
+    <span
+      class="slds-icon_container slds-icon-utility-image"
+      title="Image Icon"
+    >
+      <svg class="large-icon slds-icon slds-icon-text-light" aria-hidden="true">
+        <use
+          xlink:href="/_slds/icons/utility-sprite/svg/symbols.svg#image"
+        ></use>
+      </svg>
+      <span class="slds-assistive-text">Image Icon</span>
+    </span>
+
+    <div
+      class="text-container slds-align_absolute-center slds-var-p-around_medium"
+    >
+      <span class="slds-text-heading_medium">
+        Add an image to this record
+      </span>
+    </div>
+  -->
+<!-- Insert empty character in the label to compensate on a different behavior of the component between Android and iOS -->
+<!--
+    <lightning-input
+      type="file"
+      accept="image/*"
+      multiple
+      label="&zwnj;"
+      data-id="file-upload-input"
+      onchange={handleFilesSelected}
+    >
+    </lightning-input>-->
+
+<!-- OLD 
+    <div data-id="images-list-container" class="section content">
+      <div
+        class="slds-grid slds-wrap slds-var-p-right_small slds-var-p-bottom_small"
+      >
+        <template for:each={allImagesData} for:item="item">
+          <div
+            key={item.id}
+            data-id={item.id}
+            onclick={handleImageSelectedForPreview}
+            class="square slds-col slds-var-p-left_small slds-var-p-top_small slds-size_1-of-3"
+          >
+            <img src={item.data} />
+            <div class="pencil-icon">
+              <span
+                class="slds-icon_container slds-icon-utility-edit"
+                title="Pencil Icon"
+              >
+                <svg class="slds-icon slds-icon_x-small" aria-hidden="true">
+                  <use
+                    xlink:href="/_slds/icons/utility-sprite/svg/symbols.svg#edit"
+                  ></use>
+                </svg>
+                <span class="slds-assistive-text">Pencil Icon</span>
+              </span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>-->
+<!-- Footer -->
+<!-- OLD
+    <div class="section footer">
+      <div class="footer-content slds-grid slds-var-p-around_small">
+        <button
+          onclick={handleUploadClicked}
+          type="button"
+          class="slds-button slds-button_outline-brand slds-col slds-button_stretch"
+        >
+          <label>Add to Record</label>
+        </button>
+      </div>
+    </div>-->
+
+<!-- Image was selected to be previewed -->
+<!-- TESTING
+  <div if:true={isPreviewingImage} class="page">
+    <!- Header ->
+    <div class="section header">
+      <div class="header-content slds-grid">
+        <div
+          class="slds-var-p-around_small slds-col_bump-right"
+          style="margin-top: auto; margin-bottom: auto"
+        >
+          <button
+            onclick={backToPreviewAllImages}
+            class="slds-button"
+            style="font-size: 1rem"
+          >
+            <svg
+              class="slds-button__icon slds-button__icon_left"
+              aria-hidden="true"
+            >
+              <use
+                xlink:href="/_slds/icons/utility-sprite/svg/symbols.svg#chevronleft"
+              ></use>
+            </svg>
+            Back to Gallery
+          </button>
+        </div>
+        <div
+          class="slds-var-p-around_small"
+          style="margin-top: auto; margin-bottom: auto"
+        >
+          <button
+            onclick={handleRemoveClicked}
+            class="slds-button slds-button_icon"
+            style="color: #0176d3"
+            title="Remove image"
+          >
+            <svg
+              class="slds-button__icon"
+              style="width: 1.25rem; height: 1.25rem"
+              aria-hidden="true"
+            >
+              <use
+                xlink:href="/_slds/icons/utility-sprite/svg/symbols.svg#delete"
+              ></use>
+            </svg>
+            <span class="slds-assistive-text">Remove image</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!- Preview Image ->
+    <div
+      data-id="preview-container"
+      class="section content"
+      style="background-color: #e5e5e5; justify-content: center"
+    >
+      <c-image-info-viewer
+        data-id="image-info-viewer"
+        image-to-preview={previewImage}
+        max-height={maxHeightForPreview}
+        max-width={pageWidth}
+        onrendered={handlePreviewScreenRendered}
+        style="display: table; max-height: inherit"
+      >
+      </c-image-info-viewer>
+    </div>
+    <!- Footer ->
+    <div class="section footer">
+      <div class="footer-content slds-grid slds-var-p-around_small">
+        <button
+          onclick={handleImageSelectedForAnnotation}
+          type="button"
+          class="slds-button slds-button_outline-brand slds-col slds-button_stretch"
+        >
+          <label>Edit Image</label>
+        </button>
+      </div>
+    </div>
+  </div>-->

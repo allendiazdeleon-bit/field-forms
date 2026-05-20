@@ -1,0 +1,23 @@
+<template>
+    <div  onmouseenter={handleMouseEnter} 
+    onmouseleave={handleMouseLeave}
+    onclick={handleClick} class="slds-m-around_xx-small" style="z-index: 12">
+        <div class={questionClass} draggable="true" ondragstart={handleDragStart} ondragend={handleDragEnd}>
+            <c-neura-form-question form-question={questionFormatObject}></c-neura-form-question>
+            <!--<span class="question-label" style={labelStyle}>{component.type}</span>
+            <lightning-input type="text" label="Text Box" value={value} variant="label-hidden"></lightning-input>-->
+        
+        <template if:true={questionActions}>
+            <c-neura-form-drop-zone-actions item-id={component.id} type="Component"></c-neura-form-drop-zone-actions>
+            <!--
+            <div class="slds-drop-zone__actions actionButtons">
+                <lightning-button-group>
+                    <lightning-button-icon icon-name="utility:move" size="x-small" alternative-text="Move" variant="border-inverse" title="Move"></lightning-button-icon>
+                    <lightning-button-icon onclick={handleDeleteQuestion} icon-name="utility:close" size="x-small" alternative-text="Delete" variant="border-inverse" title="Close"></lightning-button-icon>
+                </lightning-button-group>
+            </div>
+            -->
+        </template>
+        </div>
+    </div>
+</template>

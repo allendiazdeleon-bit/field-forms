@@ -1,0 +1,41 @@
+<template>
+    <template if:true={loading}>
+        <lightning-spinner alternative-text="Loading" size="large"></lightning-spinner>
+    </template>
+    <lightning-card title="Import Form Templates" icon-name="custom:custom63">
+        <div class="slds-m-around_medium">
+            <!-- Using lightning-input for file upload -->
+            <lightning-input type="file"
+                             label="Upload JSON File"
+                             accept=".json"
+                             onchange={handleFileChange}
+                             class="slds-m-bottom_medium">
+            </lightning-input>
+            <template if:true={fileName}>
+                <div class="slds-m-top_small">
+                    <p><strong>File selected:</strong> {fileName}</p>
+                </div>
+                <lightning-button variant="brand"
+                                label="Import"
+                                title="Import"
+                                onclick={importData}
+                                class="slds-m-top_medium slds-m-bottom_medium">
+                </lightning-button>
+            </template>
+            <!-- Displaying imported templates with datatable -->
+            <template if:true={importedTemplates}>
+                <div class="slds-m-top_medium">
+                    <lightning-card title="Imported Templates">
+
+                        <lightning-datatable key-field="Id"
+                                            data={importedTemplates}
+                                            columns={columns}
+                                            hide-checkbox-column="true"
+                                            class="slds-m-top_medium">
+                        </lightning-datatable>
+                    </lightning-card>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

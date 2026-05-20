@@ -1,0 +1,12 @@
+<template>
+    <div class="ratings">
+        <form >
+            <template for:each={options} for:item="option">
+                <c-neura-form-answer-input-ratings-item
+                    key={option.Id}
+                    option={option}
+                    onoptionselected={handleOptionSelected}></c-neura-form-answer-input-ratings-item>
+            </template>
+        </form>
+    </div>
+</template>

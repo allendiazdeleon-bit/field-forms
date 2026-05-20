@@ -1,0 +1,289 @@
+<template>
+	<div
+		class="slds-grid slds-wrap slds-gutters slds-m-bottom_small"
+	>
+		<div class={columnSizingClass}>
+			<template
+				if:true={isTextBox}
+			>
+				<lightning-input
+					data-id="textBox"
+					type="text"
+					label="Text Box"
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<template
+				if:true={isTextArea}
+			>
+				<lightning-textarea
+					data-id="textArea"
+					label="Text Area"
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-textarea>
+			</template>
+
+			<template
+				if:true={isMultipleChoice}
+			>
+				<!-- Assuming options are passed in as an array of { label, value } -->
+				<!--<lightning-combobox data-id="multipleChoice" label="Multiple Choice" options={options} value={value} variant="label-hidden" onchange={handleChange}></lightning-combobox>-->
+				<c-neura-form-answer-input-multi-select
+					data-id="multipleChoice"
+					options={options}
+					selected-values={value}
+					onchange={handleChange}
+				></c-neura-form-answer-input-multi-select>
+			</template>
+
+			<!-- Checkboxes -->
+			<!-- Assuming checkboxes are passed as an array of { label, value, checked } -->
+			<template
+				if:true={isCheckbox}
+			>
+				<lightning-input
+					data-id="checkboxButton"
+					type="checkbox-button"
+					label="check-box"
+					name="input1"
+					checked={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<template
+				if:true={isCheckboxes}
+			>
+				<template
+					for:each={options}
+					for:item="option"
+				>
+					<lightning-input
+						type="checkbox"
+						label={option.label}
+						key={option.value}
+						checked={option.checked}
+						variant="label-hidden"
+						onchange={handleChange}
+					></lightning-input>
+				</template>
+			</template>
+
+			<template if:true={isSlider}>
+				<lightning-slider
+					data-id="slider"
+					label="Slider"
+					value={value}
+					size={sliderSize}
+					step={sliderStep}
+					max={max}
+					min={min}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-slider>
+			</template>
+
+			<!-- Dropdown Menu -->
+			<template
+				if:true={isDropDown}
+			>
+				<lightning-combobox
+					data-id="dropDown"
+					name={uniqueName}
+					label="Dropdown Menu"
+					options={options}
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-combobox>
+			</template>
+
+			<!-- Radio Buttons -->
+			<template
+				if:true={isRadioButtons}
+			>
+				<c-neura-form-answer-input-radio-buttons
+					data-id="radioButtons"
+					radio-options={radioOptions}
+					val={value}
+					onchange={handleChange}
+				></c-neura-form-answer-input-radio-buttons>
+				<!--<lightning-radio-group name={uniqueName} label="Radio Buttons" options={options} value={value} variant="label-hidden" type="radio"></lightning-radio-group>-->
+			</template>
+
+			<!-- Date Picker -->
+			<template
+				if:true={isDatePicker}
+			>
+				<lightning-input
+					data-id="datePicker"
+					type="date"
+					label="Date Picker"
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<!-- Rating -->
+			<template if:true={isRating}>
+				<!--<c-neura-form-answer-input-ratings options={radioOptions}></c-neura-form-answer-input-ratings>-->
+				<c-neura-form-answer-input-star-rating
+					options={radioOptions}
+					val={value}
+					onchange={handleChange}
+				></c-neura-form-answer-input-star-rating>
+			</template>
+
+			<template
+				if:true={isScanBarcode}
+			>
+				<c-neura-form-answer-input-scan-barcode
+					onchange={handleChange}
+				></c-neura-form-answer-input-scan-barcode>
+			</template>
+
+			<!-- Time Picker -->
+			<template
+				if:true={isTimePicker}
+			>
+				<lightning-input
+					data-id="timePicker"
+					type="time"
+					label="Time Picker"
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<!-- Number Input -->
+			<template
+				if:true={isNumberInput}
+			>
+				<lightning-input
+					data-id="numberInput"
+					type="number"
+					label="Number Input"
+					value={value}
+					step={numberStep}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<!-- Email Address Field -->
+			<template if:true={isEmail}>
+				<lightning-input
+					data-id="emailInput"
+					type="email"
+					label="Email Address"
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<!-- Phone Number Field -->
+			<template if:true={isPhone}>
+				<lightning-input
+					data-id="phoneInput"
+					type="tel"
+					label="Phone Number"
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+			<!-- Geolocation Field -->
+			<template
+				if:true={isGeolocation}
+			>
+				<c-neura-form-answer-input-geolocation
+					data-id="geolocation"
+					val={value}
+					onchange={handleChange}
+				></c-neura-form-answer-input-geolocation>
+			</template>
+
+			<!-- Toggle Field -->
+			<template if:true={isToggle}>
+				<lightning-input
+					data-id="toggle"
+					type="toggle"
+					name="input1"
+					checked={value}
+					message-toggle-active={toggleActiveMessage}
+					message-toggle-inactive={toggleInactiveMessage}
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<template
+				if:true={isFileUpload}
+			>
+				<c-neura-form-answer-input-file-upload
+					files-data={existingFilesData}
+					onaddimages={handleAddImages}
+				></c-neura-form-answer-input-file-upload>
+			</template>
+
+			<!-- Signature -->
+			<template
+				if:true={isSignature}
+			>
+				<c-neura-form-answer-input-signature
+					files-data={existingFilesData}
+					ondonesignature={handleAddImages}
+				></c-neura-form-answer-input-signature>
+			</template>
+
+			<div
+				if:true={showInlineErrorMessage}
+				class="slds-form-element slds-has-error"
+			>
+				<div
+					class="slds-form-element__help"
+				>
+					Complete this field.
+				</div>
+			</div>
+		</div>
+
+		<!-- OPTIONAL ADDITONAL FIELDS TO MOST ANSWERS -->
+		<div
+			if:true={isIncludePhoto}
+			class={columnSizingClass}
+		>
+			<c-neura-form-answer-input-file-upload
+				files-data={existingFilesData}
+				layout-style="small"
+				onaddimages={handleAddImages}
+			></c-neura-form-answer-input-file-upload>
+		</div>
+
+		<div
+			if:true={isIncludeComment}
+			class={lastColSizingClass}
+		>
+			<label
+				class="slds-form-element__label"
+				for="text-input-id-1"
+			>
+				Comment
+			</label>
+			<lightning-textarea
+				data-id="commentTextArea"
+				variant="label-hidden"
+				value={commentValue}
+				onchange={handleCommentChange}
+			></lightning-textarea>
+		</div>
+	</div>
+</template>

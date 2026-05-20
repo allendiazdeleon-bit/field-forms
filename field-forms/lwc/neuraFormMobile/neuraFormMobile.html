@@ -1,0 +1,46 @@
+<template>
+    <div if:true={isLoading}>
+        <c-loading-spinner message="loading..."></c-loading-spinner>
+    </div>
+
+    <div if:true={loadAnswerFiles}>
+        <c-neura-form-files-data 
+            answer-ids={answersId} 
+            should-do-refresh-graph-ql={shouldDoRefreshGraphQl} 
+            onload={handleFilesLoad}
+            onerror={handleFileDataErrors}
+        ></c-neura-form-files-data>
+    </div>
+
+    <div lwc:if={showInlineMessage}>
+        <c-neura-inline-message
+            message={messageObj.message}
+            variant={messageObj.variant}
+            closable={messageObj.isClosable}
+        ></c-neura-inline-message>
+    </div>
+
+    <div lwc:else>
+        <template if:true={showSelector}>
+            <div class="slds-m-vertical_medium">
+                <c-neura-form-selector form-options={formOptions} onformselected={handleFormSelected}></c-neura-form-selector>
+            </div>
+        </template>
+
+
+        <template if:true={showForm}>
+            <c-neura-form-renderer 
+                record-id={recordId} 
+                form-object={selectedForm} 
+                onreturnhome={handleReturnToHome} 
+                onfooterclick={handleFooterClick}
+                oncapturelocation={handleCaptureGeolocation}
+                onupdatelinkedformdetails={handleUpdateLinkedFormDetails}
+                onupdateformdata={handleUpdateFormData}
+                is-desktop={isDesktop}
+                onerror={handleFormRendererError}
+            >
+            </c-neura-form-renderer >
+        </template>
+    </div>
+</template>

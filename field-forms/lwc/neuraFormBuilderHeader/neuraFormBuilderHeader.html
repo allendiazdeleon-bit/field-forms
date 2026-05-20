@@ -1,0 +1,105 @@
+<template>
+    <div class="slds-builder-header_container" style="position: relative">
+        <header class="slds-builder-header">
+            <div class="slds-builder-header__item">
+                <div class="slds-builder-header__item-action" title="Back" data-action="back" onclick={handleClick}>
+                    <span class="slds-icon_container slds-icon-utility-back slds-current-color">
+                        <lightning-icon icon-name="utility:back" size="x-small" alternative-text="Back"></lightning-icon>
+                        <span class="slds-assistive-text">Back</span>
+                    </span>
+                </div>
+            </div>
+            <div class="slds-builder-header__item">
+                <div class="slds-builder-header__item-label slds-media slds-media_center">
+                    <div class="slds-media__figure"><span
+                            class="slds-icon_container slds-icon-utility-builder slds-current-color">
+                        <lightning-icon icon-name="utility:builder" size="x-small" alternative-text="Builder"></lightning-icon>
+                        </span></div>
+                    <div class="slds-media__body">{builderName}</div>
+                </div>
+            </div>
+            <nav class="slds-builder-header__item slds-builder-header__nav">
+                <ul class="slds-builder-header__nav-list">
+                    <li class="slds-builder-header__nav-item slds-dropdown-trigger slds-dropdown-trigger_click slds-is-open">
+                        <button class="slds-button slds-builder-header__item-action slds-media slds-media_center" title="Click to open menu" data-action="dropdown" onclick={handleClick}>
+                            <span class="slds-media__figure">
+                                <span class="slds-icon_container slds-icon-utility-page slds-current-color">
+                                    <lightning-icon icon-name="utility:page" size="x-small" alternative-text="Form"></lightning-icon>
+                                </span>
+                            </span>
+                            <span class="slds-media__body">
+                                <span class="slds-truncate" title="Dropdown">{dropdownTitle}</span>
+                                <span class="slds-icon_container slds-icon-utility-chevrondown slds-current-color slds-m-left_small">
+                                    <lightning-icon icon-name="utility:chevrondown" size="x-small" alternative-text="Down"></lightning-icon>
+                                </span>
+                            </span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+            <div class="slds-builder-header__item slds-has-flexi-truncate">
+                <h1 class="slds-builder-header__item-label">
+                    <span class="slds-truncate" title={title}>{title}</span>
+                </h1>
+            </div>
+            <div class="slds-builder-header__item slds-builder-header__utilities">
+                <div class="slds-builder-header__utilities-item">
+                    <div class="slds-builder-header__item-action slds-media slds-media_center" data-action="settings" onclick={handleClick}>
+                        <span class="slds-media__figure">
+                            <span class="slds-icon_container slds-icon-utility-settings slds-current-color">
+                                <lightning-icon icon-name="utility:settings" size="x-small" alternative-text="Settings"></lightning-icon>
+
+                            </span>
+                        </span>
+                        <span class="slds-media__body"><span class="slds-truncate" title="Link">Settings</span></span>
+                    </div>
+                </div>
+                <div class="slds-builder-header__utilities-item">
+                    <div class="slds-builder-header__item-action slds-media slds-media_center" data-action="help" onclick={handleClick}>
+                        <div class="slds-media__figure">
+                            <span
+                                class="slds-icon_container slds-icon-utility-help slds-current-color">
+                                <lightning-icon icon-name="utility:help" size="x-small" alternative-text="Help"></lightning-icon>
+                            </span>
+                        </div>
+                        <div class="slds-media__body">Help</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <div class="slds-builder-toolbar" role="toolbar">
+            <div class="slds-builder-toolbar__item-group" aria-label="Canvas Actions">
+                <lightning-button-icon title="settings" icon-name="utility:settings" variant="border" alternative-text="settings" data-action="settings" class="slds-m-right_x-small"></lightning-button-icon>
+
+                <lightning-button-group>
+                    <lightning-button-icon title="undo" disabled={disableUndo} icon-name="utility:undo" variant="border" alternative-text="undo" data-action="undo" onclick={handleClick}></lightning-button-icon>
+                    <lightning-button-icon title="redo" disabled={disableRedo} icon-name="utility:redo" variant="border" alternative-text="redo" data-action="redo" onclick={handleClick}></lightning-button-icon>
+                </lightning-button-group>
+            </div>
+            <div class="slds-builder-toolbar__item-group" aria-label="Edit actions">
+                <lightning-button-group>
+                    <lightning-button-icon title="cut" icon-name="utility:cut" variant="border" alternative-text="cut" data-action="cut" disabled={disableCopy} onclick={handleClick}></lightning-button-icon>
+                    <lightning-button-icon title="copy" icon-name="utility:copy" variant="border" alternative-text="copy" data-action="copy" disabled={disableCopy} onclick={handleClick}></lightning-button-icon>
+                    <lightning-button-icon title="paste" icon-name="utility:paste" variant="border" alternative-text="paste" data-action="paste" disabled={disablePaste} onclick={handleClick}></lightning-button-icon>
+                </lightning-button-group>
+                <lightning-button-icon title="toggle panel" icon-name="utility:toggle_panel_left" variant="border" alternative-text="toggle panel" data-action="toggle" class="slds-m-left_x-small" onclick={handleClick}></lightning-button-icon>
+            </div>
+            <div class="slds-builder-toolbar__item-group middle-actions" aria-label="Display Actions">
+                <lightning-combobox 
+                    name="screenSize"
+                    label="Screen Size"
+                    value={screenSizeDefault}
+                    placeholder="Select Screen Size"
+                    options={screenSizeOptions}
+                    data-action="screensize"
+                    variant="label-hidden"
+                    onchange={handleClick}>
+                </lightning-combobox>
+            </div>
+            <div class="slds-builder-toolbar__actions" aria-label="Document actions">
+                    <lightning-button label="Save As" data-action="saveas" onclick={handleClick} variant="neutral"></lightning-button>
+                    <lightning-button label="Save" data-action="save" onclick={handleClick} variant="brand" class="slds-m-left_x-small"></lightning-button>
+            </div>
+        </div>
+    </div>
+</template>

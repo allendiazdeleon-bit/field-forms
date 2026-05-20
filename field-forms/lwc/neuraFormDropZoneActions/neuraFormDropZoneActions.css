@@ -1,0 +1,9 @@
+.actionButtons {
+    --lwc-buttonColorBorderPrimary : transparent;
+    --slds-c-button-color-border-active: transparent;
+    --lwc-borderWidthThin: 0px;
+}
+
+.move-item {
+    cursor: grab;
+}

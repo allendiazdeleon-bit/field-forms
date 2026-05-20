@@ -1,0 +1,45 @@
+.neura-mobile-button {
+    padding-left: 27px; 
+    padding-right: 27px; 
+    padding-top: 13px; 
+    padding-bottom: 13px; 
+    border-radius: 100px; 
+    text-align: center; 
+    font-size: 14px; 
+    font-weight: 600; 
+    line-height: 20px; 
+    word-wrap: break-word;
+    cursor: pointer;
+}
+
+.neura-mobile-button-small {
+    justify-content: space-between; 
+    display: flex;
+    flex: 1 1 0; 
+}
+
+.neura-mobile-button-stretch {
+    align-self: stretch; 
+    overflow: hidden; 
+    justify-content: center; 
+    gap: 10px; 
+    display: inline-flex;
+}
+
+.neura-mobile-button-neutral {
+    background: white;
+    border: 1px #2A7AB0 solid;
+    color: #2A7AB0;
+}
+
+.neura-mobile-button-brand {
+    background: #2A7AB0;
+    color: white;
+    border: 1px #2A7AB0 solid;
+}
+
+.neura-mobile-button-success{
+    background: #45c65a;
+    color: white;
+    border: 1px #45c65a solid;
+}

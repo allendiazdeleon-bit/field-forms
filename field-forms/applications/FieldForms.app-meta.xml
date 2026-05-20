@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <brand>
+        <headerColor>#0070D2</headerColor>
+        <logo>DALLE20240402091634Designanultrasim</logo>
+        <logoVersion>1</logoVersion>
+        <shouldOverrideOrgTheme>false</shouldOverrideOrgTheme>
+    </brand>
+    <description>Field Forms Adminstration</description>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
+    <label>FieldForms</label>
+    <navType>Standard</navType>
+    <tabs>Form_Export_Import</tabs>
+    <tabs>Form_Template__c</tabs>
+    <tabs>Linked_Form__c</tabs>
+    <tabs>Form_Answer__c</tabs>
+    <uiType>Lightning</uiType>
+    <utilityBar>FieldForms_UtilityBar1</utilityBar>
+</CustomApplication>

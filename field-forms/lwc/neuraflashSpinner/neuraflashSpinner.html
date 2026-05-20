@@ -1,0 +1,15 @@
+<template>
+    <div class="container" style={containerStyle}>
+        <div class="spinner">
+            <img src={spinnerImg} class="image">
+        </div>
+    </div>
+    <template if:true={message}>
+        <div class="slds-text-title_caps slds-align_absolute-center slds-text-align_center slds-m-bottom_small">
+            <div class="loading-container">
+                <span class="loading-text">{message}</span>
+                <span class="ellipsis" data-js="ellipsis"></span>
+            </div>
+        </div>    
+    </template>
+</template>

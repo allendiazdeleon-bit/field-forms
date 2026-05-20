@@ -1,0 +1,32 @@
+<template>
+    <div 
+    onmouseenter={handleMouseEnter} 
+    onmouseleave={handleMouseLeave}
+    onclick={handleClick}
+    style="z-index: 10;"
+    class="slds-drop-zone__container slds-m-horizontal_xx-small">
+        <div class={sectionClass} draggable="true" ondragstart={handleDragStart} ondragend={handleDragEnd}>
+            
+            <template if:true={showTitle}><h2 class="slds-card__header-title"><span class="slds-text-heading_small slds-truncate">{titleText}</span></h2></template>
+            <lightning-layout>
+                <template for:item="col" for:each={section.columns}>
+                    <lightning-layout-item key={col.id} size={sectionSize}>
+                            <c-neura-form-drop-zone-column column-id={col.id} onnfmouseexit={handleChildMouseExit} onnfmouseenter={handleChildMouseEnter} section-id={section.id} dragged-item-info={draggedItemInfo} components={col.components}  current-selection-id={currentSelectionId}></c-neura-form-drop-zone-column>
+                    </lightning-layout-item>
+                </template>
+            </lightning-layout>
+
+           <template if:true={sectionActions}>
+                <c-neura-form-drop-zone-actions item-id={section.id} type="Section"></c-neura-form-drop-zone-actions>
+                <!--<div class="slds-drop-zone__actions actionButtons">
+                    <lightning-button-group>
+                        <lightning-button-icon icon-name="utility:move" size="x-small" alternative-text="Move" variant="border-inverse" title="Move"></lightning-button-icon>
+                        <lightning-button-icon onclick={handleDeleteSection} icon-name="utility:close" size="x-small" alternative-text="Delete" variant="border-inverse" title="Close"></lightning-button-icon>
+                    </lightning-button-group>
+                </div>-->
+            </template>
+            
+        </div>
+    </div>
+
+</template>

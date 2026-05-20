@@ -1,0 +1,6 @@
+:host {
+    --header-size: 4rem;
+    --header-fg: #1d96fe;
+    --header-bg: #dddad9;
+    --header-backdrop-color: #F5F9FF;
+}

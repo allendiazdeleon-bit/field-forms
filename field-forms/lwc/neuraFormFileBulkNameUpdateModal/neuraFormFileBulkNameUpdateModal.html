@@ -1,0 +1,22 @@
+<template>
+    <lightning-modal-header label='Update All File Name'></lightning-modal-header>
+    <lightning-modal-body> 
+        <div class='slds-grid'>
+            <div class='slds-col slds-size_1-of-2'>
+                <lightning-input label='File Name Prefix' value={batchNamePrefix} onchange={handlePrefixChange}></lightning-input>
+            </div>
+            <div class='slds-col slds-size_1-of-2 slds-var-p-left_small'>
+                <lightning-input label='File Name Suffix' value={batchNameSuffix} onchange={handleSuffixChange}></lightning-input>
+            </div>
+        </div>
+    </lightning-modal-body>
+    <lightning-modal-footer>
+        <lightning-button label='Cancel' onclick={handleCancel}></lightning-button>
+        <lightning-button 
+            class='slds-var-p-left_x-small'
+            label='Update' 
+            variant='brand' 
+            onclick={handleUpdate}
+        ></lightning-button>
+    </lightning-modal-footer>
+</template>

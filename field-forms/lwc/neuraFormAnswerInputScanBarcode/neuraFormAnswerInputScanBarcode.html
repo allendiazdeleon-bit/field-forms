@@ -1,0 +1,20 @@
+<template>
+    <div class="slds-p-around_medium">
+        <div>
+            <!-- Button to start the scanner -->
+            <lightning-button icon-name="utility:scan" label="Scan Barcode" onclick={doScan}></lightning-button>
+        </div>
+        <div>
+            <!-- After a barcode is successfully scanned, its value is displayed below -->
+            <template if:true={scannedBarcode}>
+                <p>Scanned: <span data-id="result">{scannedBarcode}</span></p>
+            </template>
+        </div>
+        <div>
+            <!-- If an error is returned while scanning, the error is shown below -->
+            <template if:true={errorMessage}>
+                <p>Error: <span data-id="error">{errorMessage}</span></p>
+            </template>
+        </div>
+    </div>
+</template>

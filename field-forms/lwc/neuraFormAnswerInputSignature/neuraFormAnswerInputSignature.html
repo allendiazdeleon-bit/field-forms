@@ -1,0 +1,35 @@
+<template>
+    <div class="container">
+        <div lwc:if={existingSignature}>
+            <image src={existingSignature}></image>
+        </div>
+        <div lwc:else>
+            <template if:false={showSignature}>
+                <template if:false={showOption}>
+                    <lightning-icon class="kanban-icon" icon-name="utility:signature" size="large"  alternative-text="Kanban Icon" onclick={handleshowOption}></lightning-icon>
+                    <div class="option-label">Signature</div>
+                </template>
+                <template if:true={showOption}>
+                <div class="options-container">
+                    <div class="option" onclick={handleTypeSignature}>
+                        <lightning-icon class="option-icon" icon-name="utility:type" size="small"></lightning-icon>
+                        <div class="option-label">Type Signature</div>
+                    </div>
+                    <div class="option" onclick={handleDrawSignature}>
+                        <lightning-icon class="option-icon" icon-name="utility:brush" size="small"></lightning-icon>
+                        <div class="option-label">Draw Signature</div>
+                    </div>
+                </div>
+                </template>
+            </template>
+            <template if:true={showSignature}>
+                <c-neura-form-answer-input-signature-type 
+                    signaturetype={showTypeSignature} 
+                    ondonesignature={handleDoneSignature}
+                    oncancel={handleCancel}
+                    onchangetype={handleChangeType}
+                ></c-neura-form-answer-input-signature-type>
+            </template>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,388 @@
+import { LightningElement, api } from 'lwc';
+import { FIELDS } from 'c/neuraFormSchemaUtils';
+
+export default class NeuraFormCriteriaLine extends LightningElement {
+    @api
+    isPopoverOpen = false;
+    
+    @api
+    variant;
+    
+    @api
+    condition;
+    
+    @api
+    index;
+
+    @api
+    selection;
+    
+    @api
+    questions = [];
+
+    @api
+    allConfiguration = [];
+
+    questionOptions = [];
+
+    filteredQuestionOptions = [];
+
+    sectionOptions = [];
+
+    filteredSectionOptions = [];
+    
+    pageOptions = [];
+
+    @api
+    logicalOperator;
+
+    page;
+
+    section;
+
+    resource;
+
+    operater;
+
+    value;
+
+    operatorOptions = [];
+
+    allOperators = [
+        { "label": "Equals", "value": "equals" },
+        { "label": "Does Not Equal", "value": "notEquals" },
+        { "label": "Greater Than", "value": "greaterThan" },
+        { "label": "Less Than", "value": "lessThan" },
+        { "label": "Greater Than or Equal", "value": "greaterThanOrEqual" },
+        { "label": "Less Than or Equal", "value": "lessThanOrEqual" },
+        { "label": "In List", "value": "inList" },
+        { "label": "Not In List", "value": "notInList" },
+        { "label": "Contains", "value": "contains" },
+        { "label": "Starts With", "value": "startsWith" },
+        { "label": "Ends With", "value": "endsWith" },
+        { "label": "Regular Expression", "value": "regex" },
+        { "label": "Is True", "value": "isTrue" },
+        { "label": "Is False", "value": "isFalse" }
+    ]
+
+    validOperators = {
+        "checkbox": ["equals", "notEquals"],
+        "date": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "dropdown": ["equals", "notEquals", "inList", "notInList"],
+        "email": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
+        "file upload": ["equals", "notEquals"],
+        "form": ["equals", "notEquals"],
+        "geolocation": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "multiple choice": ["equals", "notEquals", "inList", "notInList"],
+        "number": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "phone": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList"],
+        "radio buttons": ["equals", "notEquals"],
+        "rating": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "scan barcode": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList"],
+        "signature": ["isTrue", "isFalse"],
+        "slider": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "text": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
+        "text Area": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
+        "time": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "toggle": ["equals", "notEquals"]
+    }
+
+    get typeFromQuestion() {
+        // get data Type by finding the question in this.questions that equals the resource
+
+        const dataType = this.questions.find(q => q.id === this.resource)?.attributes[FIELDS.Form_Question__c.Type.fieldApiName];
+
+        const typeMapping = {
+            'Checkbox': 'text',
+            'Date': 'date',
+            'Dropdown': 'text',
+            'Email': 'email',
+            'File Upload': 'file',
+            'Form': 'text', // default to text as there's no specific form type in lightning-input
+            'Geolocation': 'text', // could be custom input for lat/long
+            'Multiple Choice': 'text', // assuming it's a dropdown
+            'Number': 'number',
+            'Page': 'text', // default to text as there's no specific page type in lightning-input
+            'Phone': 'tel',
+            'Radio Buttons': 'text',
+            'Rating': 'number', // could be custom stars component
+            'Scan Barcode': 'text', // could be custom input for barcode scanner
+            'Section': 'text', // default to text as there's no specific section type in lightning-input
+            'Signature': 'text', // could be custom input for signature
+            'Slider': 'range',
+            'Text': 'text',
+            'Text Area': 'textarea',
+            'Time': 'time',
+            'Toggle': 'text'
+        };
+
+        return typeMapping[dataType] || 'text';
+    }
+
+    get sectionDisabled(){
+        return !this.page ? true : false;
+    }
+
+    get resourceDisabled(){
+        return !this.section ? true : false;
+    }
+
+    get isNarrowVariant(){
+        return this.variant === 'narrow';
+    }
+
+    get isBaseVariant(){
+        return this.variant === 'base';
+    }
+
+    get logicalOperatorDisplay() {
+        return this.logicalOperator == null ? this.index : this.index === 0 ? null : this.logicalOperator;
+    }
+
+    get isNewCondition(){
+        return this.condition.resource === undefined || this.condition.resource === null || this.condition.resource === '';
+    }
+
+    get resourceName(){
+        return this.condition.resource ? this.questions.find(q => q.id === this.condition.resource).attributes[FIELDS.Form_Question__c.Question.fieldApiName] : '';
+    }
+
+    get operaterName(){
+        return this.condition.operator ? this.allOperators.find(op => op.value === this.condition.operator).label : '';
+    }
+
+    isPopoverOpen = false;
+
+    get showPopover(){
+        return this.isPopoverOpen;
+    }
+
+    resourceNotSelected = true;
+
+    handleResourceChange(event) {
+        try {
+            const index = event.target.dataset.index;
+            const newValue = event.detail.value;
+            this.dispatchEvent(new CustomEvent('resourcechange', { detail: { index, value: newValue } }));
+
+            const selectedResourceId = event.detail.value;
+            const selectedQuestion = this.questions.find(q => q.id === selectedResourceId);
+
+            if (selectedQuestion) {
+                this.updateOperatorOptions(selectedQuestion.attributes[FIELDS.Form_Question__c.Type.fieldApiName].toLowerCase());
+            }
+        } catch (error) {
+            this.handleError(error, 'handleResourceChange');
+        }
+    }
+
+    updateOperatorOptions(type) {
+        try {
+            this.operatorOptions = this.validOperators[type]
+                ? this.allOperators.filter(op => this.validOperators[type].includes(op.value))
+                : [];
+        } catch (error) {
+            this.handleError(error, 'updateOperatorOptions');
+        }
+    }
+
+    handleOperatorChange(event) {
+        try {
+            const index = event.target.dataset.index;
+            const newValue = event.detail.value;
+            this.dispatchEvent(new CustomEvent('operatorchange', { detail: { index, value: newValue } }));
+        } catch (error) {
+            this.handleError(error, 'handleOperatorChange');
+        }
+    }
+
+    handleValueChange(event) {
+        try {
+            const index = event.target.dataset.index;
+            const newValue = event.detail.value;
+            this.dispatchEvent(new CustomEvent('valuechange', { detail: { index, value: newValue } }));
+        } catch (error) {
+            this.handleError(error, 'handleValueChange');
+        }
+    }
+
+    dispatchUpdateEvent(eventType, index, value) {
+        this.dispatchEvent(new CustomEvent(eventType, { detail: { index, value: value } }));
+    }
+
+    handleNarrowPageChange(event) {
+        try {
+            this.page = event.detail.value;
+            console.log('selected page', this.page);
+
+            this.filterSections(this.page);
+            console.log('filtered section options', this.filteredSectionOptions);
+
+            this.section = null;
+            this.resource = null;
+            const index = event.target.dataset.index;
+            this.dispatchUpdateEvent('pagechange', index, this.page);
+        } catch (error) {
+            this.handleError(error, 'handleNarrowResourceChange');
+        }
+    }
+
+    filterSections(page){
+        this.filteredSectionOptions = this.sectionOptions.filter(section => section.page === page);
+    }
+
+    filterQuestions(section){
+        this.filteredQuestionOptions = this.questionOptions.filter(question => question.section === section && question.label);
+    }
+
+    handleNarrowSectionChange(event) {
+        try {
+            this.section = event.detail.value;
+            console.log('question options in sec change', JSON.stringify(this.questionOptions));
+
+            this.filterQuestions(this.section);
+            console.log('filteredQuestionOptions', this.filteredQuestionOptions);
+
+            this.resource = null;
+            const index = event.target.dataset.index;
+            this.dispatchUpdateEvent('sectionchange', index, this.section);
+        } catch (error) {
+            this.handleError(error, 'handleNarrowResourceChange');
+        }
+    }
+
+    handleNarrowResourceChange(event) {
+        try {
+            this.resource = event.detail.value;
+            this.resourceNotSelected = !this.resource;
+            const selectedQuestion = this.questions.find(q => q.id === this.resource);
+            if (selectedQuestion) {
+                this.updateOperatorOptions(selectedQuestion.attributes[FIELDS.Form_Question__c.Type.fieldApiName].toLowerCase());
+            }
+            const index = event.target.dataset.index;
+            this.dispatchUpdateEvent('resourcechange', index, this.resource);
+        } catch (error) {
+            this.handleError(error, 'handleNarrowResourceChange');
+        }
+    }
+
+    handleNarrowOperatorChange(event) {
+        this.operator = event.detail.value;
+    }
+
+    handleNarrowValueChange(event) {
+        this.value = event.detail.value;
+    }
+
+    handleRemoveCondition(event) {
+        try {
+            const index = event.target.dataset.index;
+            this.dispatchEvent(new CustomEvent('removecondition', { detail: { index } }));
+        } catch (error) {
+            this.handleError(error, 'handleRemoveCondition');
+        }
+    }
+
+
+    handleOpenPopOver(){
+        console.log('Open Popover');
+        this.isPopoverOpen = true;
+    }
+
+    handleDone() {
+        try {
+            const popover = this.template.querySelector('.slds-popover__body');
+            const allValid = [...popover.querySelectorAll('lightning-combobox, lightning-input')].reduce((validSoFar, inputCmp) => {
+                inputCmp.reportValidity();
+                return validSoFar && inputCmp.checkValidity();
+            }, true);
+
+            if (allValid) {
+                this.sendUpdatedCondition();
+                this.isPopoverOpen = false;
+            }
+        } catch (error) {
+            this.handleError(error, 'handleDone');
+        }
+    }
+
+    sendUpdatedCondition(){
+        try {
+            const conditionEvent = new CustomEvent('conditionchange', {
+                detail: {
+                    condition: {
+                        ...this.condition,
+                        resource: this.resource,
+                        operator: this.operator,
+                        value: this.value
+                    },
+                    index: this.index
+                }
+            });
+
+            console.log('Condition Event: ', conditionEvent);
+            this.dispatchEvent(conditionEvent);
+        } catch (error) {
+            this.handleError(error, 'sendUpdatedCondition');
+        }
+    }
+    
+    handleError(error, methodName) {
+        console.error(`Error in ${methodName}:`, error);
+        this.dispatchEvent(new CustomEvent('error', { detail: { error, methodName } }));
+    }
+
+    connectedCallback(){
+        console.log('selection', this.selection);
+
+        this.initializeOptions();
+        
+        if(this.condition.page){
+            this.page = this.condition.page;
+            this.filterSections(this.page);
+        }else{
+            this.page = this.selection?.attributes[FIELDS.Form_Question__c.FormPage.fieldApiName] ?? null;
+            this.filterSections(this.page);
+        }
+
+        this.section = this.condition.section;
+        this.filterQuestions(this.section);
+
+        this.resource = this.condition.resource;
+        this.resourceNotSelected = !this.resource;
+        console.log('resource not selected?', this.resourceNotSelected, this.resource);
+        this.operator = this.condition.operator;
+        this.value = this.condition.value;
+        const selectedQuestion = this.questions.find(q => q.id === this.resource);
+        if (selectedQuestion) {
+            this.updateOperatorOptions(selectedQuestion.attributes[FIELDS.Form_Question__c.Type.fieldApiName].toLowerCase());
+        }
+    }
+
+    initializeOptions(){
+        const pages = [];
+        const sections = [];
+        const questions = [];
+        console.log('ALL CONFIGS INITIALIZE');
+        console.dir(this.allConfiguration);
+        [...this.allConfiguration].forEach(page => {
+            pages.push({ label: page.attributes[FIELDS.Form_Page__c.Title.fieldApiName], value: page.id });
+            this.pageOptions = [...pages];
+            page.sections.forEach(section => {
+                sections.push({ label: section.attributes[FIELDS.Form_Section__c.Title.fieldApiName], value: section.id, page: page.id });
+                this.sectionOptions = [...sections];
+                
+                section.columns.forEach(column => {
+                    column.components.forEach(question => {
+                        questions.push({ label: question.attributes[FIELDS.Form_Question__c.Question.fieldApiName], value: question.id, section: section.id});
+                        this.questionOptions = [...questions];
+                    });
+                });
+            });
+        });
+        console.log('Page Options: ', this.pageOptions);
+        console.log('Section Options: ', this.sectionOptions);
+        console.log('Question Options: ', this.questionOptions);
+    }
+
+}

@@ -1,0 +1,18 @@
+<template>
+    <div class={alertClass} role="alert">
+        <span class="slds-assistive-text">{altText}</span>
+        <span 
+            class="slds-icon_container slds-icon-utility-user slds-m-right_x-small" 
+            title={altText}
+        >
+            <lightning-icon icon-name={iconName} variant="inverse"></lightning-icon>
+        </span>
+        <h2>{message}</h2>
+        <div class="slds-notify__close" if:true={closable}>
+            <button class="slds-button slds-button_icon slds-button_icon-small slds-button_icon-inverse" title="Close">
+                <lightning-icon icon-name="utility:close" variant="inverse" onclick={handleCloseClick}></lightning-icon>
+            <span class="slds-assistive-text">Close</span>
+            </button>
+        </div>
+    </div>
+</template>

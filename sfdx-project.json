@@ -1,0 +1,36 @@
+{
+  "packageDirectories": [
+    {
+      "path": "field-forms",
+      "package": "Field Forms",
+      "versionName": "ver 3.1",
+      "versionNumber": "3.1.0.NEXT",
+      "ancestorVersion": "HIGHEST",
+      "default": true,
+      "versionDescription": "Field Forms Product from NeuraFlash"
+    }
+  ],
+  "namespace": "NFForms",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "59.0",
+  "packageAliases": {
+    "Field Forms": "0HoHq000000k9d9KAA",
+    "Field Forms@0.1.0-3": "04tHq000000lt2jIAA",
+    "Field Forms@0.1.0-4": "04tHq000000lt2oIAA",
+    "Field Forms@0.1.0-5": "04tHq000000lt2tIAA",
+    "Field Forms@0.1.0-6": "04tHq000000lt2yIAA",
+    "Field Forms@0.1.0-7": "04tHq000000lt33IAA",
+    "Field Forms@0.1.0-8": "04tHq000000lt38IAA",
+    "Field Forms@0.1.0-9": "04tHq000000lt3DIAQ",
+    "Field Forms@0.1.0-10": "04tHq000000lt3IIAQ",
+    "Field Forms@0.2.0-1": "04tHq000000lt4BIAQ",
+    "Field Forms@0.2.0-2": "04tHq000000lt4GIAQ",
+    "Field Forms@0.2.0-3": "04tHq000000lt4LIAQ",
+    "Field Forms@0.3.0-1": "04tHq000000lt5nIAA",
+    "Field Forms@0.3.0-2": "04tHq000000lt5sIAA",
+    "Field Forms@0.4.0-1": "04tHq000000lt5xIAA",
+    "Field Forms@0.5.0-1": "04tHq000000lt7tIAA",
+    "Field Forms@3.0.0-2": "04tan0000006HEHAA2",
+    "Field Forms@3.1.0-2": "04tan0000006JXpAAM"
+  }
+}

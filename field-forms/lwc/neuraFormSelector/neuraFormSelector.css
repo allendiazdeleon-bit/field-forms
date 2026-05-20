@@ -1,0 +1,9 @@
+/* Custom CSS for specific styles */
+.icon {
+    font-size: 50px; /* Adjust icon size as needed */
+}
+
+.tile-margin {
+    margin-left: 0.75rem;
+    margin-right: 0.75rem;
+}

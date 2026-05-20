@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Form_Setting_Field__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Form Setting Field</label>
+    <referenceTo>Form_Setting_Field__mdt</referenceTo>
+    <relationshipLabel>Form Setting to Fields</relationshipLabel>
+    <relationshipName>Form_Setting_to_Fields</relationshipName>
+    <required>false</required>
+    <type>MetadataRelationship</type>
+    <unique>false</unique>
+</CustomField>

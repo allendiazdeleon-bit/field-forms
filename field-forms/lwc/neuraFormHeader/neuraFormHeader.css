@@ -1,0 +1,3 @@
+.header-background {
+    background-color: var(--header-backdrop-color, rgb(216, 216, 216));
+}

@@ -1,0 +1,166 @@
+<template>
+    <template lwc:if={isNarrowVariant}>
+        <span>
+        <template lwc:if={showPopover}>
+            <section aria-label="Dialog title" class="slds-popover slds-nubbin_right popover-custom" role="dialog">
+                <div class="slds-popover__body" style="width:100%">
+                <div class="slds-m-bottom_small">
+                    <lightning-combobox
+                    name="page"
+                    label="Page"
+                    value={page}
+                    options={pageOptions}
+                    data-index={index}
+                    dropdown-alignment="auto"
+                    onchange={handleNarrowPageChange}
+                    required
+                    >
+                    </lightning-combobox>
+                    <lightning-combobox
+                    name="section"
+                    label="Section"
+                    value={section}
+                    options={filteredSectionOptions}
+                    data-index={index}
+                    dropdown-alignment="auto"
+                    onchange={handleNarrowSectionChange}
+                    disabled={sectionDisabled}
+                    required
+                    >
+                    </lightning-combobox>
+                    <lightning-combobox
+                        name="resource"
+                        label="Resource"
+                        value={resource}
+                        options={filteredQuestionOptions}
+                        data-index={index}
+                        dropdown-alignment="auto"
+                        onchange={handleNarrowResourceChange}
+                        disabled={resourceDisabled}
+                        required
+                        >
+                    </lightning-combobox>
+                </div>
+                <div class="slds-m-bottom_small">
+                <lightning-combobox
+                    name="operator"
+                    label="Operator"
+                    value={condition.operator}
+                    options={operatorOptions}
+                    data-index={index}
+                    dropdown-alignment="auto"
+                    onchange={handleNarrowOperatorChange}
+                    disabled={resourceNotSelected}
+                    required
+                    >
+                </lightning-combobox>
+                </div>
+                <div class="slds-m-bottom_small">
+    
+                    <lightning-input
+                        name="value"
+                        label="Value"
+                        value={condition.value}
+                        data-index={index}
+                        onchange={handleNarrowValueChange}
+                        disabled={resourceNotSelected}
+                        type={typeFromQuestion}>
+                    </lightning-input>
+                </div>
+                    <div class="slds-clearfix">
+                        <div class="slds-float_right">
+                            <lightning-button label="Done" onclick={handleDone}></lightning-button>
+                        </div>
+                    </div>
+                </div>
+            </section>    
+        </template>
+        <li class="slds-item slds-hint-parent slds-p-top_xx-small condition-item">
+            <span class="slds-grid slds-grid_vertical-align-center">
+                <div class="slds-col slds-grow-none" style="width:16px">
+                    <div class="slds-m-right_xx-small slds-text-title_bold ">
+                        {condition.key}
+                    </div>
+                </div>
+                <div class="slds-col slds-grow">
+
+                    <div class="slds-filters__item slds-grid">
+                    <button class="slds-button_reset slds-grow slds-has-blur-focus" onclick={handleOpenPopOver}>
+                        <template lwc:if={isNewCondition}>
+                            <span class="slds-show slds-text-body_small">New condition</span>
+                            <span class="slds-assistive-text">Edit condition:</span>
+                        </template>
+                        <template lwc:else>
+                            <span class="slds-assistive-text">Edit condition:</span>
+                            <span class="slds-show slds-text-body_small">{resourceName}</span>
+                            <span class="slds-show">{operaterName} {condition.value}</span>
+                        </template>
+                    </button>
+                    <lightning-button-icon variant="bare" size="small" data-index={index} icon-name="utility:close" alternative-text="Remove filter" title="Remove filter" onclick={handleRemoveCondition}></lightning-button-icon>
+                    </div>
+                </div>
+            </span>
+        </li>
+    </span>
+    </template>
+    <template lwc:if={isBaseVariant}>
+  
+        <li class="slds-expression__row">
+            <fieldset>
+                <legend class="slds-expression__legend">
+                    <template if:true={logicalOperatorDisplay}>
+                    <span>
+                        {logicalOperatorDisplay}
+                </span>
+                </template>
+                    <span class="slds-assistive-text">Condition {condition.key}</span>
+                </legend>
+                <div class="slds-grid slds-gutters_xx-small condition-row">
+                    <div class="slds-col condition-input">
+                        <lightning-combobox
+                            name="resource"
+                            label="Resource"
+                            value={condition.resource}
+                            options={questionOptions}
+                            data-index={index}
+                            onchange={handleResourceChange}>
+                        </lightning-combobox>
+                    </div>
+                    <div class="slds-col condition-input">
+                    <lightning-combobox
+                        name="operator"
+                        label="Operator"
+                        value={condition.type}
+                        options={operatorOptions}
+                        data-index={index}
+                        onchange={handleOperatorChange}
+                        disabled={resourceNotSelected}
+                        >
+                    </lightning-combobox>
+                    </div>
+                    <div class="slds-col condition-input">
+                        <lightning-input
+                            name="value"
+                            label="Value"
+                            value={condition.value}
+                            data-index={index}
+                            onchange={handleValueChange}
+                            disabled={resourceNotSelected}>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-grow-none condition-action">
+                        <lightning-button-icon
+                            icon-name="utility:delete"
+                            variant="border-filled"
+                            title="Delete Condition"
+                            data-index={index}
+                            onclick={handleRemoveCondition}
+                            alternative-text="Delete Condition">
+                    </lightning-button-icon>
+                    </div>
+                </div>
+            </fieldset>
+        </li>
+    </template>
+    
+</template>

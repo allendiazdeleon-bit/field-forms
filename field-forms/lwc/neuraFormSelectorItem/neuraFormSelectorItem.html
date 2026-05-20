@@ -1,0 +1,27 @@
+<template>
+    <div class="slds-visual-picker slds-visual-picker_medium tile-progress tile-custom" data-id={form.id} onclick={handleClick}>
+        <div class="tile-header">
+            <div class="slds-text-heading_medium tile-truncate">{form.name}</div>
+            <!--<div class="slds-text-body_small tile-description tile-truncate">Example Desc of a longer description now</div>-->
+        </div>
+             
+                <div class="loading-bar slds-text-body_small">
+                    <div class="loaded" >
+                        <div class={progressClass}>{progressText}</div>
+
+                    </div>
+                    <div class="remaining">
+                        <div class={remainingClass}>{progressText}</div>
+                    </div>
+                    <!--<template if:true={form.inProgress}>
+                        <span class="tile-inprogress" data-fill={form.progress}>{form.progress}</span>
+                    </template>-->
+                </div>
+            
+        <div class="tile-footer">
+            <div class="slds-text-heading_small">
+                {form.status}
+            </div>
+        </div>
+      </div>
+</template>

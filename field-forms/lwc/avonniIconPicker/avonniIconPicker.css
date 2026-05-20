@@ -1,0 +1,123 @@
+/**
+ * BSD 3-Clause License
+ *
+ * Copyright (c) 2021, Avonni Labs, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ *
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * - Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+div:focus {
+    outline: none;
+}
+
+.avonni-builder-icon-picker-popover-width {
+    width: 14rem;
+}
+
+.avonni-builder-icon-picker-form-error {
+    padding-top: 0.5rem;
+    color: #c23934;
+    font-size: 0.75rem;
+}
+
+.avonni-builder-icon-picker-flex {
+    display: flex;
+}
+
+.avonni-builder-icon-picker-label-inline {
+    display: flex;
+    align-items: center;
+}
+
+.avonni-builder-icon-picker-label-inline lightning-helptext {
+    padding-right: 0.25rem;
+}
+
+lightning-button {
+    display: grid;
+    width: 100%;
+}
+
+button:disabled {
+    background-color: #ecebea;
+}
+
+.avonni-icon-picker__icon {
+    margin-right: 0.25rem;
+}
+
+.avonni-builder-icon-picker-icon-container {
+    height: var(--avonni-builder-icon-picker-popover-height, 14rem);
+}
+
+.avonni-builder-icon-picker-clear-icon:hover {
+    --sds-c-icon-color-foreground-default: #005fb2;
+}
+
+.avonni-builder-icon-picker-read-only-input {
+    display: flex;
+    align-items: center;
+}
+
+.avonni-builder-icon-picker-read-only-cursor {
+    cursor: default;
+    --sds-c-button-shadow-focus: white;
+}
+
+.avonni-builder-icon-picker-x-small-icon-padding {
+    padding: 0.04rem;
+}
+
+.avonni-builder-icon-picker-small-icon-padding {
+    padding: 0.05rem;
+}
+
+.avonni-icon-picker__action-icon_small-scaling {
+    margin: 0 -0.4rem 0 -0.6rem;
+    transform: scale(0.38);
+}
+
+.avonni-icon-picker__action-icon_medium-scaling {
+    margin: 0 -0.4rem 0 -0.6rem;
+    transform: scale(0.55);
+}
+
+.avonni-icon-picker__action-icon_large-scaling {
+    margin: 0 -0.4rem 0 -0.6rem;
+    transform: scale(0.6);
+}
+
+.avonni-icon-picker__toggle-button_size-limit {
+    max-height: 2rem;
+}
+
+.avonni-icon-picker__label {
+    color: var(--avonni-icon-picker-label-text-color, #444444);
+    font-size: var(--avonni-icon-picker-label-font-size, 0.75rem);
+    font-weight: var(--avonni-icon-picker-label-font-weight, 400);
+    font-style: var(--avonni-icon-picker-label-font-style, normal);
+}

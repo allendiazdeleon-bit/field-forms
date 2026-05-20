@@ -1,0 +1,9 @@
+<template>
+    <div>
+        <lightning-button if:false={showGeolocation} label="Capture Geolocation" title={title} onclick={captureGeolocation}></lightning-button>
+        <template if:true={showGeolocation}>
+             <lightning-input data-id="latitude" type="number" label="Latitude" value={latitude} read-only></lightning-input>
+            <lightning-input data-id="longitude" type="number" label="Longitude" value={longitude} read-only></lightning-input>
+        </template>
+    </div>
+</template>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ContentAsset xmlns="http://soap.sforce.com/2006/04/metadata">
+    <isVisibleByExternalUsers>false</isVisibleByExternalUsers>
+    <language>en_US</language>
+    <masterLabel>DALLE20240402091634Designanultrasim</masterLabel>
+    <relationships>
+        <organization>
+            <access>VIEWER</access>
+        </organization>
+    </relationships>
+    <versions>
+        <version>
+            <number>1</number>
+            <pathOnClient>DALLE2024-04-0209.16.34-Designanultra-simplelogoforacompanyservingmobileworkersandhandymenusingonlyasingleshadeofblue.Thelogoshouldfeatureasingular-ezgif.com-webp-to-jpg-converter.jpg</pathOnClient>
+        </version>
+    </versions>
+</ContentAsset>

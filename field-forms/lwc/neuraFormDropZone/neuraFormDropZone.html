@@ -1,0 +1,18 @@
+<template>
+    <div 
+    style="z-index: 0;"
+    class={dropZoneClass}
+    ondragover={handleDragOver}
+    ondragleave={handleDragLeave}
+    ondrop={handleDrop}>
+    <div lwc:dom="manual" data-drag-slot="start" class="slds-hidden slds-drop-zone_drag__slot"></div>
+        <template for:each={layout.sections} for:item="item">
+            <div key={item.id}>
+                <c-neura-form-drop-zone-section dragged-item-info={draggedItemInfo} section={item}  current-selection-id={currentSelectionId}></c-neura-form-drop-zone-section>
+                <div lwc:dom="manual" data-drag-slot={item.id} class="slds-hidden slds-drop-zone_drag__slot"></div>
+            </div>
+        </template>
+        <!-- <div lwc:dom="manual" class="drop-slot-container"></div> -->
+    </div>
+
+</template>

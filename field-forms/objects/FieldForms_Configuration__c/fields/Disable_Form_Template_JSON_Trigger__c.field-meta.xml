@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Disable_Form_Template_JSON_Trigger__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Disables the form templates compiling the JSON of the pages, sections, questions and conditions. This should be used during import and export exercises when dealing with large forms.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Disables the form templates compiling the JSON of the pages, sections, questions and conditions. This should be used during import and export exercises when dealing with large forms.</inlineHelpText>
+    <label>Disable Form Template JSON Trigger</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

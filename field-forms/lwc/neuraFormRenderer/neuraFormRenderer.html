@@ -1,0 +1,35 @@
+<template>
+	<template if:true={isLoaded}>
+		<div class="renderer-wrapper">
+			<div class="temp-test"></div>
+			<c-neura-form-header
+				class="form-header"
+				indicator-type={indicatorType}
+				step-list={pageTitleList}
+				total-steps={totalPageCount}
+				current-step-index={currentPageIndex}
+				current-step={currentPageTitle}
+			></c-neura-form-header>
+			<div
+				style="margin-bottom: 56px"
+			>
+				<c-neura-form-page
+					lwc:ref="formPage"
+					record-id={recordId}
+					form-page={currentPage}
+					onanswerchange={handleAnswerChange}
+				></c-neura-form-page>
+			</div>
+			<c-neura-form-footer
+				onbuttonclick={handleFooterButtonClick}
+				total-pages={totalPageCount}
+				current-page-index={currentPageIndex}
+			></c-neura-form-footer>
+		</div>
+	</template>
+	<template if:true={isCompleted}>
+		<c-neura-form-complete
+			is-desktop={isDesktop}
+		></c-neura-form-complete>
+	</template>
+</template>

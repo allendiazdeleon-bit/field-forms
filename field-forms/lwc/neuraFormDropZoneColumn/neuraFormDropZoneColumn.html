@@ -1,0 +1,30 @@
+<template>
+    <div 
+
+        ondragover={handleDragOver}
+        ondragleave={handleDragLeave}
+        ondrop={handleDrop}
+        class={dropZoneClass}
+        style="width:100%; min-height:5rem; height:100%; z-index:11">
+        <template if:true={isComponentsEmpty}>
+            <div class="slds-align_absolute-center" style="height:100%; width:100%" >
+                <template if:true={isDragOver}>
+                    <div class="slds-drop-zone_drag__slot"></div>
+                </template>
+                <template if:false={isDragOver}>
+                    <lightning-badge label="Drop" icon-name="utility:drag"></lightning-badge>
+                </template>
+            </div>
+        </template>
+        <template if:false={isComponentsEmpty}>
+            <div lwc:dom="manual" data-drag-slot="start" class="slds-hidden slds-drop-zone_drag__slot"></div>
+            <template for:item="component" for:each={components}>
+                <!-- Render Component -->
+                <div key={component.id}>
+                    <c-neura-form-drop-zone-question component={component} current-selection-id={currentSelectionId}></c-neura-form-drop-zone-question>
+                    <div lwc:dom="manual" data-drag-slot={component.id} class="slds-hidden slds-drop-zone_drag__slot"></div>
+                </div>
+            </template>
+        </template>
+    </div>
+</template>

@@ -1,0 +1,8 @@
+.slds-builder-header__item-action{
+    cursor: pointer;
+}
+
+.middle-actions{
+    position:absolute;
+    left:300px;
+}

@@ -1,0 +1,15 @@
+<template>
+    
+    <div class="slds-grid slds-p-around_small slds-grid_vertical-align-center header-background">
+        <div class="slds-col slds-col_bump-right">
+            <c-neura-form-progress indicator-type={indicatorType} current-step={currentStep} step-list={stepList} current-step-index={currentStepIndex} total-steps={totalSteps}></c-neura-form-progress>
+        </div>
+        <template if:true={showRightText}>
+            <div class="slds-col slds-grow slds-container_right slds-text-align_right">
+                <div class="slds-text-heading_small">{currentStep}</div>
+                <div if:true={isNextStep}>Next: {nextStep}</div>
+            </div>
+        </template>
+        
+    </div>
+</template>

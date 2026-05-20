@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>60.0</apiVersion>
+    <environments>Default</environments>
+    <interviewLabel>Field Forms - Service Appointment - Create Linked Forms {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Field Forms - Service Appointment - Create Linked Forms</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Create_Linked_Forms</targetReference>
+        </connector>
+        <filterFormula>OR(
+    AND(ISNEW(), NOT(ISBLANK({!$Record.WorkTypeId}))),
+    AND(NOT(ISNEW()), {!$Record__Prior.WorkTypeId} != {!$Record.WorkTypeId}, NOT(ISBLANK({!$Record.WorkTypeId})))
+)</filterFormula>
+        <object>ServiceAppointment</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+    <subflows>
+        <name>Create_Linked_Forms</name>
+        <label>Create Linked Forms</label>
+        <locationX>176</locationX>
+        <locationY>323</locationY>
+        <flowName>Field_Forms_Default_Forms_to_Linked_Forms</flowName>
+        <inputAssignments>
+            <name>recordId</name>
+            <value>
+                <elementReference>$Record.Id</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <name>workTypeId</name>
+            <value>
+                <elementReference>$Record.WorkTypeId</elementReference>
+            </value>
+        </inputAssignments>
+    </subflows>
+</Flow>

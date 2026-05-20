@@ -1,0 +1,64 @@
+<template>
+    <!--have to hardcode to avoid rendering issues -->
+    <div class="margin-bottom:50px">
+        <template if:true={isForm}>
+            <lightning-record-edit-form object-api-name={formTemplateApiName}>
+                <lightning-messages></lightning-messages>
+                <template for:each={activeSelection} for:item="setting">
+                    <lightning-input-field key={setting.label} onchange={handleAttributeChange} field-name={setting.label} value={setting.value}> </lightning-input-field>
+                </template>
+            </lightning-record-edit-form>
+        </template>
+        
+        <template if:true={isPage}>
+            <lightning-record-edit-form object-api-name={formPageApiName}>
+                <lightning-messages></lightning-messages>
+                <template for:each={activeSelection} for:item="setting">
+                    <template if:true={setting.isStandard}>
+                        <lightning-input-field key={setting.label} onchange={handleAttributeChange} field-name={setting.label} value={setting.value}> </lightning-input-field>
+                    </template>
+                    <template if:true={setting.isColor}>
+                        <lightning-input key={setting.label} class="slds-form-element_stacked" type="color" label={setting.displayLabel} field-name={setting.label} onchange={handleAttributeChange} value={setting.value}></lightning-input>
+                    </template>
+                </template>
+            </lightning-record-edit-form>
+        </template>
+        <template if:true={isSection}>
+            <lightning-record-edit-form object-api-name={formSectionApiName}>
+                <lightning-messages></lightning-messages>
+                <template for:each={activeSelection} for:item="setting">
+                    <template if:true={setting.isStandard}>
+                        <lightning-input-field key={setting.label} onchange={handleAttributeChange} field-name={setting.label} value={setting.value}> </lightning-input-field>
+                    </template>
+                    <template if:true={setting.isColor}>
+                        <lightning-input key={setting.label} class="slds-form-element_stacked" type="color" label={setting.displayLabel} field-name={setting.label} onchange={handleAttributeChange} value={setting.value}></lightning-input>
+                    </template>
+                </template>
+            </lightning-record-edit-form>
+        </template>
+        <template if:true={isQuestion}>
+            <lightning-record-edit-form object-api-name={formQuestionApiName}>
+                <lightning-messages></lightning-messages>
+                <div lwc:if={isNotDisplayText}>
+                    <lightning-input-field onchange={handleAttributeChange} field-name={questionFieldApiName} value={questionFieldValue}> </lightning-input-field>
+                </div>
+                <template for:each={activeSelection} for:item="setting">
+                    <template if:true={setting.isStandard}>
+                        <lightning-input-field key={setting.label} onchange={handleAttributeChange} field-name={setting.label} value={setting.value}> </lightning-input-field>
+                    </template>
+                    <template if:true={setting.isColor}>
+                        <div key={setting.label} class="slds-form-element slds-form-element_stacked">
+                        <lightning-input  type="color" label={setting.displayLabel} field-name={setting.label} onchange={handleAttributeChange} value={setting.value}></lightning-input>
+                        </div>
+                    </template>
+                    <template if:true={setting.isValueSet}>
+                        <c-neura-form-builder-attributes-value-set key={setting.label} field-name={setting.label} value-set={setting.value} onupdate={handleValueSetChange}></c-neura-form-builder-attributes-value-set>
+                    </template>
+                </template>
+            </lightning-record-edit-form>
+        </template>
+        <template lwc:if={isNotForm}>
+            <c-neura-form-criteria-builder onupdate={handleConditionsUpdate} selection={selection} condition-field-value={conditionFieldValue}></c-neura-form-criteria-builder>
+        </template>
+    </div>
+</template>

@@ -1,0 +1,6 @@
+.ratings form {
+    display: flex;
+    justify-content: space-around;
+    margin: 2rem 0;
+    position: relative;
+}

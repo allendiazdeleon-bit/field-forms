@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Form Setting to Field</label>
+    <pluralLabel>Form Setting to Fields</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

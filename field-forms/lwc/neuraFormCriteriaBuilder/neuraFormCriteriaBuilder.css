@@ -1,0 +1,22 @@
+/* conditionLogicBuilder.css */
+
+/*
+.condition-row {
+    display: flex;
+    align-items: stretch; 
+    justify-content: flex-start; 
+}*/
+
+.condition-input {
+    flex-grow: 1; /* Allows input fields to expand and fill the available horizontal space */
+}
+
+.condition-action {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* Pushes the button to the bottom */
+}
+
+.conditon-builder li{
+    list-style-type: none;
+}

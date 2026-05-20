@@ -1,0 +1,17 @@
+<template>
+    <lightning-modal-header label="Save As New Form"></lightning-modal-header>
+    <lightning-modal-body> 
+        <lightning-input label="Name" value={name} onchange={handleNameChange} required message-when-value-missing="Name is required to save"></lightning-input>
+        <!--<lightning-input label="Description" value={description} onchange={handleDescriptionChange}></lightning-input>-->
+    </lightning-modal-body>
+    <lightning-modal-footer>
+        <div class="slds-grid slds-grid--align-end">
+            <div class="slds-col slds-p-left_x-small">
+                <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+            </div>
+            <div class="slds-col slds-p-left_x-small">
+                <lightning-button label="Save" variant="brand" onclick={handleSave}></lightning-button>
+            </div>
+        </div>
+    </lightning-modal-footer>
+</template>

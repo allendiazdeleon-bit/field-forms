@@ -1,0 +1,122 @@
+<template>
+    <div class="full-screen-builder">
+        <div class="full-screen-header">
+            <c-neura-form-builder-header builder-name="NeuraForm Builder" dropdown-title="Forms" title={formSettings.name} disable-undo={disableUndo} disable-redo={disableRedo} enable-paste={copyComponent} selection-structure={selectionStructure} onheaderclick={handleHeaderClick}></c-neura-form-builder-header>
+        </div>
+        <!-- Builder Left Panel: for looking up components to add to the canvas -->
+        <div class="full-screen-body">
+            <div class="flexipageEditorBody slds-size_1-of-1">
+                <div class="flex">
+                    <!-- Left Panel: Components and Fields Tabs -->
+                    <c-neura-panel hide-header open={componentPanel} size-pixels="300" full-height>
+                        <span slot="header">
+                        </span>
+                        <span slot="content">
+                            <lightning-tabset>
+                                <lightning-tab label="Components" style="height:100%">
+                                    <div class="slds-p-horizontal_medium" style="height:calc(100% - 40px);overflow-y:auto">
+                                        <!-- TODO: <lightning-input type="search" placeholder="Search..." label="Search" variant="label-hidden"></lightning-input> -->
+                                        <!-- List of draggable components here in Accordion -->
+                                        <lightning-accordion class="component-accordion" allow-multiple-sections-open active-section-name={activeSections}>
+                                            <lightning-accordion-section label="Layout" name="Layout" heading-level="3">
+                                                <ul class="paletteItems visualEditorPalette">
+                                                    <template for:each={layoutItems} for:item="layoutItem">
+                                                        <c-neura-form-component-item key={layoutItem.MasterLabel} item={layoutItem} onnfdragstart={handleNFDragStart} onnfdragend={handleNFDragEnd} type={layoutItem.Label}></c-neura-form-component-item>
+                                                    </template>
+                                                </ul>
+                                            </lightning-accordion-section>
+                                            <lightning-accordion-section label="Components" name="Components" heading-level="3">
+                                                <ul class="paletteItems visualEditorPalette">
+                                                    <template for:each={componentItems} for:item="componentItem">
+                                                        <c-neura-form-component-item key={componentItem.MasterLabel} item={componentItem} onnfdragstart={handleNFDragStart} onnfdragend={handleNFDragEnd} type={componentItem.Label}></c-neura-form-component-item>
+                                                    </template>
+                                                </ul>
+                                            </lightning-accordion-section>
+                                        </lightning-accordion>
+                                    </div>
+                                </lightning-tab>
+                                <lightning-tab label="Pages" style="height:100%">
+                                    <div class="slds-p-horizontal_medium" style="height:calc(100% - 40px);overflow-y:auto">
+                                        <!--<lightning-input type="search" placeholder="Search..." label="Search" variant="label-hidden"></lightning-input>-->
+                                        <!-- List of draggable components here in Accordion -->
+                                        <lightning-accordion class="component-accordion" allow-multiple-sections-open active-section-name={activeSections}>
+                                            <lightning-accordion-section label="Pages" name="Pages" heading-level="3">
+                                                <ul class="paletteItems visualEditorPalette">
+                                                    <template if:true={loaded}>
+                                                        <template for:each={formSettings.pages} for:item="page">
+                                                            <c-neura-form-builder-page-item key={page.id} page={page} current-page-id={currentPage.id} onselection={handleSelection} onreorder={handleReOrderPage} ondelete={handleDeletePage}></c-neura-form-builder-page-item>
+                                                            
+                                                        </template>
+                                                        <!-- Add New Page -->
+                                                            <c-neura-form-builder-page-item new-page onnewpage={handleNewPage}></c-neura-form-builder-page-item>
+                                                    </template>
+                                                </ul>
+                                            </lightning-accordion-section>
+                                        </lightning-accordion>
+                                    </div>
+                                </lightning-tab>
+                            </lightning-tabset>
+                        </span>
+                    </c-neura-panel>
+                    <!-- Middle Area: Canvas for dropping components -->
+                    <div class="middle canvas-container slds-scrollable">
+                        <div class="canvas-inner-container">
+                            <div class={screenSizeClass}>
+                                <template if:true={currentPage}>
+                                    <c-neura-form-header indicator-type={indicatorType} step-list={pageArray} total-steps={totalPageCount} current-step-index={currentPageIndex} current-step={currentPageTitle}></c-neura-form-header>
+                                    <c-neura-form-drop-zone ondelete={handleDelete} onupdatesection={handleSectionDrop} onupdatecomponent={handleComponentDrop} layout={currentPage} dragged-item-info={draggedItemInfo} onselection={handleSelection}  current-selection-id={currentSelectionId} onnfdragstart={handleNFDragStart} onnfdragend={handleNFDragEnd}></c-neura-form-drop-zone>
+                                    <c-neura-form-footer onbuttonclick={handleFooterButtonClick} total-pages={totalPageCount} current-page-index={currentPageIndex}></c-neura-form-footer>
+                                </template>
+                                
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Properties of selected component/field -->
+                <!-- <template if:true={selection}>-->
+                    <c-neura-panel title={breadCrumb} custom-header onclose={handleCloseSettings} open={settingsPanel} apply-body-class full-height >
+                        <span slot="header">
+                            <lightning-breadcrumbs>
+                                <lightning-breadcrumb
+                                label="Form Settings"
+                                onclick={handleBreadCrumbSelection}
+                                data-id={formSettings.id}
+                                data-type="Form">
+                                </lightning-breadcrumb>
+                                <template if:true={showSecondLevelCrumb}>
+                                    <lightning-breadcrumb
+                                        label="Page"
+                                        onclick={handleBreadCrumbSelection}
+                                        data-id={currentPage.id}
+                                        data-type="Page"
+                                    >
+                                    </lightning-breadcrumb>
+                                </template>
+                                <template if:true={showThirdLevelCrumb}>
+                                    <lightning-breadcrumb
+                                        label={selectionStructure}
+                                        onclick={handleBreadCrumbSelection}
+                                        data-id={selection.id}
+                                        data-type={selectionStructure}
+                                    >
+                                    </lightning-breadcrumb>
+                                </template>
+                            </lightning-breadcrumbs>
+                        </span>
+                        <span slot="content">
+                            <template if:true={selection}>
+                                <c-neura-form-builder-attributes onupdate={handleUpdateToFormSetting} selection={selection}></c-neura-form-builder-attributes>
+                                <!--<c-neura-form-criteria-builder onupdate={handleUpdateToFormSetting} selection={selection}></c-neura-form-criteria-builder>-->
+                            </template>
+                        </span>
+                    </c-neura-panel>
+                <!-- </template> -->
+                </div>
+            </div>
+        </div>
+
+    <template if:true={loading}>
+            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+    </template>
+    </div>
+</template>

@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+	<apiVersion>57.0</apiVersion>
+	<isExposed>true</isExposed>
+	<masterLabel>tagButtonImage</masterLabel>
+	<description>tagButtonImage</description>
+	<targets>
+		<target>lightning__RecordPage</target>
+		<target>lightning__RecordAction</target>
+	</targets>
+</LightningComponentBundle>

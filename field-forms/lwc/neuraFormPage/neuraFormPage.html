@@ -1,0 +1,15 @@
+<template>
+    <template if:true={formPage}>
+        <div class="page-wrapper">
+            <template for:item="formSection" for:each={formPage.sections}>
+                <div if:true={formSection.shouldRender} key={formSection.Id} class="form-section">
+                   <c-neura-form-section record-id={recordId} form-section={formSection} onoverlaystate={handleOverlayStateChange}></c-neura-form-section> 
+                </div>
+            </template>
+        </div>
+    </template>
+    <template if:false={formPage}>
+        <!-- Handle error state -->
+        <p>Error loading form page.</p>
+    </template>
+</template>

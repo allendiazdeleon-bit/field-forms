@@ -1,0 +1,24 @@
+<template>
+    <div class="radio-group-container" onclick={handleRadioClick}>
+        <div class={sliderClass}></div>
+        <template for:each={radioOptions} for:item="option">
+            <template if:true={option.icon}>
+            	<label key={option.value} class={option.class}>
+                    <input type="radio" name="searchtype" data-location={option.dataLocation} value={option.value} checked={option.checked} />
+                    <!-- insert slds icon -->
+                    <div>
+                        <lightning-icon icon-name={option.icon} size="small" alternative-text={option.label}></lightning-icon>
+                    </div>
+                </label>
+            </template>
+            <template if:false={option.icon}>
+                <label key={option.value} class={option.class}>
+                    <input type="radio" name="searchtype" data-location={option.dataLocation} value={option.value} checked={option.checked} />
+                    <div><div class="slds-text-heading_small">{option.label}</div></div>
+                </label>
+            </template>
+            
+            
+        </template>
+    </div>
+</template>

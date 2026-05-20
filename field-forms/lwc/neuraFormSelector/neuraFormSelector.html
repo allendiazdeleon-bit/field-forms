@@ -1,0 +1,11 @@
+<template>
+    <fieldset class="slds-form-element">
+        <div class="slds-form-element__control slds-grid slds-wrap slds-gutters tile-margin">
+                <template for:each={forms} for:item="form" for:index="index">
+                    <div key={form.id} class="slds-col slds-size_1-of-2 slds-small-size_1-of-2 slds-medium-size_1-of-4 slds-large-size_1-of-6">
+                     <c-neura-form-selector-item form={form}></c-neura-form-selector-item>
+                    </div>
+                </template>
+        </div>
+    </fieldset>
+</template>

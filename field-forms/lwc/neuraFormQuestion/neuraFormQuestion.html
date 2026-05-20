@@ -1,0 +1,34 @@
+<template>
+	<div lwc:if={isLayoutItem}>
+		<lightning-formatted-rich-text
+			value={layoutItemRichText}
+		></lightning-formatted-rich-text>
+	</div>
+
+	<div lwc:else>
+		<div
+			class="slds-m-bottom_x-small slds-text-body_regular"
+		>
+			<abbr
+				if:true={isRequired}
+				class="slds-required"
+			>
+				*
+			</abbr>
+			<span
+				class="question-label"
+				style={labelStyle}
+			>
+				{question}
+			</span>
+		</div>
+
+		<c-neura-form-answer
+			lwc:ref="formAnswer"
+			record-id={recordId}
+			question={formQuestion}
+			input-type={questionType}
+			is-required={isRequired}
+		></c-neura-form-answer>
+	</div>
+</template>

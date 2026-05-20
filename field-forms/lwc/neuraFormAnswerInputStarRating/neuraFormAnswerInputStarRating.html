@@ -1,0 +1,8 @@
+<template>
+    <div class="rate">
+        <template for:each={options} for:item="option">
+            <input type="radio" key={option.value} id={option.value} name="rate" value={option.value} checked={option.checked} onclick={handleRatingClick}/>
+            <label key={option.value} for={option.value} title={option.label}>{option.label}</label>
+        </template>
+      </div>
+</template>

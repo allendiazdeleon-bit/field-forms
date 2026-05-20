@@ -1,0 +1,15 @@
+.form-footer {
+    position: var(--footer-position, fixed);
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #f4f4f4;
+    text-align: center;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+    z-index:10;
+}
+
+.form-footer-buttons {
+    display: flex;
+    justify-content: space-evenly;
+}

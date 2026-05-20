@@ -1,0 +1,32 @@
+<template>
+    <div class="slds-form-element slds-form-element_stacked">
+        <label class="slds-form-element__label">Options</label>
+        <template for:each={valueSet} for:item="item" for:index="index">
+            
+            <div key={item.id} class="slds-grid slds-m-bottom_x-small">
+                <!-- Custom Icon Picker Component -->
+                <div class="slds-col">
+                    <c-avonni-icon-picker
+                    label="Icon label"
+                    value={item.icon}
+                    variant="label-hidden"
+                    menu-variant="border-inverse"
+                    hide-input-text
+                    data-index={index}
+                    onchange={handleIconChange}
+                    ></c-avonni-icon-picker>
+                </div>
+                <div class="slds-col">
+                    <lightning-input label="Label" value={item.label} data-index={index} onchange={handleInputChange} variant="label-hidden"></lightning-input>
+                </div>
+    
+                <div class="slds-col">
+                    <lightning-button-icon icon-name="utility:delete"    alternative-text="Delete"   class="slds-m-left_xx-small" title="Delete" data-index={index} onclick={deleteItem}></lightning-button-icon>
+                </div>
+            </div>
+        </template>
+        <div class="slds-align_absolute-center">
+            <lightning-button label="Add Option" onclick={addItem}></lightning-button>
+        </div>
+    </div>
+</template>

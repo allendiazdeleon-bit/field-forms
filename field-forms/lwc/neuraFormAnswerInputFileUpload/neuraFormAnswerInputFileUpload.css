@@ -1,0 +1,45 @@
+.dummy{
+	color : black;
+}
+.mobileButtonOutline {
+    position: relative;
+    border-radius: 100px;
+    color: var(--lwc-brandAccessibleActive, #1e1e3f);
+    border: 1px solid var(--lwc-brandAccessibleActive, #1e1e3f);
+    background: var(--brand-inverted-color, #fff);
+    display: flex;
+    width: 150px;
+    padding: 15px 25px;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.branded-foreground {
+    --slds-c-icon-color-foreground: #2A7AB0;
+    --slds-c-icon-color-foreground-default: #2A7AB0;
+}
+
+.photo-container {
+    color: #2A7AB0; 
+    font-size: 14px; 
+    font-weight: 600; 
+    line-height: 20px; 
+    word-wrap: break-word;
+    width: 100%; 
+    height: 100%; 
+    padding-left: 30px; 
+    padding-right: 30px; 
+    padding-top: 40px; 
+    padding-bottom: 40px; 
+    background: #D9F2F3; 
+    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.06); 
+    border-radius: 4px; overflow: hidden; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    gap: 10px; 
+    display: inline-flex
+}

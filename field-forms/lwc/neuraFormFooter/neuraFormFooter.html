@@ -1,0 +1,37 @@
+<template>
+    <footer class="form-footer">
+        <div class="form-footer-buttons slds-p-around_small">
+            <lightning-button label="Back to Forms" 
+                                variant="neutral" 
+                                onclick={handleButtonClick}
+                                class="footer-btn"
+                                data-action="backToForms"
+                                if:true={isFirstStep}>
+            </lightning-button>
+
+            <lightning-button label="Previous" 
+                                variant="neutral" 
+                                onclick={handleButtonClick}
+                                class="footer-btn"
+                                data-action="previous"
+                                if:true={hasPrevious}>
+            </lightning-button>
+
+            <lightning-button label="Next" 
+                              variant="brand" 
+                              onclick={handleButtonClick}
+                              class="footer-btn"
+                              data-action="next"
+                              if:false={isLastStep}>
+            </lightning-button>
+
+            <lightning-button label="Finish" 
+                                variant="success" 
+                                onclick={handleButtonClick}
+                                class="footer-btn"
+                                data-action="finish"
+                                if:true={isLastStep}>
+            </lightning-button>
+        </div>
+    </footer>
+</template>

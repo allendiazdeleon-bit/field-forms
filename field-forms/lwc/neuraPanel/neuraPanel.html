@@ -1,0 +1,22 @@
+<template>
+    <div class={panelClass} style={panelStyle} aria-hidden="false">
+        <template if:true={displayHeader}>
+            <div class="slds-panel__header">
+                <h2 class="slds-panel__header-title slds-text-heading_small slds-truncate" title="Panel Header">{title}</h2>
+                <lightning-button-icon alternative-text="" class="slds-panel__close" icon-name="utility:close" size="small" variant="container" onclick={handleCloseClick}></lightning-button-icon>
+            </div>
+        </template>
+        <template if:true={customHeader}>
+            <div class="slds-panel__header slds-panel__header_custom">
+                <div class="slds-panel__header-title slds-truncate" title="Panel Header">
+                    <slot name="header"></slot>
+                </div>
+                <lightning-button-icon alternative-text="" class="slds-panel__close" icon-name="utility:close" size="small" variant="container" onclick={handleCloseClick}></lightning-button-icon>
+            </div>
+        </template>
+        <div class={bodyClass} style="height:100%; overflow-y:auto; padding-bottom:50px">
+            <slot></slot>
+            <slot name="content"></slot>
+        </div>
+    </div>
+</template>

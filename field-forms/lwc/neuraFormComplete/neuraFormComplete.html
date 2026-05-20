@@ -1,0 +1,14 @@
+<template>
+    <div class={wrapperClasses}> 
+        <div class="inner-wrapper slds-grid slds-wrap slds-align_absolute-center">
+            <div class="slds-text-heading_medium slds-m-bottom_medium slds-align_absolute-center slds-size_1-of-1">Form Complete</div>
+            <div class="slds-align_absolute-center slds-size_1-of-1">
+                <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"> 
+                    <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/> 
+                    <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+            <c-neura-mobile-button class="slds-m-top_large" title="Back to Forms" onbuttonclick={handleBack} variant="success"></c-neura-mobile-button>
+        </div>
+    </div>
+</template>

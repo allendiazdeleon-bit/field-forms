@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>Text</fullName>
+        <default>false</default>
+        <label>Text</label>
+    </customValue>
+    <customValue>
+        <fullName>Text Area</fullName>
+        <default>false</default>
+        <label>Text Area</label>
+    </customValue>
+    <customValue>
+        <fullName>Multiple Choice</fullName>
+        <default>false</default>
+        <label>Multiple Choice</label>
+    </customValue>
+    <customValue>
+        <fullName>Checkboxes</fullName>
+        <default>false</default>
+        <label>Checkboxes</label>
+    </customValue>
+    <customValue>
+        <fullName>Dropdown</fullName>
+        <default>false</default>
+        <label>Dropdown</label>
+    </customValue>
+    <customValue>
+        <fullName>Radio Buttons</fullName>
+        <default>false</default>
+        <label>Radio Buttons</label>
+    </customValue>
+    <customValue>
+        <fullName>Date</fullName>
+        <default>false</default>
+        <label>Date</label>
+    </customValue>
+    <customValue>
+        <fullName>Time</fullName>
+        <default>false</default>
+        <label>Time</label>
+    </customValue>
+    <customValue>
+        <fullName>Number</fullName>
+        <default>false</default>
+        <label>Number</label>
+    </customValue>
+    <customValue>
+        <fullName>Email</fullName>
+        <default>false</default>
+        <label>Email</label>
+    </customValue>
+    <customValue>
+        <fullName>Phone</fullName>
+        <default>false</default>
+        <label>Phone</label>
+    </customValue>
+    <customValue>
+        <fullName>Rating</fullName>
+        <default>false</default>
+        <label>Rating</label>
+    </customValue>
+    <customValue>
+        <fullName>Slider</fullName>
+        <default>false</default>
+        <label>Slider</label>
+    </customValue>
+    <customValue>
+        <fullName>File Upload</fullName>
+        <default>false</default>
+        <label>File Upload</label>
+    </customValue>
+    <customValue>
+        <fullName>Geolocation</fullName>
+        <default>false</default>
+        <label>Geolocation</label>
+    </customValue>
+    <customValue>
+        <fullName>Toggle</fullName>
+        <default>false</default>
+        <label>Toggle</label>
+    </customValue>
+    <customValue>
+        <fullName>Signature</fullName>
+        <default>false</default>
+        <label>Signature</label>
+    </customValue>
+    <customValue>
+        <fullName>Checkbox</fullName>
+        <default>false</default>
+        <label>Checkbox</label>
+    </customValue>
+    <customValue>
+        <fullName>Scan Barcode</fullName>
+        <default>false</default>
+        <label>Scan Barcode</label>
+    </customValue>
+    <customValue>
+        <fullName>Display Text</fullName>
+        <default>false</default>
+        <label>Display Text</label>
+    </customValue>
+    <description>Used for form question and answer types</description>
+    <masterLabel>Form Question/Answer types</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

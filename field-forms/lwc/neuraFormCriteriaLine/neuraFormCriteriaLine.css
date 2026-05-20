@@ -1,0 +1,46 @@
+/* conditionLogicBuilder.css */
+
+/*
+.condition-row {
+    display: flex;
+    align-items: stretch;
+}
+*/
+
+.condition-input {
+    flex-grow: 1;
+}
+
+.condition-action {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.popover-custom {
+    position: absolute;
+    bottom: 20px;
+    right: 350px;
+}
+
+li {
+    list-style-type: none;
+    width:100%;
+}
+
+.condition-item {
+    position: relative;
+    display: inline-block;
+}
+
+.slds-hint-parent {
+    position: relative;
+  }
+  
+  .condition-item .popover-custom {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    z-index: 1;
+  }

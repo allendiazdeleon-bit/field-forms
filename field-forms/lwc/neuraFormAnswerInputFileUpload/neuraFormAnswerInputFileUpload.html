@@ -1,0 +1,38 @@
+<template>
+    <template if:false={showPhotoFocus}>
+        <c-image-capture
+            files-data={filesData}
+            layout-style={layoutStyle}
+            oncloseassetphoto={handleAssetPhoto} 
+            onuploaddocument={handleUploadDocument}
+        ></c-image-capture>
+        <!--
+ <div class="slds-grid slds-m-bottom_small">
+                <div class="slds-grid ">
+                    <div class="photo-container" onclick={handlePhotoOpen}>
+                            <lightning-icon
+                            class="branded-foreground"
+                            icon-name="utility:photo"
+                            size="small"
+                            alternative-text="Photo"
+                            title="Photo"
+                        ></lightning-icon>
+                        <div>Add Photo</div>
+                    </div>
+                    <!-
+                    <div class="mobileButtonOutline slds-m-right_x-small" onclick={handlePhotoOpen}>
+                        <lightning-icon
+                            class="branded-foreground"
+                            icon-name="utility:photo"
+                            size="x-small"
+                            alternative-text="Photo"
+                            title="Photo"
+                        ></lightning-icon>
+                        <span>Take Photo</span>
+                    </div>
+                    ->
+                </div>
+            </div>-->
+    </template>
+              
+</template>
