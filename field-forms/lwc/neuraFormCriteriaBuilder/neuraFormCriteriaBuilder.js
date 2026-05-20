@@ -66,10 +66,18 @@ export default class NeuraFormCriteriaBuilder extends LightningElement {
     }
 
     get questionOptions() {
-        return this.allQuestions.map(q => ({
-            label: q.attributes[FIELDS.Form_Question__c.Question.fieldApiName],
-            value: q.id
-        }));
+        // Exclude the currently-selected question (or all questions in the
+        // currently-selected section/page) from its own condition picker. A
+        // question can't sensibly reference itself - that creates a rendering
+        // loop where shouldRender depends on the answer to a question that's
+        // hidden until the condition is met.
+        const selectedId = this.selection?.id;
+        return this.allQuestions
+            .filter(q => q.id !== selectedId)
+            .map(q => ({
+                label: q.attributes[FIELDS.Form_Question__c.Question.fieldApiName],
+                value: q.id
+            }));
     }
 
      /**

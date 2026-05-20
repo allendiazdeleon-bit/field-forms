@@ -205,17 +205,6 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     /**
-     * Sets the style settings for the neuraFormBuilder component.
-     */
-    setStyleSettings(){
-
-        this.template.host.style.setProperty('--header-size', headerSize + 'px');
-        this.template.host.style.setProperty('--header-fg', headerFGColor);
-        this.template.host.style.setProperty('--header-bg', headerBGColor);
-
-    }
-
-    /**
      * Retrieves the form details from the server using an Apex method.
      * @returns {void}
      */
@@ -304,11 +293,25 @@ export default class NeuraFormBuilder extends LightningElement {
         this.pageArray = this.formSettings.pages.map(page => (page.attributes[FIELDS.Form_Page__c.Title.fieldApiName]));
         this.currentPage = this.formSettings.pages[this.historicalPageIndex];
 
+        // Snapshot the loaded attributes for each record so processPages/Sections/
+        // Questions can skip unchanged records on save (audit item M2).
+        this.loadedAttributesById = {};
+        const snap = (rec) => {
+            if (rec?.id && !this.isUUID(rec.id)) {
+                this.loadedAttributesById[rec.id] = JSON.stringify(rec.attributes || {});
+            }
+        };
+        this.formSettings.pages.forEach(p => {
+            snap(p);
+            p.sections.forEach(s => {
+                snap(s);
+                s.columns.forEach(c => c.components.forEach(snap));
+            });
+        });
+
         this.updateAllQuestions(this.formSettings);
 
         this.loaded = true;
-        // Initial / post-refresh load. updateFormSettings inside this method
-        // would otherwise have flipped isDirty=true; explicitly clear it.
         this.isDirty = false;
     }
 
@@ -1003,14 +1006,20 @@ export default class NeuraFormBuilder extends LightningElement {
     }
     
     /**
-     * Checks if the record has been updated.
-     * @param {Object} record - The record to check.
-     * @returns {boolean} - True if the record has been updated, false otherwise.
+     * Determines whether an existing (already-saved) record needs to be sent
+     * back to Apex on save. Compares the current attributes JSON against the
+     * snapshot captured in processFormDetails. New records (UUID ids) are
+     * always considered "dirty" via isNewRecord and never reach this method.
      */
     isUpdatedRecord(record) {
-        //TODO: return true but in the future we may have an indicator for if the individual record has been updated in session
-        return true;
-
+        if (!record || !record.id || !record.attributes) return false;
+        const baseline = this.loadedAttributesById?.[record.id];
+        if (!baseline) {
+            // No snapshot (shouldn't happen for non-UUID Ids) - be conservative
+            // and treat it as dirty so we don't drop a real edit.
+            return true;
+        }
+        return JSON.stringify(record.attributes) !== baseline;
     }
     
 
@@ -1830,19 +1839,25 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     deletePage(pageId) {
         const pages = this.formSettings.pages;
-    
-        // Check if there's only one page left
+
         if (pages.length === 1) {
-            this.showToast('Error', 'You must create a new page before deleting the only remaining page', 'error');
+            this.showToast(
+                'Cannot delete',
+                'You must create a new page before deleting the only remaining page.',
+                'warning'
+            );
             return;
         }
-    
+
+        if (this.isValidationError('delete', 'page', pageId)) return;
+
         const pageIndex = pages.findIndex(page => page.id === pageId);
         const page = pages[pageIndex];
-    
+
         if (!page) return;
-    
-        // Validate all sections and components
+
+        // Per-question validation (existing behavior; redundant with the page-
+        // level cascade check above but kept for defence-in-depth).
         if (this.checkForValidationErrors(page.sections)) return;
     
         // Collect non-UUID IDs
@@ -1888,10 +1903,12 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     deleteSection(sectionId) {
         const section = this.currentPage.sections.find(section => section.id === sectionId);
-    
+
         if (!section) return;
-    
-        // Validate the section and its components
+
+        if (this.isValidationError('delete', 'section', sectionId)) return;
+
+        // Per-question validation kept for defence-in-depth.
         if (this.checkForValidationErrors([section])) return;
     
         // Collect non-UUID IDs
@@ -2158,17 +2175,62 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     isValidationError(action, type, id){
-        // prevent the user from performing an action if the validator returns false
+        // Returns true if the action should be blocked.
 
+        if (action !== 'delete') return false;
 
-        // Case #1 Attempting to Delete A Question
-        if(action === 'delete' && type === 'question'){
-            // Check if the question is used in any rules
-            if(this.isQuestionUsedInConditions(id)){
-                this.showToast('Error', 'This question is used in a condition and cannot be deleted.', 'error');
+        // Direct: deleting a question that is referenced by any condition.
+        if (type === 'question' && this.isQuestionUsedInConditions(id)) {
+            this.showToast(
+                'Cannot delete',
+                'This question is referenced by a condition and cannot be deleted. Remove the condition first.',
+                'error'
+            );
+            return true;
+        }
+
+        // Cascade: deleting a section that *contains* such a question.
+        if (type === 'section') {
+            const blocker = this.findReferencedQuestionInSection(this.findSectionById(id));
+            if (blocker) {
+                this.showToast(
+                    'Cannot delete',
+                    `Section contains a question ("${blocker}") referenced by a condition. Remove the condition first.`,
+                    'error'
+                );
                 return true;
             }
         }
+
+        // Cascade: deleting a page that contains any such question.
+        if (type === 'page') {
+            const page = this.findPageById(id);
+            for (const section of (page?.sections ?? [])) {
+                const blocker = this.findReferencedQuestionInSection(section);
+                if (blocker) {
+                    this.showToast(
+                        'Cannot delete',
+                        `Page contains a question ("${blocker}") referenced by a condition. Remove the condition first.`,
+                        'error'
+                    );
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    findReferencedQuestionInSection(section) {
+        if (!section) return null;
+        for (const column of section.columns) {
+            for (const component of column.components) {
+                if (this.isQuestionUsedInConditions(component.id)) {
+                    return component.attributes?.[FIELDS.Form_Question__c.Question.fieldApiName] || component.id;
+                }
+            }
+        }
+        return null;
     }
 
     showToast(title, message, variant) {

@@ -26,7 +26,21 @@ public with sharing class neuraFormBuilderController {
 
     @AuraEnabled(cacheable=false)
     public static FormWrapper getFormDetails(Id formTemplateId){
-        Form_Template__c ft = [SELECT Id, Name, Indicator_Type__c FROM Form_Template__c WHERE Id = :formTemplateId];
+        if (formTemplateId == null) {
+            return null;
+        }
+        // LIMIT 1 + list assignment so an unknown / soft-deleted Id returns
+        // null instead of throwing QueryException at the client.
+        List<Form_Template__c> templates = [
+            SELECT Id, Name, Indicator_Type__c
+            FROM Form_Template__c
+            WHERE Id = :formTemplateId
+            LIMIT 1
+        ];
+        if (templates.isEmpty()) {
+            return null;
+        }
+        Form_Template__c ft = templates[0];
         List<Form_Page__c> pages = [SELECT Id, Name, Order__c, Title__c, Form_Template__c, Conditions__c FROM Form_Page__c WHERE Form_Template__c = :ft.Id ORDER BY Order__c ASC];
        // List<Form_Section__c> sections = [SELECT Id, Name, Type__c, Title__c, Order__c, Form_Template__c, Form_Page__c, Columns__c, Sho FROM Form_Section__c WHERE Form_Template__c = :ft.Id ORDER BY Order__c ASC];
         
@@ -131,15 +145,27 @@ public with sharing class neuraFormBuilderController {
     }
 
     public static void deleteRecordsFromList(List<Id> toDeleteIds){
-        Database.DeleteResult[] deleteResults = Database.delete(toDeleteIds, true);
-        for(Database.DeleteResult dr : deleteResults) {                   
+        // allOrNone=false so partial-success reporting actually works; with
+        // allOrNone=true, any failure throws DmlException and the per-result
+        // error loop below never executes. The first failure is rethrown as
+        // an AuraHandledException so the LWC sees a usable error message.
+        Database.DeleteResult[] deleteResults = Database.delete(toDeleteIds, false);
+        List<String> errorMessages = new List<String>();
+        for (Database.DeleteResult dr : deleteResults) {
             if (!dr.isSuccess()) {
-                for(Database.Error err : dr.getErrors()) {
-                    System.debug(LoggingLevel.Error, 'The following error has occurred.'
-                        + '\n' + err.getStatusCode() + ': ' + err.getMessage()
-                        + '\n fields that affected this error: ' + err.getFields());
+                for (Database.Error err : dr.getErrors()) {
+                    String msg = err.getStatusCode() + ': ' + err.getMessage()
+                        + ' (fields: ' + err.getFields() + ')';
+                    System.debug(LoggingLevel.ERROR, msg);
+                    errorMessages.add(msg);
                 }
             }
+        }
+        if (!errorMessages.isEmpty()) {
+            throw new AuraHandledException(
+                'Failed to delete ' + errorMessages.size() + ' record(s): '
+                + String.join(errorMessages, '; ')
+            );
         }
     }
 

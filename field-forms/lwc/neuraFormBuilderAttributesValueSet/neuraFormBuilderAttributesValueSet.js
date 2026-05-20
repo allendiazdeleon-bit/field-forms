@@ -1,8 +1,6 @@
 import { LightningElement, api } from 'lwc';
 import { generateUUID } from 'c/utilityService';
 export default class NeuraFormBuilderAttributesValueSet extends LightningElement {
-    jsonItems = {label: 'Option 1', value: 'Option 1', icon: '' };
-
     @api fieldName; // the name of the field to be updated
 
     _valueSet;
@@ -12,12 +10,29 @@ export default class NeuraFormBuilderAttributesValueSet extends LightningElement
     }
 
     set valueSet(value) {
-        // if the value is not set, set it to the default value
+        // Build a fresh default each time so two components editing different
+        // questions don't share the same option object.
         if (!value) {
-            this.jsonItems.id = generateUUID();
-            this._valueSet = [this.jsonItems];
-        } else {
+            this._valueSet = [{
+                id: generateUUID(),
+                label: 'Option 1',
+                value: 'Option 1',
+                icon: ''
+            }];
+            return;
+        }
+        try {
             this._valueSet = JSON.parse(value);
+        } catch (e) {
+            // Corrupt value field - fall back to a single default rather than
+            // crashing the builder; the user will see Option 1 and can rebuild.
+            console.error('Invalid value-set JSON; resetting to default.', e);
+            this._valueSet = [{
+                id: generateUUID(),
+                label: 'Option 1',
+                value: 'Option 1',
+                icon: ''
+            }];
         }
     }
 
