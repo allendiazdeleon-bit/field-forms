@@ -1,0 +1,22 @@
+{
+  "extends": ["@salesforce/eslint-config-lwc/recommended"],
+  "overrides": [
+    {
+      "files": ["field-forms/lwc/**/*.js"],
+      "plugins": ["@salesforce/lwc-graph-analyzer"],
+      "extends": ["plugin:@salesforce/lwc-graph-analyzer/recommended"],
+      "rules": {
+        "@salesforce/lwc-graph-analyzer/no-pubsub-in-lwc": "error",
+        "@salesforce/lwc-graph-analyzer/no-getter-setter-in-lwc": "warn",
+        "@salesforce/lwc-graph-analyzer/no-unsupported-fields-in-wire": "error"
+      }
+    },
+    {
+      "files": ["field-forms/lwc/**/__tests__/**"],
+      "env": {
+        "jest": true,
+        "node": true
+      }
+    }
+  ]
+}

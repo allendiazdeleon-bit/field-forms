@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BriefcaseDefinition xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Default Field Forms briefcase. Primes form templates and all linked-form runtime data for field technicians so the neuraFormMobile component works disconnected. Pair with the standard FSL briefcases that prime ServiceAppointment / WorkOrder / WorkOrderLineItem / WorkType.</description>
+    <label>Field Forms Default</label>
+    <objects>
+        <description>All Form_Template records that have at least one Default_Form or Linked_Form mapped for this user. Templates are reference data so we prime the full active set rather than filtering by user.</description>
+        <object>Form_Template__c</object>
+    </objects>
+    <objects>
+        <description>Form pages for primed templates (1 level deep).</description>
+        <object>Form_Page__c</object>
+    </objects>
+    <objects>
+        <description>Form sections for primed templates (2 levels deep).</description>
+        <object>Form_Section__c</object>
+    </objects>
+    <objects>
+        <description>Form questions for primed templates (3 levels deep). Briefcase queries are limited to 3-level depth; the JSON snapshot fields on Form_Template are the offline-read fallback.</description>
+        <object>Form_Question__c</object>
+    </objects>
+    <objects>
+        <description>Default_Form mappings keyed by WorkType. Used by the draft-parent fallback in neuraFormMobile to materialize a Linked_Form locally when the host record itself was created offline.</description>
+        <object>Default_Form__c</object>
+    </objects>
+    <objects>
+        <description>Linked_Form runtime records visible to the current user (filtered server-side by sharing).</description>
+        <object>Linked_Form__c</object>
+    </objects>
+    <objects>
+        <description>Saved answers for primed Linked_Forms.</description>
+        <object>Form_Answer__c</object>
+    </objects>
+    <objects>
+        <description>FieldForms configuration kill-switch custom setting.</description>
+        <object>FieldForms_Configuration__c</object>
+    </objects>
+</BriefcaseDefinition>
