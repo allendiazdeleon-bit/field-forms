@@ -73,6 +73,15 @@
                 icon-name="utility:add"
                 onclick={addCondition}>
             </lightning-button>
+            <template if:true={hasConditions}>
+                <lightning-button
+                    class="slds-m-left_x-small"
+                    label="Remove All"
+                    variant="destructive-text"
+                    icon-name="utility:delete"
+                    onclick={removeAllConditions}>
+                </lightning-button>
+            </template>
         </div>
     </div>
     </div>

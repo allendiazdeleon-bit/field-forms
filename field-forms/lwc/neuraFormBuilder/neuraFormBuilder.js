@@ -73,6 +73,24 @@ export default class NeuraFormBuilder extends LightningElement {
     loading = false; // Indicates if the form is currently loading
     componentItems = []; // The array of component items for the component panel
     layoutItems = []; // The array of layout items for the component panel
+    paletteSearch = ''; // User-entered filter for the palette
+
+    handlePaletteSearchChange(event) {
+        this.paletteSearch = (event.target.value || '').toLowerCase();
+    }
+
+    paletteMatches(item) {
+        if (!this.paletteSearch) return true;
+        const label = (item?.[FIELDS.Form_Setting__mdt.DisplayLabel.fieldApiName] || '').toLowerCase();
+        return label.includes(this.paletteSearch);
+    }
+
+    get filteredLayoutItems() {
+        return this.layoutItems.filter(i => this.paletteMatches(i));
+    }
+    get filteredComponentItems() {
+        return this.componentItems.filter(i => this.paletteMatches(i));
+    }
     activeSections = ['Layout', 'Components', 'Pages']; // The array of active accordion sections in the component panel
     componentPanel = true; // Indicates if the component panel is visible
     settingsPanel = true; // Indicates if the settings panel is visible
@@ -201,6 +219,10 @@ export default class NeuraFormBuilder extends LightningElement {
         return this.currentPage ? this.currentPage.attributes[FIELDS.Form_Page__c.Title.fieldApiName] : '';
     }
 
+    get currentPageIsEmpty() {
+        return !this.currentPage?.sections?.length;
+    }
+
     allQuestions = [];
 
     updateAllQuestions(value){
@@ -245,9 +267,13 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     getFormApex(){
         getFormDetails({formTemplateId : this.recordId})
-            .then(data => {
+            .then(async data => {
                 if (data) {
                     this.processFormDetails(data);
+                    // After the server-side load, if a local autosave exists
+                    // it must be more recent than the server (saves clear it).
+                    // Offer restore.
+                    await this.maybeOfferAutosaveRestore();
                 } else {
                     this.showToast(
                         'Form not found',
@@ -453,12 +479,41 @@ export default class NeuraFormBuilder extends LightningElement {
             return undefined;
         };
         window.addEventListener('beforeunload', this._beforeUnloadHandler);
+
+        // Keyboard shortcuts. Cmd on macOS, Ctrl elsewhere.
+        //   Cmd/Ctrl + S         -> Save
+        //   Cmd/Ctrl + Z         -> Undo
+        //   Cmd/Ctrl + Shift + Z -> Redo
+        //   Escape               -> Close settings panel
+        // Bound on window so the builder responds even when focus is on
+        // controls inside child shadow roots.
+        this._keydownHandler = (e) => {
+            const cmd = e.metaKey || e.ctrlKey;
+            const key = e.key?.toLowerCase();
+            if (cmd && key === 's') {
+                e.preventDefault();
+                this.handleSave();
+            } else if (cmd && key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleUndo();
+            } else if (cmd && key === 'z' && e.shiftKey) {
+                e.preventDefault();
+                this.handleRedo();
+            } else if (key === 'escape' && this.selection) {
+                this.handleCloseSettings();
+            }
+        };
+        window.addEventListener('keydown', this._keydownHandler);
     }
 
     disconnectedCallback() {
         if (this._beforeUnloadHandler) {
             window.removeEventListener('beforeunload', this._beforeUnloadHandler);
             this._beforeUnloadHandler = undefined;
+        }
+        if (this._keydownHandler) {
+            window.removeEventListener('keydown', this._keydownHandler);
+            this._keydownHandler = undefined;
         }
     }
 
@@ -707,6 +762,7 @@ export default class NeuraFormBuilder extends LightningElement {
             if (modifiedQuestions.length > 0) await this.handleQuestionOperations([], modifiedQuestions);
 
             this.isDirty = false;
+            this.clearAutosave();
             this.showToast('Saved', 'Form template saved successfully.', 'success');
             this.getFormApex(); // refreshes loading=false on completion
         } catch (error) {
@@ -1084,11 +1140,16 @@ export default class NeuraFormBuilder extends LightningElement {
     }
     
     /**
-     * Closes the settings panel.
-     * @param {Event} event - The event object.
+     * Closes the settings panel. The settingsPanel getter is
+     * `_settingsPanel && this.selection`, so toggling _settingsPanel alone
+     * is undone by the next selection. Clearing the selection is what
+     * actually makes the close stick until the user picks something new.
      */
     handleCloseSettings(event) {
-        this.settingsPanel = false;
+        this._settingsPanel = false;
+        this.selection = undefined;
+        this.selectionId = undefined;
+        this.selectionStructure = undefined;
     }
 
     /**
@@ -1196,6 +1257,22 @@ export default class NeuraFormBuilder extends LightningElement {
         // Route page-item delete through the central handleDelete so the
         // confirmation prompt and saveState are applied consistently.
         this.handleDelete({ detail: { id: event.detail.id, type: 'Page' } });
+    }
+
+    /**
+     * Inline rename from the page palette. Updates the Title attribute and
+     * the pageArray label cache; full save still requires the user to click
+     * Save (consistent with every other attribute edit).
+     */
+    handlePageRename(event) {
+        const { id, title } = event.detail || {};
+        const page = this.findPageById(id);
+        if (!page || !title) return;
+        this.saveState();
+        page.attributes[FIELDS.Form_Page__c.Title.fieldApiName] = title;
+        page.attributes.Name = title;
+        this.pageArray = this.formSettings.pages.map(p => p.attributes[FIELDS.Form_Page__c.Title.fieldApiName]);
+        this.updateFormSettings();
     }
 
     swapPageElements(array, indexA, indexB){
@@ -1318,6 +1395,110 @@ export default class NeuraFormBuilder extends LightningElement {
      * move within their column. Out-of-bounds moves no-op. This is the
      * non-mouse alternative to the drag-and-drop story (audit item M6).
      */
+    /**
+     * Keyboard-equivalent of dragging a palette item onto the canvas. Drops
+     * the activated component into the last column of either the currently
+     * selected section, or the last section of the current page (so it
+     * always lands somewhere visible). Required for mouse-free authoring.
+     */
+    handlePaletteActivate(event) {
+        const { type, structure } = event.detail || {};
+        if (!this.currentPage || !type) return;
+
+        if (structure === 'Layout') {
+            // Layout drop = new section on the current page.
+            this.saveState();
+            const newSection = this.createNewSection();
+            const page = this.formSettings.pages.find(p => p.id === this.currentPage.id);
+            page.sections.push(newSection);
+            this.currentPage = page;
+            this.selection = newSection;
+            this.selectionId = newSection.id;
+            this.selectionStructure = 'Section';
+            this.settingsPanel = true;
+            this.updateFormSettings();
+            this.broadcastStructure();
+            return;
+        }
+
+        // Component drop. Prefer the currently-selected section, else the last
+        // section of the current page; if none, create one.
+        let targetSection;
+        if (this.selectionStructure === 'Section') {
+            targetSection = this.findSectionById(this.selectionId);
+        } else if (this.selectionStructure === 'Component') {
+            const col = this.getColumnByComponetId(this.selectionId);
+            targetSection = this.currentPage.sections.find(s => s.columns.includes(col));
+        }
+        targetSection = targetSection || this.currentPage.sections[this.currentPage.sections.length - 1];
+        if (!targetSection) {
+            this.saveState();
+            targetSection = this.createNewSection();
+            this.currentPage.sections.push(targetSection);
+        } else {
+            this.saveState();
+        }
+
+        const targetColumn = targetSection.columns[targetSection.columns.length - 1];
+        const newComponent = this.createNewComponent(type);
+        targetColumn.components.push(newComponent);
+
+        this.currentPage = this.formSettings.pages.find(p => p.id === this.currentPage.id);
+        this.selection = this.findComponentById(newComponent.id);
+        this.selectionId = newComponent.id;
+        this.selectionStructure = 'Component';
+        this.settingsPanel = true;
+        this.updateFormSettings();
+        this.broadcastStructure();
+    }
+
+    /**
+     * One-click duplicate of a Section or Component. Inserts the clone
+     * immediately after the original (instead of pasting at the end, the
+     * way Copy/Paste does) so the user can iterate quickly on a single
+     * pattern. Page duplication still goes through Copy + Paste.
+     */
+    handleDuplicateItem(event) {
+        const { id, type } = event.detail || {};
+        try {
+            this.saveState();
+            if (type === 'Section') {
+                const page = this.formSettings.pages.find(p => p.sections.some(s => s.id === id));
+                if (!page) return;
+                const idx = page.sections.findIndex(s => s.id === id);
+                const original = page.sections[idx];
+                const clone = this.updateSectionsToUUID({ sections: [JSON.parse(JSON.stringify(original))] }).sections[0];
+                page.sections.splice(idx + 1, 0, clone);
+                this.currentPage = this.formSettings.pages.find(p => p.id === this.currentPage.id);
+            } else if (type === 'Component') {
+                let parentColumn, original, idx;
+                outer: for (const page of this.formSettings.pages) {
+                    for (const section of page.sections) {
+                        for (const column of section.columns) {
+                            const i = column.components.findIndex(c => c.id === id);
+                            if (i !== -1) {
+                                parentColumn = column;
+                                original = column.components[i];
+                                idx = i;
+                                break outer;
+                            }
+                        }
+                    }
+                }
+                if (!parentColumn) return;
+                const clone = JSON.parse(JSON.stringify(original));
+                clone.id = generateUUID();
+                clone.attributes.Id = clone.id;
+                parentColumn.components.splice(idx + 1, 0, clone);
+                this.currentPage = this.formSettings.pages.find(p => p.id === this.currentPage.id);
+            }
+            this.updateFormSettings();
+            this.broadcastStructure();
+        } catch (e) {
+            console.error('Error in handleDuplicateItem', e?.message);
+        }
+    }
+
     handleMoveItem(event) {
         const { id, type, direction } = event.detail;
         const delta = direction === 'up' ? -1 : 1;
@@ -2018,6 +2199,73 @@ export default class NeuraFormBuilder extends LightningElement {
     // editing sessions with large templates (each state is a full deep clone).
     static UNDO_HISTORY_CAP = 50;
 
+    // --- localStorage autosave ----------------------------------------------
+    // Writes the current formSettings to localStorage on every saveState (i.e.
+    // on every structural mutation). On load, if a local copy exists for this
+    // recordId, the user is offered the chance to restore it. The local copy
+    // is cleared after a successful Apex save. This is a belt-and-braces
+    // backup for the unsaved-changes risk covered by B2/B3.
+
+    get autosaveKey() {
+        return this.recordId ? `nfformbuilder:autosave:${this.recordId}` : null;
+    }
+
+    persistAutosave() {
+        if (!this.autosaveKey || !this._formSettings) return;
+        try {
+            const payload = {
+                ts: Date.now(),
+                formSettings: this._formSettings,
+                deletedPageIds: this.deletedPageIds,
+                deletedSectionIds: this.deletedSectionIds,
+                deletedQuestionIds: this.deletedQuestionIds
+            };
+            window.localStorage.setItem(this.autosaveKey, JSON.stringify(payload));
+        } catch (e) {
+            // QuotaExceededError or storage disabled - swallow; not worth
+            // failing the edit over.
+        }
+    }
+
+    clearAutosave() {
+        if (!this.autosaveKey) return;
+        try { window.localStorage.removeItem(this.autosaveKey); } catch (e) { /* ignore */ }
+    }
+
+    async maybeOfferAutosaveRestore() {
+        if (!this.autosaveKey) return;
+        let payload;
+        try {
+            const raw = window.localStorage.getItem(this.autosaveKey);
+            if (!raw) return;
+            payload = JSON.parse(raw);
+        } catch (e) {
+            return;
+        }
+        if (!payload?.formSettings) return;
+
+        const ageMin = Math.round((Date.now() - (payload.ts || 0)) / 60000);
+        const restore = await LightningConfirm.open({
+            message: `Unsaved changes from your last session (about ${ageMin} minute(s) ago) are available locally. Restore them?`,
+            label: 'Restore unsaved changes',
+            variant: 'header',
+            theme: 'info'
+        });
+        if (restore) {
+            this.formSettings = payload.formSettings;
+            this.deletedPageIds = payload.deletedPageIds || [];
+            this.deletedSectionIds = payload.deletedSectionIds || [];
+            this.deletedQuestionIds = payload.deletedQuestionIds || [];
+            this.pageArray = this._formSettings.pages.map(p => p.attributes[FIELDS.Form_Page__c.Title.fieldApiName]);
+            this.currentPage = this._formSettings.pages[0];
+            this.loaded = true;
+            this.isDirty = true;
+            this.broadcastStructure();
+        } else {
+            this.clearAutosave();
+        }
+    }
+
     saveState() {
         this.pastStates.push({
             formSettings: JSON.parse(JSON.stringify(this.formSettings)),
@@ -2037,6 +2285,7 @@ export default class NeuraFormBuilder extends LightningElement {
         }
         this.isDirty = true;
         this.invalidateConditionIndex();
+        this.persistAutosave();
         // Any new action invalidates the redo stack.
         this.futureStates = [];
     }

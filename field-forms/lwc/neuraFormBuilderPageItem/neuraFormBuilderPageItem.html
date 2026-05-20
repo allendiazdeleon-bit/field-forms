@@ -5,21 +5,36 @@
                 <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow">
                     <lightning-icon icon-name={iconName} size="x-small" alternative-text="Builder" variant="inverse" class=""></lightning-icon>
                 </span>
-                <span class="paletteItemText visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow">
-                    {title}
-                </span>
+                <template if:true={isEditingName}>
+                    <lightning-input
+                        class="paletteItemText visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow"
+                        variant="label-hidden"
+                        label="Page name"
+                        value={editingName}
+                        onchange={handleNameInput}
+                        onkeydown={handleNameKeyDown}
+                        onblur={commitNameEdit}
+                        onclick={handleNameInputClick}
+                    ></lightning-input>
+                </template>
+                <template if:false={isEditingName}>
+                    <span class="paletteItemText visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow"
+                        ondblclick={handleStartRename}
+                        title="Double-click to rename">
+                        {title}
+                    </span>
+                </template>
                 <template if:false={newPage}>
-                    <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow"> 
+                    <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow">
                         <lightning-button-icon icon-name="utility:chevrondown"  variant="border-filled" alternative-text="Down" title="Down" size="x-small" onclick={handlePageDown}></lightning-button-icon>
                     </span>
-                    <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow"> 
+                    <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow">
                         <lightning-button-icon icon-name="utility:chevronup"  variant="border-filled" alternative-text="Up" title="Up" size="x-small" onclick={handlePageUp}></lightning-button-icon>
                     </span>
-                    <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow slds-m-left_x-small"> 
+                    <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow slds-m-left_x-small">
                         <lightning-button-icon icon-name="utility:delete"  variant="border-filled" alternative-text="Delete" title="Delete" size="x-small" onclick={handlePageDelete}></lightning-button-icon>
                     </span>
                 </template>
-
             </div>
         </span>
     </li>

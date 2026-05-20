@@ -41,15 +41,31 @@ export default class NeuraFormComponentItem extends LightningElement {
         this.dispatchEvent(dragEndEvent);
     }
 
+    // Keyboard-equivalent of dragging: Enter/Space requests the parent
+    // append this component type to the current selection. Required for
+    // mouse-free authoring; drag events alone can't be triggered by keyboard.
+    handleKeyDown(event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        this.dispatchEvent(new CustomEvent('paletteactivate', {
+            detail: {
+                title: this.title,
+                iconName: this.iconName,
+                structure: this.structure,
+                type: this.type
+            },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
     connectedCallback(){
-        // set variables from the item 
-        // debug the item
-
-        // check fields
-
         this.title = this.item[FIELDS.Form_Setting__mdt.DisplayLabel.fieldApiName];
         this.iconName = this.item[FIELDS.Form_Setting__mdt.Icon.fieldApiName];
         this.structure = this.item[FIELDS.Form_Setting__mdt.Structure.fieldApiName];
-        
+    }
+
+    get paletteTitle() {
+        return `${this.title} (drag onto canvas or press Enter to add)`;
     }
 }

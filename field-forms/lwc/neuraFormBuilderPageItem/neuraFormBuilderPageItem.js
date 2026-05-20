@@ -72,4 +72,50 @@ export default class NeuraFormBuilderPageItem extends LightningElement {
             bubbles: true
         }));
     }
+
+    // --- Inline rename --------------------------------------------------
+    // Double-click the page label to edit it in place. Enter commits,
+    // Escape cancels, blur commits. Avoids routing routine renames through
+    // the attributes panel.
+
+    isEditingName = false;
+    editingName = '';
+
+    handleStartRename(event) {
+        if (this.newPage) return;
+        event.stopPropagation();
+        this.editingName = this.title;
+        this.isEditingName = true;
+    }
+
+    handleNameInputClick(event) {
+        // Keep clicks on the input from re-triggering page selection.
+        event.stopPropagation();
+    }
+
+    handleNameInput(event) {
+        this.editingName = event.target.value;
+    }
+
+    handleNameKeyDown(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            this.commitNameEdit();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            this.isEditingName = false;
+        }
+    }
+
+    commitNameEdit() {
+        if (!this.isEditingName) return;
+        const next = (this.editingName || '').trim();
+        this.isEditingName = false;
+        if (!next || next === this.title) return;
+        this.dispatchEvent(new CustomEvent('rename', {
+            detail: { id: this.page.id, title: next },
+            bubbles: true,
+            composed: true
+        }));
+    }
 }

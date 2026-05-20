@@ -18,6 +18,14 @@
                 title={moveDownAltText}
             ></lightning-button-icon>
             <lightning-button-icon
+                onclick={handleDuplicate}
+                icon-name="utility:copy"
+                size="x-small"
+                alternative-text={duplicateAltText}
+                variant="border-inverse"
+                title={duplicateAltText}
+            ></lightning-button-icon>
+            <lightning-button-icon
                 onclick={handleDelete}
                 icon-name="utility:close"
                 size="x-small"

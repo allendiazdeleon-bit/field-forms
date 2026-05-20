@@ -15,8 +15,19 @@ export default class NeuraFormDropZoneActions extends LightningElement {
     get deleteAltText() {
         return `Delete ${this.type}`;
     }
+    get duplicateAltText() {
+        return `Duplicate ${this.type}`;
+    }
     get actionsAriaLabel() {
         return `${this.type} actions`;
+    }
+
+    handleDuplicate() {
+        this.dispatchEvent(new CustomEvent('duplicate', {
+            bubbles: true,
+            composed: true,
+            detail: { id: this.itemId, type: this.type }
+        }));
     }
 
     handleDelete() {

@@ -1,7 +1,8 @@
 <template>
-    <div class="full-screen-builder" role="application" aria-label="Form Builder">
+    <div class="full-screen-builder" role="application" aria-label="Form Builder"
+        onpaletteactivate={handlePaletteActivate}>
         <div class="full-screen-header" role="banner">
-            <c-neura-form-builder-header builder-name="NeuraForm Builder" dropdown-title="Forms" title={formSettings.name} disable-undo={disableUndo} disable-redo={disableRedo} enable-paste={copyComponent} selection-structure={selectionStructure} onheaderclick={handleHeaderClick}></c-neura-form-builder-header>
+            <c-neura-form-builder-header builder-name="NeuraForm Builder" dropdown-title="Forms" title={formSettings.name} disable-undo={disableUndo} disable-redo={disableRedo} enable-paste={copyComponent} copy-structure={copyComponentStructure} selection-structure={selectionStructure} onheaderclick={handleHeaderClick}></c-neura-form-builder-header>
         </div>
         <!-- Builder Left Panel: for looking up components to add to the canvas -->
         <div class="full-screen-body" role="main">
@@ -15,19 +16,25 @@
                             <lightning-tabset>
                                 <lightning-tab label="Components" style="height:100%">
                                     <div class="slds-p-horizontal_medium" style="height:calc(100% - 40px);overflow-y:auto">
-                                        <!-- TODO: <lightning-input type="search" placeholder="Search..." label="Search" variant="label-hidden"></lightning-input> -->
-                                        <!-- List of draggable components here in Accordion -->
+                                        <lightning-input
+                                            type="search"
+                                            placeholder="Filter components..."
+                                            label="Filter components"
+                                            variant="label-hidden"
+                                            value={paletteSearch}
+                                            onchange={handlePaletteSearchChange}
+                                        ></lightning-input>
                                         <lightning-accordion class="component-accordion" allow-multiple-sections-open active-section-name={activeSections}>
                                             <lightning-accordion-section label="Layout" name="Layout" heading-level="3">
                                                 <ul class="paletteItems visualEditorPalette">
-                                                    <template for:each={layoutItems} for:item="layoutItem">
+                                                    <template for:each={filteredLayoutItems} for:item="layoutItem">
                                                         <c-neura-form-component-item key={layoutItem.MasterLabel} item={layoutItem} onnfdragstart={handleNFDragStart} onnfdragend={handleNFDragEnd} type={layoutItem.Label}></c-neura-form-component-item>
                                                     </template>
                                                 </ul>
                                             </lightning-accordion-section>
                                             <lightning-accordion-section label="Components" name="Components" heading-level="3">
                                                 <ul class="paletteItems visualEditorPalette">
-                                                    <template for:each={componentItems} for:item="componentItem">
+                                                    <template for:each={filteredComponentItems} for:item="componentItem">
                                                         <c-neura-form-component-item key={componentItem.MasterLabel} item={componentItem} onnfdragstart={handleNFDragStart} onnfdragend={handleNFDragEnd} type={componentItem.Label}></c-neura-form-component-item>
                                                     </template>
                                                 </ul>
@@ -44,7 +51,7 @@
                                                 <ul class="paletteItems visualEditorPalette">
                                                     <template if:true={loaded}>
                                                         <template for:each={formSettings.pages} for:item="page">
-                                                            <c-neura-form-builder-page-item key={page.id} page={page} current-page-id={currentPage.id} onselection={handleSelection} onreorder={handleReOrderPage} ondelete={handleDeletePage}></c-neura-form-builder-page-item>
+                                                            <c-neura-form-builder-page-item key={page.id} page={page} current-page-id={currentPage.id} onselection={handleSelection} onreorder={handleReOrderPage} ondelete={handleDeletePage} onrename={handlePageRename}></c-neura-form-builder-page-item>
                                                             
                                                         </template>
                                                         <!-- Add New Page -->
@@ -64,7 +71,19 @@
                             <div class={screenSizeClass}>
                                 <template if:true={currentPage}>
                                     <c-neura-form-header indicator-type={indicatorType} step-list={pageArray} total-steps={totalPageCount} current-step-index={currentPageIndex} current-step={currentPageTitle}></c-neura-form-header>
-                                    <c-neura-form-drop-zone ondelete={handleDelete} onmove={handleMoveItem} onupdatesection={handleSectionDrop} onupdatecomponent={handleComponentDrop} layout={currentPage} dragged-item-info={draggedItemInfo} onselection={handleSelection}  current-selection-id={currentSelectionId} onnfdragstart={handleNFDragStart} onnfdragend={handleNFDragEnd}></c-neura-form-drop-zone>
+                                    <c-neura-form-drop-zone ondelete={handleDelete} onmove={handleMoveItem} onduplicate={handleDuplicateItem} onupdatesection={handleSectionDrop} onupdatecomponent={handleComponentDrop} layout={currentPage} dragged-item-info={draggedItemInfo} onselection={handleSelection}  current-selection-id={currentSelectionId} onnfdragstart={handleNFDragStart} onnfdragend={handleNFDragEnd}></c-neura-form-drop-zone>
+                                    <!-- Empty-state hint when the page has no sections.
+                                         First-time admins otherwise see a blank canvas
+                                         with no instruction. -->
+                                    <template if:true={currentPageIsEmpty}>
+                                        <div class="slds-illustration slds-illustration_small slds-p-around_large slds-text-align_center">
+                                            <h2 class="slds-text-heading_small">This page is empty.</h2>
+                                            <p class="slds-text-body_regular slds-m-top_x-small">
+                                                Drag a Layout from the left panel to start building, or press
+                                                <kbd>Enter</kbd> on a palette item to add it via keyboard.
+                                            </p>
+                                        </div>
+                                    </template>
                                     <c-neura-form-footer onbuttonclick={handleFooterButtonClick} total-pages={totalPageCount} current-page-index={currentPageIndex}></c-neura-form-footer>
                                 </template>
                                 

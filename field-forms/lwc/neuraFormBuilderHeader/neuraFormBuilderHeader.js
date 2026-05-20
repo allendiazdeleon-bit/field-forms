@@ -10,6 +10,12 @@ export default class NeuraFormBuilderHeader extends LightningElement {
     @api disableRedo;
     @api enablePaste;
     @api selectionStructure;
+    // The structure of whatever the user last copied (Component / Section /
+    // Page). Used to decide whether Paste is meaningful for the current
+    // selection - the previous build enabled Paste whenever anything was
+    // copied, even when the paste would be a no-op (e.g. copied a Component,
+    // selected a Page).
+    @api copyStructure;
 
     screenSizeDefault = 'desktop-view';
     screenSizeOptions = [
@@ -20,7 +26,19 @@ export default class NeuraFormBuilderHeader extends LightningElement {
     ];
 
     get disablePaste(){
-        return !this.enablePaste;
+        if (!this.enablePaste || !this.copyStructure) return true;
+        // Page paste is always allowed (creates a new page at the end).
+        if (this.copyStructure === 'Page') return false;
+        // Section paste requires a Page or Section selection (drops onto the
+        // current page; if a Section is selected, appended to its page).
+        if (this.copyStructure === 'Section') {
+            return !(this.selectionStructure === 'Page' || this.selectionStructure === 'Section');
+        }
+        // Component paste requires a Section or Component selection.
+        if (this.copyStructure === 'Component') {
+            return !(this.selectionStructure === 'Section' || this.selectionStructure === 'Component');
+        }
+        return true;
     }
 
     get disableCopy(){

@@ -1,9 +1,18 @@
 <template>
-    <li class="visualEditorPaletteItem" draggable="true" data-type={structure} ondragstart={handleDragStart} ondragend={handleDragEnd}>
+    <li class="visualEditorPaletteItem"
+        draggable="true"
+        data-type={structure}
+        ondragstart={handleDragStart}
+        ondragend={handleDragEnd}>
         <span class="visualEditorPaletteItemDraggable">
-            <div tabindex="0" title="Grid component" class="paletteItemAnchor" >
+            <div tabindex="0"
+                role="button"
+                title={paletteTitle}
+                aria-label={paletteTitle}
+                class="paletteItemAnchor"
+                onkeydown={handleKeyDown}>
                 <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow">
-                    <lightning-icon icon-name={iconName} size="x-small" alternative-text="Builder" variant="inverse" class=""></lightning-icon>
+                    <lightning-icon icon-name={iconName} size="x-small" alternative-text="" variant="inverse" class=""></lightning-icon>
                 </span>
                 <span class="paletteItemText visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow">
                     {title}

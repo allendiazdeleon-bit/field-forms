@@ -2,6 +2,7 @@ import { LightningElement, api } from 'lwc';
 import { generateUUID } from 'c/utilityService';
 import { store } from 'c/neuraFormStore';
 import { FIELDS } from 'c/neuraFormSchemaUtils';
+import LightningConfirm from 'lightning/confirm';
 
 export default class NeuraFormCriteriaBuilder extends LightningElement {
     allQuestions = [];
@@ -63,6 +64,27 @@ export default class NeuraFormCriteriaBuilder extends LightningElement {
 
     get isCustomLogic() {
         return this.selectedLogic === 'Custom';
+    }
+
+    get hasConditions() {
+        return this.conditions.length > 0;
+    }
+
+    /**
+     * One-click reset of the entire condition list. Faster than removing rows
+     * one at a time when an admin wants to start over. Confirms via the
+     * lightning/confirm modal so accidental clicks don't wipe a long list.
+     */
+    async removeAllConditions() {
+        if (!this.hasConditions) return;
+        const proceed = await LightningConfirm.open({
+            message: `Remove all ${this.conditions.length} condition(s)? This cannot be undone after Save.`,
+            label: 'Remove all conditions',
+            variant: 'header',
+            theme: 'warning'
+        });
+        if (!proceed) return;
+        this.updateConditionFields({ conditions: [], customLogic: '' });
     }
 
     get questionOptions() {
