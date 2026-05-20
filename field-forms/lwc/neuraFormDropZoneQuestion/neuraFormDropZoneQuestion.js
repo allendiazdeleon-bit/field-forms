@@ -9,8 +9,6 @@ export default class NeuraFormDropZoneQuestion extends LightningElement {
 
     get questionFormatObject(){
         let questionFormatObject = {};
-        console.log('Question Format Object');
-        console.log(JSON.stringify(this.component));
         if (this.component.attributes && typeof this.component.attributes === 'object') {
 
             questionFormatObject = {... this.component.attributes};
@@ -26,7 +24,6 @@ export default class NeuraFormDropZoneQuestion extends LightningElement {
     
     handleMouseEnter(event) {
         // Set the hoveredSectionId to the ID of the section that triggered the event
-        console.log('Mouse Enter');
         this.isHovered = true;
         this.dispatchEvent(new CustomEvent(
             'nfmouseenter', { 
@@ -37,7 +34,6 @@ export default class NeuraFormDropZoneQuestion extends LightningElement {
 
     handleMouseLeave() {
         // Clear the hoveredSectionId when the mouse leaves a section
-        console.log('Mouse Leave');
         this.isHovered = false;
         this.dispatchEvent(new CustomEvent(
             'nfmouseexit', { 
@@ -51,10 +47,26 @@ export default class NeuraFormDropZoneQuestion extends LightningElement {
         event.stopPropagation();
 
         this.dispatchEvent(new CustomEvent(
-            'selection', { 
+            'selection', {
                 bubbles: true,
                 composed: true,
                 detail: {id : this.component.id, type : 'Component'} }));
+    }
+
+    // Keyboard equivalent of the click selection.
+    handleKeyDown(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.handleClick(event);
+        }
+    }
+
+    get questionAriaLabel() {
+        const q = this.component?.attributes?.Question__c
+            || this.component?.attributes?.Question
+            || this.component?.type
+            || 'Question';
+        return `Question: ${q}`;
     }
 
     handleDragStart(event) {
@@ -70,7 +82,6 @@ export default class NeuraFormDropZoneQuestion extends LightningElement {
         });
 
         // debug event
-        console.log('drag start');
         this.dispatchEvent(dragStartEvent);
     }
 
@@ -86,8 +97,6 @@ export default class NeuraFormDropZoneQuestion extends LightningElement {
             bubbles: true
         });
 
-        console.log('drag end');
-        console.dir(dragEndEvent);
         this.dispatchEvent(dragEndEvent);
     }
     
@@ -106,7 +115,6 @@ export default class NeuraFormDropZoneQuestion extends LightningElement {
 
     handleDeleteQuestion() {
         // dispatch the delete event with the section Id
-        console.log('Delete Section');
         this.dispatchEvent(new CustomEvent('delete', {  
             bubbles: true,
             composed: true,

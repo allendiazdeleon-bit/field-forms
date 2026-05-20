@@ -236,7 +236,6 @@ export default class NeuraFormCriteriaBuilder extends LightningElement {
         console.error('Error: ', error, ' methodName: ', methodName);
     }
 
-
     /**
      * Handle updates from the store
      * @param {object} state - The current state from the store
@@ -332,8 +331,6 @@ export default class NeuraFormCriteriaBuilder extends LightningElement {
      * Dispatch an update event to notify parent components
      */
     dispatchUpdateEvent() {
-        console.log('Dispatching update event');
-        console.log(this._conditionFieldValue);
         this.dispatchEvent(new CustomEvent('update', { detail: { value: JSON.stringify(this._conditionFieldValue) } }));
     }
 

@@ -8,8 +8,6 @@
  * 
  */
 
-
-
 import { LightningElement, api } from 'lwc';
 import { generateUUID } from 'c/utilityService';
 import getFormDetails from '@salesforce/apex/neuraFormBuilderController.getFormDetails';
@@ -25,7 +23,6 @@ import { FIELDS } from 'c/neuraFormSchemaUtils';
 
 import { store } from 'c/neuraFormStore';
 
-
 export default class NeuraFormBuilder extends LightningElement {
     
     // STATE MANAGED VARIABLES
@@ -36,8 +33,6 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     set formSettings(value){
-        console.log('Setting Form Settings');
-        console.dir(value);
         
         this._formSettings = value;
 
@@ -89,7 +84,6 @@ export default class NeuraFormBuilder extends LightningElement {
 
     set builderFormFactor(value) {
         try {
-            console.log('Setting Builder Form Factor: ' + value);
             this._builderFormFactor = value;
             store.setBuilderFormFactor(value);
         } catch (error) {
@@ -131,13 +125,47 @@ export default class NeuraFormBuilder extends LightningElement {
         return this.pageArray;
     }
 
-    get showSecondLevelCrumb(){
-        return this.selection && (this.selectionStructure === 'Section' || this.selectionStructure=== 'Component');
+    // Breadcrumb levels:
+    //   Form > [Page] > [Section] > [Component]
+    // Each level is shown when the selection is at or deeper than that level.
+    get showPageCrumb() {
+        return this.selection && (
+            this.selectionStructure === 'Page' ||
+            this.selectionStructure === 'Section' ||
+            this.selectionStructure === 'Component'
+        );
     }
 
-    get showThirdLevelCrumb(){
-        return this.showSecondLevelCrumb || this.selectionStructure === 'Page';
+    get showSectionCrumb() {
+        return this.selection && (
+            this.selectionStructure === 'Section' ||
+            this.selectionStructure === 'Component'
+        );
     }
+
+    get showComponentCrumb() {
+        return this.selection && this.selectionStructure === 'Component';
+    }
+
+    // The Section that owns the currently selected Component, for the
+    // breadcrumb. Resolved against currentPage rather than walking the whole
+    // tree because the breadcrumb only shows the current navigation path.
+    get parentSectionForComponent() {
+        if (this.selectionStructure !== 'Component' || !this.currentPage) return undefined;
+        for (const section of this.currentPage.sections) {
+            for (const column of section.columns) {
+                if (column.components.some(c => c.id === this.selection?.id)) {
+                    return section;
+                }
+            }
+        }
+        return undefined;
+    }
+
+    // Kept for backwards-compat with any external bindings; routes to the
+    // new granular getters so behavior stays unified.
+    get showSecondLevelCrumb() { return this.showSectionCrumb; }
+    get showThirdLevelCrumb() { return this.showPageCrumb; }
 
     get disableUndo(){
         return this.pastStates.length <= 0;
@@ -251,15 +279,12 @@ export default class NeuraFormBuilder extends LightningElement {
         return error?.body?.message || error?.message || 'Unknown error';
     }
 
-
     /**
      * Processes the form details and organizes them into a structured format.
      * @param {Object} data - The data containing the form details.
      */
     processFormDetails(data) {
         let form = data.formTemplate;
-        console.dir(form);
-        console.dir(data.pages);
         let pages = this.organizePages(data.pages);
         let sections = this.organizeSections(data.sections);
         let questions = this.organizeQuestions(data.questions);
@@ -289,7 +314,6 @@ export default class NeuraFormBuilder extends LightningElement {
                     }))
             }));
         
-        console.log(JSON.stringify(this.formSettings));
         this.pageArray = this.formSettings.pages.map(page => (page.attributes[FIELDS.Form_Page__c.Title.fieldApiName]));
         this.currentPage = this.formSettings.pages[this.historicalPageIndex];
 
@@ -352,7 +376,6 @@ export default class NeuraFormBuilder extends LightningElement {
      * @returns {Array} - The organized array of questions.
      */
     organizeQuestions(questions) {
-        console.log(JSON.parse(JSON.stringify(FIELDS.Form_Question__c)));
         return questions.map(question => ({
             id: question.Id,
             type: question[FIELDS.Form_Question__c.Type.fieldApiName], 
@@ -428,7 +451,6 @@ export default class NeuraFormBuilder extends LightningElement {
         }
     }
 
-
     // REFACTORED CODE
 
     // SAVING METHODS
@@ -449,7 +471,6 @@ export default class NeuraFormBuilder extends LightningElement {
             // adjust the attributes.name = name 
             newFormSettings.name = name;
             newFormSettings.attributes.Name = name;
-
 
             // Clone the form attributes and assign a new name
             let newFormTemplate = {...newFormSettings.attributes};
@@ -519,17 +540,11 @@ export default class NeuraFormBuilder extends LightningElement {
                 });
             });
 
-
-
-
-
-
             const { newPages, updatedPages } = this.processPages(newFormSettings.pages);
             const { newSections, updatedSections } = this.processSections(newFormSettings.pages);
             const { newQuestions, updatedQuestions } = this.processQuestions(newFormSettings.pages);
             
             let oldPageIdsToNew = await this.handlePageOperations(newPages, updatedPages);
-
 
             // update new Sections with the new page Ids
             if(newPages.length > 0){
@@ -564,7 +579,6 @@ export default class NeuraFormBuilder extends LightningElement {
                 })
             }
 
-
             // CONDITIONS CHECKS 
             // Now let's find any conditions that reference a UUID and update them to the new question Ids
             let allPages = [...newPages, ...updatedPages];
@@ -591,10 +605,8 @@ export default class NeuraFormBuilder extends LightningElement {
             this.recordId = newFormTemplate.Id;
             this.getFormApex();
             this.loading = false;
-            console.log('Save as operation completed successfully.');
         } catch (error) {
             console.error('Error in save-as operation:', error);
-            console.log(JSON.stringify(error.message));
             this.loading = false;
         }
     }
@@ -616,7 +628,6 @@ export default class NeuraFormBuilder extends LightningElement {
                 });
         });
     }
-
 
     /**
      * Handles the save operation for the form builder.
@@ -894,8 +905,6 @@ export default class NeuraFormBuilder extends LightningElement {
         try {
             let existingPageIdsToResponseIds = {};
             existingItems.forEach((item, index) => {
-                console.log('Old Item:' + JSON.stringify(item));
-                console.log('New Item:' + JSON.stringify(response[index]));
                 existingPageIdsToResponseIds[item.Id] = response[index].Id;
             });
             return existingPageIdsToResponseIds;
@@ -922,20 +931,15 @@ export default class NeuraFormBuilder extends LightningElement {
                     return tempSection;
                 });
                 // CHECK INPUT VARIABLES
-                console.log('tempNewSections: ' + JSON.stringify(tempNewSections));
-                console.log('updatedSections: ' + JSON.stringify(updatedSections));
-                console.log('ToDelete: ' + JSON.stringify(this.deletedSectionIds));
                 processSectionRecords({ toCreate: tempNewSections, toUpdate: updatedSections, toDelete : this.deletedSectionIds })
                     .then(response => {
                         //reset Deleted Section Ids
                         this.deletedSectionIds = [];
-                        console.log('returned from Section: ' + JSON.stringify(response));
                         resolve(this.mapNewIdsToOld(newSections, response));
                         // Handle updates and deletions similarly
                         //resolve();
                     })
                     .catch(error => {
-                        console.log('In Sections');
                         console.error(error);
                         reject(error);
                     });
@@ -959,15 +963,10 @@ export default class NeuraFormBuilder extends LightningElement {
             });
 
                             // CHECK INPUT VARIABLES
-            console.log('tempNewQuestions: ' + JSON.stringify(tempNewQuestions));
-            console.log('updatedQuestions: ' + JSON.stringify(updatedQuestions));
-            console.log('ToDelete: ' + JSON.stringify(this.deletedQuestionIds));
             processQuestionRecords({ toCreate: tempNewQuestions, toUpdate: updatedQuestions, toDelete : this.deletedQuestionIds })
                 .then(response => {
-                    console.log('returned from Question: ' + JSON.stringify(response));
                     // reset Deleted Question Ids
                     this.deletedQuestionIds = [];
-                    console.log('returned from Section: ' + JSON.stringify(response));
                     resolve(this.mapNewIdsToOld(newQuestions, response));
                 })
                 .catch(error => {
@@ -998,9 +997,6 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     isNewRecord(record) {
         // DEBUG
-        console.log('In is New Record: ');
-        console.dir(record);
-        console.log('Is New Record: ' + record.id.startsWith('UUID'));
        // return true if the record has an id that starts with 'UUID'
         return record.id.startsWith('UUID');
     }
@@ -1033,7 +1029,6 @@ export default class NeuraFormBuilder extends LightningElement {
         
     }
 
-
     // HANDLERS
     /**
      * Handles the selection event.
@@ -1044,8 +1039,6 @@ export default class NeuraFormBuilder extends LightningElement {
     handleSelection(event) {
         const selectionId = event.detail.id;
         const selectionType = event.detail.type;
-        console.log('Selection Type: ' + selectionType);
-        console.log('Selection Id: ' + selectionId);
 
         if(selectionType === 'Page'){
             this.currentPage = this.findPageById(selectionId);
@@ -1059,8 +1052,6 @@ export default class NeuraFormBuilder extends LightningElement {
         this.settingsPanel = true;
         this.selectionId = selectionId;
         this.selectionStructure = selectionType;
-        console.log('Selection: ' + JSON.stringify(this.selection));
-        console.log('Updated this.SettingsPanel');
         
     }
 
@@ -1096,9 +1087,6 @@ export default class NeuraFormBuilder extends LightningElement {
         // the update will contain the updates of a component or section. We need to find the section or component in the formSettings and update it.
         const updatedSelection = event.detail.newSelection;
         const updatedField = event.detail.editedField;
-        console.log('Updated Selection:');
-        console.dir(updatedSelection);
-        console.log(JSON.stringify(updatedSelection));
         if(updatedSelection.type === 'Form'){
             this.formSettings = updatedSelection;
             this.selection = updatedSelection;
@@ -1164,7 +1152,6 @@ export default class NeuraFormBuilder extends LightningElement {
             this.saveState();
             const {id, direction} = event.detail;
             const index = this.findPageIndexById(id);
-            console.log('In handleReOrderPage');
             if(direction === 'up'){
                 if(index > 0){
                     this.formSettings = {
@@ -1181,14 +1168,11 @@ export default class NeuraFormBuilder extends LightningElement {
                 }
             }
 
-            console.log('After Swap');
             this.pageArray = this.formSettings.pages.map(page => page.attributes[FIELDS.Form_Page__c.Title.fieldApiName]);
 
-            console.log('updated pageArray');
 
             // reset the currentPage to have the updated order if it was changed.
             this.currentPage = this.findPageById(this.currentPage.id);
-            console.log('updated current page Settings');
         } catch (error) {
             console.error('Error in handleReOrderPage: ' + error.message);
         }
@@ -1216,7 +1200,6 @@ export default class NeuraFormBuilder extends LightningElement {
         return array;
     }
 
-
     /**
      * Handles the drag start event for the neuraFormBuilder component.
      * 
@@ -1224,10 +1207,6 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     handleNFDragStart(event){
         this.currentDraggedItem = event.detail;
-        console.log('Form Builder - handleNFDragStart: ');
-        console.dir(JSON.parse(JSON.stringify(this.currentDraggedItem)));
-        console.log(event.detail.structure);
-        console.dir(this.draggedItemInfo.structure);
     }
 
     /**
@@ -1236,8 +1215,6 @@ export default class NeuraFormBuilder extends LightningElement {
      */
     handleNFDragEnd(event){
         this.currentDraggedItem = null;
-        console.log('Form Builder - handleNFDragEnd: ');
-        console.dir(this.draggedItemInfo);
     }  
 
     /**
@@ -1258,7 +1235,6 @@ export default class NeuraFormBuilder extends LightningElement {
                 this.handleFinish();
                 break;
             default:
-                console.warn('Unhandled action type:', actionType);
         }
     }
 
@@ -1323,14 +1299,64 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     /**
+     * Keyboard-accessible reorder. Sections move within their page; components
+     * move within their column. Out-of-bounds moves no-op. This is the
+     * non-mouse alternative to the drag-and-drop story (audit item M6).
+     */
+    handleMoveItem(event) {
+        const { id, type, direction } = event.detail;
+        const delta = direction === 'up' ? -1 : 1;
+
+        try {
+            this.saveState();
+
+            if (type === 'Section') {
+                const page = this.formSettings.pages.find(p =>
+                    p.sections.some(s => s.id === id)
+                );
+                if (!page) return;
+                const idx = page.sections.findIndex(s => s.id === id);
+                const newIdx = idx + delta;
+                if (newIdx < 0 || newIdx >= page.sections.length) return;
+                const [moved] = page.sections.splice(idx, 1);
+                page.sections.splice(newIdx, 0, moved);
+                this.currentPage = this.formSettings.pages.find(p => p.id === this.currentPage.id);
+            } else if (type === 'Component') {
+                let foundColumn;
+                for (const page of this.formSettings.pages) {
+                    for (const section of page.sections) {
+                        for (const column of section.columns) {
+                            if (column.components.some(c => c.id === id)) {
+                                foundColumn = column;
+                                break;
+                            }
+                        }
+                        if (foundColumn) break;
+                    }
+                    if (foundColumn) break;
+                }
+                if (!foundColumn) return;
+                const idx = foundColumn.components.findIndex(c => c.id === id);
+                const newIdx = idx + delta;
+                if (newIdx < 0 || newIdx >= foundColumn.components.length) return;
+                const [moved] = foundColumn.components.splice(idx, 1);
+                foundColumn.components.splice(newIdx, 0, moved);
+                this.currentPage = this.formSettings.pages.find(p => p.id === this.currentPage.id);
+            }
+
+            this.updateFormSettings();
+        } catch (e) {
+            console.error('Error in handleMoveItem', e?.message);
+        }
+    }
+
+    /**
      * Handles the drop event when a component is dropped onto the form builder.
      * 
      * @param {Event} event - The drop event.
      * @returns {void}
      */
     handleComponentDrop(event) {
-        console.log('Component Drop');
-        console.log('Event Detail: ' + JSON.stringify(event.detail));
         let { component, targetColumnId, targetSectionId, dragSlotIndex } = event.detail;
     
         try {
@@ -1402,7 +1428,6 @@ export default class NeuraFormBuilder extends LightningElement {
                 this.settingsPanel = true;
             } 
 
-            console.log('Component added at index:', dragSlotIndex, newComponent);
         } catch (error) {
             console.error('Error in Component Drop', error.message);
         }
@@ -1414,7 +1439,6 @@ export default class NeuraFormBuilder extends LightningElement {
      * @returns {void}
      */
     handleSectionDrop(event) {
-        console.log('handleSectionDrop');
         //console.log('Drop Item ID:', event.detail.dropItemId);
         //console.log('Drag Slot Index:', event.detail.dragSlotIndex);
     
@@ -1477,17 +1501,11 @@ export default class NeuraFormBuilder extends LightningElement {
      * @returns {void}
      */
     handleHeaderClick(event) {
-        console.log('handleHeaderClick');
-        console.log('Event Detail: ' + JSON.stringify(event.detail));
-        let actionType = event.detail.actionType;
-        let value = event.detail.value;
-        // check if event detail is toggle, settings, undo,redo, save, saveas, help, dropdown, back
+        const actionType = event.detail.actionType;
+        const value = event.detail.value;
         switch (actionType) {
             case 'toggle':
                 this.componentPanel = !this.componentPanel;
-                break;
-            case 'settings':
-                //this.handleSettings();
                 break;
             case 'undo':
                 this.handleUndo();
@@ -1500,12 +1518,6 @@ export default class NeuraFormBuilder extends LightningElement {
                 break;
             case 'saveas':
                 this.handleSaveAs(value);
-                break;
-            case 'help':
-                //this.handleHelp();
-                break;
-            case 'dropdown':
-                //this.handleDropdown();
                 break;
             case 'screensize':
                 this.handleScreenSizeChange(value);
@@ -1520,9 +1532,11 @@ export default class NeuraFormBuilder extends LightningElement {
                 this.handlePaste();
                 break;
             default:
-                console.warn('Unhandled action type:', actionType);
+                // Unknown actionType - intentionally silent. The previous header
+                // raised 'settings', 'help', 'dropdown', and 'cut' that were
+                // never implemented; those buttons have been removed.
+                break;
         }
-
     }
 
     // OBJECT CREATION
@@ -1567,7 +1581,6 @@ export default class NeuraFormBuilder extends LightningElement {
      * @returns {Object} - The newly created component object.
      */
     createNewComponent(componentType){
-        console.log('New Component Type: ' + componentType)
         const isDisplayOnly = componentType === 'Display Text'; 
         const id = generateUUID();
         return {
@@ -1881,7 +1894,6 @@ export default class NeuraFormBuilder extends LightningElement {
             pages: pages.filter(page => page.id !== pageId)
         };
         this.pageArray = this.formSettings.pages.map(page => (page.attributes[FIELDS.Form_Page__c.Title.fieldApiName]));
-        console.log('Updated formSettings after page deletion:', this.formSettings);
     
         // Set this.currentPage to the previous page or the next page if the deleted page was the first
         if (this.currentPage && this.currentPage.id === pageId) {
@@ -1890,7 +1902,6 @@ export default class NeuraFormBuilder extends LightningElement {
             } else {
                 this.currentPage = pages[pageIndex + 1]; // Next page if the deleted page was the first
             }
-            console.log('Current page updated after deletion:', this.currentPage);
         }
     }
     
@@ -1926,7 +1937,6 @@ export default class NeuraFormBuilder extends LightningElement {
             ...this.currentPage, 
             sections: this.currentPage.sections.filter(section => section.id !== sectionId)
         };
-        console.log('Updated currentPage after section deletion:', this.currentPage);
 
     }
     
@@ -1950,7 +1960,6 @@ export default class NeuraFormBuilder extends LightningElement {
             });
         });
     
-        console.log('Updated currentPage after component deletion:', this.currentPage);
     }
 
     /**
@@ -2066,9 +2075,7 @@ export default class NeuraFormBuilder extends LightningElement {
         //this.currentPageIndex = state.currentPageIndex;        
     }
 
-
     handleCopy(){
-        console.log('handleCopyComponent');
         // only copy if it's a component
         this.copyComponent = {...this.selection};
         this.copyComponentStructure = this.selectionStructure;
@@ -2076,7 +2083,6 @@ export default class NeuraFormBuilder extends LightningElement {
     }
 
     handlePaste(){
-        console.log('handlePasteComponent');
         try{
 
             if((!this.copyComponent || !this.copyComponentStructure) && this.selectionStructure !== 'Page' && this.selectionStructure !== 'Section' && this.selectionStructure !== 'Component'){
@@ -2108,8 +2114,6 @@ export default class NeuraFormBuilder extends LightningElement {
                 
                 // update id's of all components within the copyComponent
                 newAddition = this.updateComponentsToUUID(newAddition);
-                console.log('new Addtion');
-                console.dir(newAddition);
                 // if the selection is a page then we need to add the section to the last page
                 this.currentPage.sections.push(newAddition);
                 this.selectionStructure = 'Section';
@@ -2138,7 +2142,6 @@ export default class NeuraFormBuilder extends LightningElement {
             this.selectionId = newAddition.id;
 
             this.updateFormSettings();
-
 
         } catch (error) {
             console.error('Error in handlePaste', error.message);

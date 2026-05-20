@@ -1,7 +1,14 @@
 <template>
-    <div  onmouseenter={handleMouseEnter} 
-    onmouseleave={handleMouseLeave}
-    onclick={handleClick} class="slds-m-around_xx-small" style="z-index: 12">
+    <div onmouseenter={handleMouseEnter}
+        onmouseleave={handleMouseLeave}
+        onclick={handleClick}
+        onkeydown={handleKeyDown}
+        role="group"
+        tabindex="0"
+        aria-label={questionAriaLabel}
+        aria-pressed={isActiveSelection}
+        class="slds-m-around_xx-small"
+        style="z-index: 12">
         <div class={questionClass} draggable="true" ondragstart={handleDragStart} ondragend={handleDragEnd}>
             <c-neura-form-question form-question={questionFormatObject}></c-neura-form-question>
             <!--<span class="question-label" style={labelStyle}>{component.type}</span>

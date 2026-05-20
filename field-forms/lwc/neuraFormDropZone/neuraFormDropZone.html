@@ -1,10 +1,12 @@
 <template>
-    <div 
-    style="z-index: 0;"
-    class={dropZoneClass}
-    ondragover={handleDragOver}
-    ondragleave={handleDragLeave}
-    ondrop={handleDrop}>
+    <div
+        style="z-index: 0;"
+        class={dropZoneClass}
+        ondragover={handleDragOver}
+        ondragleave={handleDragLeave}
+        ondrop={handleDrop}
+        role="region"
+        aria-label="Form canvas">
     <div lwc:dom="manual" data-drag-slot="start" class="slds-hidden slds-drop-zone_drag__slot"></div>
         <template for:each={layout.sections} for:item="item">
             <div key={item.id}>

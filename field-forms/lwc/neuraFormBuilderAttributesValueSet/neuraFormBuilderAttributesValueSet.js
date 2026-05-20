@@ -37,7 +37,6 @@ export default class NeuraFormBuilderAttributesValueSet extends LightningElement
     }
 
     handleInputChange(event) {
-        console.log('Input Change: ' + JSON.stringify(event.currentTarget.value));
         try {
             const index = event.currentTarget.dataset.index;
             const value = event.currentTarget.value;
@@ -52,7 +51,6 @@ export default class NeuraFormBuilderAttributesValueSet extends LightningElement
     }
 
     handleIconChange(event) {
-        console.log('Icon Event: ' + JSON.stringify(event.detail.value));
         const index = event.currentTarget.dataset.index;
         const value = event.detail.value;
         let updatedValueSet = JSON.parse(JSON.stringify(this._valueSet));

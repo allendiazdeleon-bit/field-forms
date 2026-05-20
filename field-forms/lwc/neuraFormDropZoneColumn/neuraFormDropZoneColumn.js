@@ -45,12 +45,9 @@ export default class NeuraFormDropZoneColumn extends LightningElement {
             // Find the index of the drag slot in the drop zone
             let dragSlotIndex = this.findDragSlotIndex();
             // if dragSlotIndex is -1, let's check if the drop zone is empty, if so, set the index to 0
-            console.log('Drag Slot Index:', dragSlotIndex);
-            console.log('Is Components Empty:', this.isComponentsEmpty);
             if (dragSlotIndex < 0  && this.isComponentsEmpty) {
                 dragSlotIndex = 0;
             }
-            console.log('Drag Slot Index:', dragSlotIndex);
             if (dragSlotIndex >= 0) {
                 this.updateLayout(droppedItemId, dragSlotIndex);
             }
@@ -74,12 +71,6 @@ export default class NeuraFormDropZoneColumn extends LightningElement {
         
     updateLayout(droppedItemId, dragSlotIndex) {
         // send the event to the parent component
-        console.log('Update Layout Values:')
-        console.log('Dropped Item Id: ' + droppedItemId);
-        console.log('Drag Slot Index: ' + dragSlotIndex);
-        console.log('Dragged Item Type: ' + this.draggedItemInfo?.type);
-        console.log('Target Column Id: ' + this.columnId);
-        console.log('Target Section Id: ' + this.sectionId);
 
         this.dispatchEvent(new CustomEvent('updatecomponent', 
             {   
@@ -130,7 +121,6 @@ export default class NeuraFormDropZoneColumn extends LightningElement {
                         closestDistance = distance;
                         closestChild = mouseY < childMidY ? child : child.nextSibling;
                     }
-                    console.log('Child:', child, 'Distance:', distance);
                 }
             });
     
@@ -159,9 +149,7 @@ export default class NeuraFormDropZoneColumn extends LightningElement {
             });
         
             if (closestSlot) {
-                console.log('Closest Slot ID:', closestSlot.dataset.dragSlot);
             } else {
-                console.log('No closest slot found');
             }
         
             return closestSlot ? closestSlot.dataset.dragSlot : null;

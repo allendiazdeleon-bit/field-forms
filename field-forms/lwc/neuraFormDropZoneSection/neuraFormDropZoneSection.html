@@ -1,12 +1,17 @@
 <template>
-    <div 
-    onmouseenter={handleMouseEnter} 
-    onmouseleave={handleMouseLeave}
-    onclick={handleClick}
-    style="z-index: 10;"
-    class="slds-drop-zone__container slds-m-horizontal_xx-small">
+    <div
+        onmouseenter={handleMouseEnter}
+        onmouseleave={handleMouseLeave}
+        onclick={handleClick}
+        onkeydown={handleKeyDown}
+        style="z-index: 10;"
+        class="slds-drop-zone__container slds-m-horizontal_xx-small"
+        role="group"
+        tabindex="0"
+        aria-label={sectionAriaLabel}
+        aria-pressed={isActiveSelection}>
         <div class={sectionClass} draggable="true" ondragstart={handleDragStart} ondragend={handleDragEnd}>
-            
+
             <template if:true={showTitle}><h2 class="slds-card__header-title"><span class="slds-text-heading_small slds-truncate">{titleText}</span></h2></template>
             <lightning-layout>
                 <template for:item="col" for:each={section.columns}>

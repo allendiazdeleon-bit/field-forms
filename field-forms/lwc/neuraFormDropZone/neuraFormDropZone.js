@@ -10,9 +10,7 @@ export default class NeuraFormDropZone extends LightningElement {
         return `slds-drop-zone slds-p-around_small ${this.isDragOver ? 'slds-drop-zone_drag is-in-droppable-state' : ''}`;
     }
 
-
     @api layout; // JSON object from the parent component
-
 
     handleDragOver(event) {
         //console.log('Drop Zone - Drag Over');
@@ -39,7 +37,6 @@ export default class NeuraFormDropZone extends LightningElement {
         if (this.draggedItemInfo && this.draggedItemInfo.structure === 'Layout') {
             // Find the index of the drag slot in the drop zone
             const dragSlotIndex = this.findDragSlotIndex();
-            console.log('Drag Slot Index:', dragSlotIndex);
             if (dragSlotIndex >= 0) {
                 this.updateLayout(droppedItemId, dragSlotIndex);
             }
@@ -106,7 +103,6 @@ export default class NeuraFormDropZone extends LightningElement {
                     closestDistance = distance;
                     closestChild = mouseY < childMidY ? child : child.nextSibling;
                 }
-                console.log('Child:', child, 'Distance:', distance);
             }
         });
 
@@ -135,9 +131,7 @@ export default class NeuraFormDropZone extends LightningElement {
         });
     
         if (closestSlot) {
-            console.log('Closest Slot ID:', closestSlot.dataset.dragSlot);
         } else {
-            console.log('No closest slot found');
         }
     
         return closestSlot ? closestSlot.dataset.dragSlot : null;

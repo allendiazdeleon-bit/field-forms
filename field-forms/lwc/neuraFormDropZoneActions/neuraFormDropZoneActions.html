@@ -1,8 +1,30 @@
 <template>
-    <div class="slds-drop-zone__actions actionButtons">
+    <div class="slds-drop-zone__actions actionButtons" role="toolbar" aria-label={actionsAriaLabel}>
         <lightning-button-group>
-            <lightning-button-icon icon-name="utility:move" size="x-small" alternative-text="Move" variant="border-inverse" title="Move" class="move-item"></lightning-button-icon>
-            <lightning-button-icon onclick={handleDelete} icon-name="utility:close" size="x-small" alternative-text="Delete" variant="border-inverse" title="Close"></lightning-button-icon>
+            <lightning-button-icon
+                onclick={handleMoveUp}
+                icon-name="utility:up"
+                size="x-small"
+                alternative-text={moveUpAltText}
+                variant="border-inverse"
+                title={moveUpAltText}
+            ></lightning-button-icon>
+            <lightning-button-icon
+                onclick={handleMoveDown}
+                icon-name="utility:down"
+                size="x-small"
+                alternative-text={moveDownAltText}
+                variant="border-inverse"
+                title={moveDownAltText}
+            ></lightning-button-icon>
+            <lightning-button-icon
+                onclick={handleDelete}
+                icon-name="utility:close"
+                size="x-small"
+                alternative-text={deleteAltText}
+                variant="border-inverse"
+                title={deleteAltText}
+            ></lightning-button-icon>
         </lightning-button-group>
     </div>
 </template>

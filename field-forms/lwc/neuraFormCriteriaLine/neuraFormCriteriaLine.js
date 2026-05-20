@@ -213,10 +213,8 @@ export default class NeuraFormCriteriaLine extends LightningElement {
     handleNarrowPageChange(event) {
         try {
             this.page = event.detail.value;
-            console.log('selected page', this.page);
 
             this.filterSections(this.page);
-            console.log('filtered section options', this.filteredSectionOptions);
 
             this.section = null;
             this.resource = null;
@@ -238,10 +236,8 @@ export default class NeuraFormCriteriaLine extends LightningElement {
     handleNarrowSectionChange(event) {
         try {
             this.section = event.detail.value;
-            console.log('question options in sec change', JSON.stringify(this.questionOptions));
 
             this.filterQuestions(this.section);
-            console.log('filteredQuestionOptions', this.filteredQuestionOptions);
 
             this.resource = null;
             const index = event.target.dataset.index;
@@ -283,9 +279,7 @@ export default class NeuraFormCriteriaLine extends LightningElement {
         }
     }
 
-
     handleOpenPopOver(){
-        console.log('Open Popover');
         this.isPopoverOpen = true;
     }
 
@@ -320,7 +314,6 @@ export default class NeuraFormCriteriaLine extends LightningElement {
                 }
             });
 
-            console.log('Condition Event: ', conditionEvent);
             this.dispatchEvent(conditionEvent);
         } catch (error) {
             this.handleError(error, 'sendUpdatedCondition');
@@ -333,7 +326,6 @@ export default class NeuraFormCriteriaLine extends LightningElement {
     }
 
     connectedCallback(){
-        console.log('selection', this.selection);
 
         this.initializeOptions();
         
@@ -350,7 +342,6 @@ export default class NeuraFormCriteriaLine extends LightningElement {
 
         this.resource = this.condition.resource;
         this.resourceNotSelected = !this.resource;
-        console.log('resource not selected?', this.resourceNotSelected, this.resource);
         this.operator = this.condition.operator;
         this.value = this.condition.value;
         const selectedQuestion = this.questions.find(q => q.id === this.resource);
@@ -363,8 +354,6 @@ export default class NeuraFormCriteriaLine extends LightningElement {
         const pages = [];
         const sections = [];
         const questions = [];
-        console.log('ALL CONFIGS INITIALIZE');
-        console.dir(this.allConfiguration);
         [...this.allConfiguration].forEach(page => {
             pages.push({ label: page.attributes[FIELDS.Form_Page__c.Title.fieldApiName], value: page.id });
             this.pageOptions = [...pages];
@@ -380,9 +369,6 @@ export default class NeuraFormCriteriaLine extends LightningElement {
                 });
             });
         });
-        console.log('Page Options: ', this.pageOptions);
-        console.log('Section Options: ', this.sectionOptions);
-        console.log('Question Options: ', this.questionOptions);
     }
 
 }

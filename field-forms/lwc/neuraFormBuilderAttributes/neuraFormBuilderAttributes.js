@@ -3,7 +3,6 @@ import getAllAttributes from '@salesforce/apex/neuraFormBuilderController.getAll
 
 import { FIELDS, OBJECTS } from 'c/neuraFormSchemaUtils';
 
-
 export default class NeuraFormBuilderAttributes extends LightningElement {
     
     @api selection;
@@ -34,7 +33,6 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
             //console.log(JSON.stringify(data));
             this.processData(data);
         } else if (error) {
-            console.log('Error');
             console.error(error);
 
             // Handle the error
@@ -60,18 +58,13 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
             //console.log('Item Setting Ref API');
             //console.dir(item?.[settingRefAPI]);
 
-
             const groupName = item?.[settingRefAPI]?.[settingLabelAPI];
 
-            console.log('Group Name: ' + groupName);
             if (!updatedGroupedAttributes[groupName]) {
                 updatedGroupedAttributes[groupName] = [];
             }
 
-            console.log('FSF Ref API: ' + fsfRefAPI);
-            console.log('FSF Label API: ' + fsfLabelAPI);
             // Test Label retrieval
-            console.log('Item Label: ' + item?.[fsfRefAPI]?.[fsfLabelAPI]);
 
             updatedGroupedAttributes[groupName].push({
                 label: item?.[fsfRefAPI]?.[fsfLabelAPI]
@@ -79,18 +72,13 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
         });
 
         this.groupedAttributes = updatedGroupedAttributes
-        console.log('Grouped Attributes');
-        console.dir(this.groupedAttributes);
     }
 
     get activeSelection() {
 
-        console.log('Active Selection');
-        console.dir(JSON.parse(JSON.stringify(this.selection)));
         const activeSelection = [];
        
         const group = this.groupedAttributes[this.selection.type];
-        console.log(group);
         if (group && this.selection && this.selection?.attributes) {
             group.forEach(attr => {
                 // if the label contains color, flag isColor to true
@@ -111,7 +99,6 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
                 activeSelection.push({ label, value, isColor, isStandard, isValueSet, displayLabel});
             });
         }
-        console.log(JSON.stringify(activeSelection));
         return activeSelection;
     }
 
@@ -164,7 +151,6 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
         return this.selection?.attributes[FIELDS.Form_Question__c.Question.fieldApiName];
     }
 
-
     handleAttributeChange(event) {
         // update the selection with the new value of the event detail 
         try {
@@ -202,7 +188,6 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
             let newSelection = JSON.parse(JSON.stringify(this.selection));
             const previousValue = newSelection.attributes[field];
             newSelection.attributes[field] = value;
-            console.log('Updated Selection: ' + JSON.stringify(newSelection.attributes));
             // send the updated selection to the parent component
             this.dispatchEvent(new CustomEvent('update', { detail: { newSelection: newSelection, editedField: {field: field, previousValue: previousValue, newValue: value}  }}));
     }

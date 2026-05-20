@@ -52,16 +52,30 @@ export default class NeuraFormDropZoneSection extends LightningElement {
         });
 
         //console.log('drag end');
-        console.dir(dragEndEvent);
         this.dispatchEvent(dragEndEvent);
     }
 
     handleClick(event){
         this.dispatchEvent(new CustomEvent(
-            'selection', { 
+            'selection', {
                 bubbles: true,
                 composed: true,
                 detail: {id : this.section.id, type : 'Section'} }));
+    }
+
+    // Keyboard alternative for selecting a section. Enter/Space activate the
+    // same selection event the click handler dispatches.
+    handleKeyDown(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.handleClick(event);
+        }
+    }
+
+    get sectionAriaLabel() {
+        return this.titleText
+            ? `Section: ${this.titleText}`
+            : 'Section';
     }
 
     handleChildMouseEnter(event){
@@ -99,7 +113,6 @@ export default class NeuraFormDropZoneSection extends LightningElement {
 
     handleDeleteSection() {
         // dispatch the delete event with the section Id
-        console.log('Delete Section');
         this.dispatchEvent(new CustomEvent('delete', { 
             bubbles: true,
             composed: true,

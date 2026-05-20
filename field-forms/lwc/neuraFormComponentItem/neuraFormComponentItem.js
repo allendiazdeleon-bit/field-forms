@@ -38,29 +38,18 @@ export default class NeuraFormComponentItem extends LightningElement {
             bubbles: true
         });
 
-        console.log('drag end');
-        console.dir(dragEndEvent);
         this.dispatchEvent(dragEndEvent);
     }
 
     connectedCallback(){
         // set variables from the item 
         // debug the item
-        console.log('Start Component Item');
-        console.dir(JSON.parse(JSON.stringify(this.item)));
 
         // check fields
-        console.log('Display Label Field: ' + FIELDS.Form_Setting__mdt.DisplayLabel.fieldApiName);
-        console.log('Icon Field: ' + FIELDS.Form_Setting__mdt.Icon.fieldApiName);
-        console.log('Structure Field: ' + FIELDS.Form_Setting__mdt.Structure.fieldApiName);
 
         this.title = this.item[FIELDS.Form_Setting__mdt.DisplayLabel.fieldApiName];
         this.iconName = this.item[FIELDS.Form_Setting__mdt.Icon.fieldApiName];
         this.structure = this.item[FIELDS.Form_Setting__mdt.Structure.fieldApiName];
         
-        console.log('Title: ' + this.title);
-        console.log('Icon: ' + this.iconName);
-        console.log('Structure: ' + this.structure);
-        console.log('End of Component Item');
     }
 }
