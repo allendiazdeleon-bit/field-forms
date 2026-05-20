@@ -168,8 +168,6 @@ export default class NeuraFormCriteriaLine extends LightningElement {
         return this.condition.operator ? this.allOperators.find(op => op.value === this.condition.operator).label : '';
     }
 
-    isPopoverOpen = false;
-
     get showPopover(){
         return this.isPopoverOpen;
     }

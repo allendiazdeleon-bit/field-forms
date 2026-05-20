@@ -39,23 +39,24 @@ export default class NeuraFormDropZoneColumn extends LightningElement {
 
     handleDrop(event) {
         event.preventDefault();
-    
-        const droppedItemId = event.dataTransfer.getData('text');
+
+        // Note: the drag-start handlers in the section/question/palette
+        // components don't call event.dataTransfer.setData('text', ...), so
+        // reading getData('text') only ever returned ''. The actual identity
+        // of the dragged item travels through draggedItemInfo (the nfdragstart
+        // detail) instead - use that.
         if (this.draggedItemInfo && this.draggedItemInfo.structure === 'Component') {
-            // Find the index of the drag slot in the drop zone
             let dragSlotIndex = this.findDragSlotIndex();
-            // if dragSlotIndex is -1, let's check if the drop zone is empty, if so, set the index to 0
-            if (dragSlotIndex < 0  && this.isComponentsEmpty) {
+            if (dragSlotIndex < 0 && this.isComponentsEmpty) {
                 dragSlotIndex = 0;
             }
             if (dragSlotIndex >= 0) {
-                this.updateLayout(droppedItemId, dragSlotIndex);
+                this.updateLayout(this.draggedItemInfo.id || '', dragSlotIndex);
             }
         }
 
         this.isDragOver = false;
         this.hideAllDragSlots();
-    
     }
 
     findDragSlotIndex() {
