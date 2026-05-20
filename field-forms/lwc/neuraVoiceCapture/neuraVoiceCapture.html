@@ -1,0 +1,13 @@
+<template>
+    <template if:true={isSupported}>
+        <lightning-button-icon
+            icon-name={iconName}
+            variant={buttonVariant}
+            size="small"
+            alternative-text={ariaLabel}
+            title={title}
+            disabled={disabled}
+            onclick={handleClick}
+        ></lightning-button-icon>
+    </template>
+</template>

@@ -186,6 +186,21 @@ export default class NeuraFormAnswer extends LightningElement {
 		this.dispatchChangeEvent();
 	}
 
+	/**
+	 * Voice transcription handler: appends spoken text to the current answer
+	 * for Text/Text Area questions. We append rather than replace so multiple
+	 * sentences can be dictated in sequence.
+	 */
+	handleVoiceTranscript({ detail }) {
+		const text = (detail?.text || '').trim();
+		if (!text) return;
+		const existing = this.answerValue ? String(this.answerValue) : '';
+		const separator = existing && !existing.endsWith(' ') ? ' ' : '';
+		this.answerValue = existing + separator + text;
+		this.resetInlineMessageError();
+		this.dispatchChangeEvent();
+	}
+
 	handleCommentChange({ detail }) {
 		if (
 			(this.inputType === 'Toggle' || this.inputType === 'Checkbox') &&

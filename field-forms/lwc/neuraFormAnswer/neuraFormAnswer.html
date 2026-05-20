@@ -6,26 +6,46 @@
 			<template
 				if:true={isTextBox}
 			>
-				<lightning-input
-					data-id="textBox"
-					type="text"
-					label="Text Box"
-					value={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
+				<div class="slds-grid slds-grid_vertical-align-center">
+					<div class="slds-col slds-grow">
+						<lightning-input
+							data-id="textBox"
+							type="text"
+							label="Text Box"
+							value={value}
+							variant="label-hidden"
+							onchange={handleChange}
+						></lightning-input>
+					</div>
+					<div class="slds-col slds-no-flex slds-m-left_x-small">
+						<c-neura-voice-capture
+							aria-label="Speak answer"
+							ontranscript={handleVoiceTranscript}
+						></c-neura-voice-capture>
+					</div>
+				</div>
 			</template>
 
 			<template
 				if:true={isTextArea}
 			>
-				<lightning-textarea
-					data-id="textArea"
-					label="Text Area"
-					value={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-textarea>
+				<div class="slds-grid slds-grid_vertical-align-start">
+					<div class="slds-col slds-grow">
+						<lightning-textarea
+							data-id="textArea"
+							label="Text Area"
+							value={value}
+							variant="label-hidden"
+							onchange={handleChange}
+						></lightning-textarea>
+					</div>
+					<div class="slds-col slds-no-flex slds-m-left_x-small slds-m-top_x-small">
+						<c-neura-voice-capture
+							aria-label="Speak answer"
+							ontranscript={handleVoiceTranscript}
+						></c-neura-voice-capture>
+					</div>
+				</div>
 			</template>
 
 			<template
