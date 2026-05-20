@@ -47,6 +47,7 @@ import ServiceAppointment from '@salesforce/schema/Linked_Form__c.Service_Appoin
 import Status from '@salesforce/schema/Linked_Form__c.Status__c';
 import WorkOrderLineItem from '@salesforce/schema/Linked_Form__c.Work_Order_Line_Item__c';
 import WorkOrder from '@salesforce/schema/Linked_Form__c.Work_Order__c';
+import LinkedFormTemplate from '@salesforce/schema/Linked_Form__c.Form_Template__c';
 //import FormAnswers from '@salesforce/schema/Linked_Form__c.Form_Answers__r';
 
 // Imports for Form_Answer__c
@@ -193,7 +194,8 @@ export const FIELDS = {
         ServiceAppointment,
         Status,
         WorkOrderLineItem,
-        WorkOrder
+        WorkOrder,
+        FormTemplate: LinkedFormTemplate
     },
     Form_Answer__c: {
         Id,

@@ -1,5 +1,6 @@
 import { LightningElement, api, wire, track } from 'lwc';
 import { gql, graphql, refreshGraphQL } from 'lightning/uiGraphQLApi';
+import { getRecord } from 'lightning/uiRecordApi';
 import formFactorPropertyName from '@salesforce/client/formFactor';
 import { LOADING_TOKENS, MESSAGE_VARIANT, FORM_ANSWER_FETCH_LIMIT } from './constants';
 import LinkedFormIdField from '@salesforce/schema/Linked_Form__c.Id';
@@ -9,6 +10,12 @@ import { isChangeInDataForGraphQLResult } from 'c/neuraCommonUtility';
 import { reduceError } from 'c/nfCommonUtility';
 
 import { FIELDS, OBJECTS } from 'c/neuraFormSchemaUtils';
+import {
+    createDraftLinkedForm,
+    parentLookupFieldFor,
+    buildFormObjectFromPrimedTemplate,
+    templateFieldsForDraftLoad
+} from './draftFormHelpers';
 
 const DEFAULT_STATUS = 'Not Started';
 const DEFAULT_COLOR = 'blue';
@@ -128,6 +135,195 @@ export default class NeuraFormMobile extends LightningElement {
             this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
         }
     }
+
+    // --- B4: draft-parent fallback -------------------------------------------
+    //
+    // When listQuery returns zero Linked_Form rows we ask: is the host record
+    // itself a draft (or simply unprovisioned)? If a Default_Form exists for
+    // its WorkType, surface it as a "Start offline form" action so the field
+    // tech can begin filling it locally without waiting for sync.
+
+    @track availableDefaultForms = [];
+    @track parentWorkTypeId;
+
+    // getRecord wire to read the host's WorkTypeId. Field paths differ per
+    // parent SObject; the getter returns the right one and undefined when the
+    // host type isn't supported (in which case the wire is skipped).
+    get hostRecordFields() {
+        switch (this.objectApiName) {
+            case 'WorkOrder':
+                return ['WorkOrder.WorkTypeId'];
+            case 'ServiceAppointment':
+                return ['ServiceAppointment.WorkTypeId'];
+            case 'WorkOrderLineItem':
+                return ['WorkOrderLineItem.WorkTypeId'];
+            default:
+                return undefined;
+        }
+    }
+
+    @wire(getRecord, { recordId: '$recordId', fields: '$hostRecordFields' })
+    hostRecordResult({ data, error }) {
+        if (error) {
+            // Non-fatal; the draft-parent fallback simply won't activate.
+            return;
+        }
+        if (data) {
+            const fieldKey = (this.hostRecordFields || [])[0]
+                ?.split('.')?.[1];
+            this.parentWorkTypeId = data.fields?.[fieldKey]?.value;
+        }
+    }
+
+    // GraphQL query for Default_Form mappings tied to this host's WorkType.
+    // Kept separate from listQuery so it can run independently and doesn't
+    // bloat the primary list response.
+    get defaultFormsQuery() {
+        if (!this.parentWorkTypeId) return undefined;
+        return gql`query getDefaultFormsForWorkType($workTypeId: ID!) {
+            uiapi {
+                query {
+                    Default_Form__c(
+                        where: { Work_Type__c : { eq: $workTypeId } }
+                    ) {
+                        edges {
+                            node {
+                                Id
+                                Form_Template__c { value }
+                                Form_Template__r : Form_Template__r {
+                                    Id
+                                    Name { value }
+                                    Selector_Color__c { value }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }`;
+    }
+
+    get defaultFormsVariables() {
+        return this.parentWorkTypeId
+            ? { workTypeId: this.parentWorkTypeId }
+            : undefined;
+    }
+
+    @wire(graphql, {
+        query: '$defaultFormsQuery',
+        variables: '$defaultFormsVariables'
+    })
+    defaultFormsResult({ data }) {
+        if (!data) return;
+        const edges = data.uiapi?.query?.Default_Form__c?.edges || [];
+        this.availableDefaultForms = edges.map(e => {
+            const node = e.node || {};
+            const tpl = node.Form_Template__r || {};
+            return {
+                defaultFormId: node.Id,
+                formTemplateId: node.Form_Template__c?.value,
+                formTemplateName: tpl.Name?.value || 'Form',
+                color: tpl.Selector_Color__c?.value || DEFAULT_COLOR
+            };
+        });
+    }
+
+    get shouldOfferDraftFallback() {
+        return (
+            this.listInitialised &&
+            (!this.formData || this.formData.length === 0) &&
+            this.availableDefaultForms.length > 0 &&
+            !!parentLookupFieldFor(this.objectApiName)
+        );
+    }
+
+    async handleCreateDraftForm(event) {
+        const formTemplateId = event.currentTarget?.dataset?.templateId;
+        const def = this.availableDefaultForms.find(
+            d => d.formTemplateId === formTemplateId
+        );
+        if (!def) return;
+
+        const parentField = parentLookupFieldFor(this.objectApiName);
+        if (!parentField) return;
+
+        this.setLoading(LOADING_TOKENS.DATA_LOAD, true);
+        try {
+            const result = await createDraftLinkedForm({
+                formTemplateId,
+                parentField,
+                parentRecordId: this.recordId
+            });
+            const draftLinkedFormId = result.id;
+
+            // Inject a lightweight formData entry so the selector shows it.
+            // Drafts won't reappear in listQuery until the parent syncs, so
+            // we maintain them in memory.
+            const linkedForm = { Id: draftLinkedFormId };
+            linkedForm[FIELDS.Linked_Form__c.Status.fieldApiName] = 'Not Started';
+            linkedForm[FIELDS.Linked_Form__c.CurrentPage.fieldApiName] = 1;
+            const lightweight = {
+                Id: formTemplateId,
+                Name: def.formTemplateName,
+                pages: [],
+                linkedForm,
+                isDraft: true
+            };
+            lightweight[FIELDS.Form_Template__c.SelectorColor.fieldApiName] = def.color;
+
+            this.formData = [...this.formData, lightweight];
+            this.formAdditionalStructures(this.formData);
+        } catch (err) {
+            this.setCriticalInlineMessage(reduceError(err), MESSAGE_VARIANT.ERROR);
+        } finally {
+            this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
+        }
+    }
+
+    // When the user selects a *draft* Linked_Form, the GraphQL detailsQuery
+    // won't return it (LDS drafts aren't queryable via uiGraphQLApi). Instead,
+    // pull the Form_Template via getRecord (which works against primed data
+    // offline) and rebuild the form structure client-side.
+    @track _draftTemplateIdForFetch;
+
+    @wire(getRecord, {
+        recordId: '$_draftTemplateIdForFetch',
+        fields: templateFieldsForDraftLoad()
+    })
+    draftTemplateResult({ data, error }) {
+        if (error) {
+            this.setCriticalInlineMessage(reduceError(error), MESSAGE_VARIANT.ERROR);
+            this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
+            return;
+        }
+        if (!data || !this._pendingDraftLinkedFormId) return;
+
+        try {
+            const fullForm = buildFormObjectFromPrimedTemplate({
+                templateRecord: data,
+                draftLinkedFormId: this._pendingDraftLinkedFormId,
+                transforms: {
+                    combineAndTransformJSON: this.combineAndTransformJSON.bind(this),
+                    transformJSON: this.transformJSON.bind(this),
+                    updateRenderingConditions: this.updateRenderingConditions.bind(this)
+                }
+            });
+            if (!fullForm) return;
+
+            this.formData = this.formData.map(f =>
+                f?.linkedForm?.Id === fullForm.linkedForm.Id ? fullForm : f
+            );
+            this.selectedForm = fullForm;
+            this.showForm = true;
+            this.showSelector = false;
+        } catch (e) {
+            this.setCriticalInlineMessage(reduceError(e), MESSAGE_VARIANT.ERROR);
+        } finally {
+            this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
+        }
+    }
+
+    // -------------------------------------------------------------------------
 
     // Retained for backwards-compat callers; legacy mobile builds expected this
     // single bootstrap method. The new wire pipeline calls transformListData
@@ -567,15 +763,20 @@ export default class NeuraFormMobile extends LightningElement {
 
             this.setLoading(LOADING_TOKENS.DATA_LOAD, true);
             // If the same form is already fully loaded, surface it directly;
-            // otherwise let the details wire fetch the heavy payload.
+            // otherwise route by storage state:
+            //   - draft Linked_Form  -> fetch the Form_Template via getRecord
+            //     (GraphQL won't return drafts).
+            //   - persisted Linked_Form -> trigger the detailsQuery wire.
             if (targetEntry.pages && targetEntry.pages.length > 0) {
                 this.selectedForm = targetEntry;
                 this.showForm = true;
                 this.showSelector = false;
                 this.loadAnswerFiles = this.answersId.length > 0;
                 this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
+            } else if (targetEntry.isDraft) {
+                this._pendingDraftLinkedFormId = linkedFormId;
+                this._draftTemplateIdForFetch = targetEntry.Id;
             } else {
-                // Triggers $detailsQuery via the reactive wire.
                 this.selectedLinkedFormId = linkedFormId;
             }
         } catch (err){
@@ -593,8 +794,10 @@ export default class NeuraFormMobile extends LightningElement {
         this.showSelector = true;
         this.selectedForm = undefined;
         // Clearing selectedLinkedFormId stops the details wire from re-firing
-        // until the user picks another form.
+        // until the user picks another form. Same for the draft fetch.
         this.selectedLinkedFormId = undefined;
+        this._draftTemplateIdForFetch = undefined;
+        this._pendingDraftLinkedFormId = undefined;
     }
 
     handleFooterClick({ detail }) {

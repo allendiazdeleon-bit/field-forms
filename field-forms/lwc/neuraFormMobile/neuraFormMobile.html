@@ -25,6 +25,31 @@
             <div class="slds-m-vertical_medium">
                 <c-neura-form-selector form-options={formOptions} onformselected={handleFormSelected}></c-neura-form-selector>
             </div>
+
+            <!-- B4: when the host record has no Linked_Forms yet (typically
+                 because it was created offline and the server-side flow
+                 hasn't fired), let the field tech start one from any
+                 Default_Form mapped to the host's WorkType. -->
+            <template if:true={shouldOfferDraftFallback}>
+                <div class="slds-box slds-m-horizontal_small slds-m-bottom_medium">
+                    <p class="slds-text-title slds-m-bottom_x-small">
+                        No forms found for this record yet.
+                    </p>
+                    <p class="slds-text-body_small slds-m-bottom_small">
+                        Start one offline; it will sync when this record syncs.
+                    </p>
+                    <template for:each={availableDefaultForms} for:item="def">
+                        <lightning-button
+                            key={def.formTemplateId}
+                            class="slds-m-right_x-small slds-m-bottom_x-small"
+                            label={def.formTemplateName}
+                            variant="brand"
+                            data-template-id={def.formTemplateId}
+                            onclick={handleCreateDraftForm}
+                        ></lightning-button>
+                    </template>
+                </div>
+            </template>
         </template>
 
 
