@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>60.0</apiVersion>
+    <apiVersion>62.0</apiVersion>
     <description>This flow handles the addition of default forms as linked forms when a work type is updated on a work order.</description>
     <environments>Default</environments>
     <interviewLabel>Field Forms - Work Order - Create Linked Forms {!$Flow.CurrentDateTime}</interviewLabel>
