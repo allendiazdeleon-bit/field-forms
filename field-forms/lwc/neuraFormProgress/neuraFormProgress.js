@@ -100,9 +100,11 @@ export default class NeuraFormProgress extends LightningElement {
                 return;
           }
 
-          // clean the indicatorType variable of any leading/trailing spaces and convert to lowercase
-          let indicatorDirty = this.indicatorType;
-          let indicatorClean = indicatorDirty.trim().toLowerCase();
+          // Form_Template.Indicator_Type__c can be null (admin never picked
+          // one); the switch below has a "default" branch that handles unknown
+          // types, so just fall through to '' here instead of throwing.
+          const indicatorDirty = this.indicatorType || '';
+          const indicatorClean = String(indicatorDirty).trim().toLowerCase();
           let considerCurrentStepPercentage = false;
   
           // set conditions for which indicator type displays
@@ -150,7 +152,7 @@ export default class NeuraFormProgress extends LightningElement {
                   isFinalStep = true;
               }
               
-              let cleanArrayValue = stepListArray[i].trim();
+              let cleanArrayValue = String(stepListArray[i] || '').trim();
               
               if(afterCurrent == false) {
                   

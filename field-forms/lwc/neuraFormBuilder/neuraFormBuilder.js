@@ -622,27 +622,33 @@ export default class NeuraFormBuilder extends LightningElement {
             
             let oldPageIdsToNew = await this.handlePageOperations(newPages, updatedPages);
 
-            // update new Sections with the new page Ids
-            if(newPages.length > 0){
-                newSections.forEach(section => {
-                    section[FIELDS.Form_Section__c.FormPage.fieldApiName] = oldPageIdsToNew[section[FIELDS.Form_Section__c.FormPage.fieldApiName]];
-                });
-                // Same remap for questions - they carry Form_Page__c directly
-                // since Wave 13. Without this the question insert fails with
-                // an "invalid foreign key" / unknown-error toast.
-                const remapPageRef = (rec) => {
-                    const existing = rec[FIELDS.Form_Question__c.FormPage.fieldApiName];
-                    if (existing && oldPageIdsToNew[existing]) {
-                        rec[FIELDS.Form_Question__c.FormPage.fieldApiName] = oldPageIdsToNew[existing];
-                    }
-                };
-                newQuestions.forEach(remapPageRef);
-                updatedQuestions.forEach(remapPageRef);
-
-                newPages.forEach(page => {
+            // Remap unconditionally - cheap when the map is empty and prevents
+            // any stale UUID slipping through.
+            const saPageFK = FIELDS.Form_Section__c.FormPage.fieldApiName;
+            const saQPageFK = FIELDS.Form_Question__c.FormPage.fieldApiName;
+            const saRemapSection = (sec) => {
+                const cur = sec[saPageFK];
+                if (cur && oldPageIdsToNew[cur]) sec[saPageFK] = oldPageIdsToNew[cur];
+            };
+            const saRemapQuestion = (q) => {
+                const cur = q[saQPageFK];
+                if (cur && oldPageIdsToNew[cur]) q[saQPageFK] = oldPageIdsToNew[cur];
+            };
+            newSections.forEach(saRemapSection);
+            updatedSections.forEach(saRemapSection);
+            newQuestions.forEach(saRemapQuestion);
+            updatedQuestions.forEach(saRemapQuestion);
+            newPages.forEach(page => {
+                if (page.Id && oldPageIdsToNew[page.Id]) {
                     page.Id = oldPageIdsToNew[page.Id];
-                });
-            }
+                }
+            });
+            newFormSettings.pages.forEach(p => {
+                if (p.id && oldPageIdsToNew[p.id]) {
+                    p.id = oldPageIdsToNew[p.id];
+                    if (p.attributes) p.attributes.Id = oldPageIdsToNew[p.attributes.Id] || p.attributes.Id;
+                }
+            });
 
             let oldSectionIdsToNew = await this.handleSectionOperations(newSections, updatedSections);
 
@@ -741,26 +747,38 @@ export default class NeuraFormBuilder extends LightningElement {
 
             lastStep = 'saving pages';
             let oldPageIdsToNew = await this.handlePageOperations(newPages, updatedPages);
-            if (newPages.length > 0) {
-                newSections.forEach(section => {
-                    section[FIELDS.Form_Section__c.FormPage.fieldApiName] = oldPageIdsToNew[section[FIELDS.Form_Section__c.FormPage.fieldApiName]];
-                });
-                // Wave 21 fix: questions also reference Form_Page__c directly
-                // (introduced in Wave 13). Without this remap, questions try to
-                // insert with a UUID where a real Page Id is required and the
-                // DML fails with a confusing "Unknown error".
-                const remapPageRef = (rec) => {
-                    const existing = rec[FIELDS.Form_Question__c.FormPage.fieldApiName];
-                    if (existing && oldPageIdsToNew[existing]) {
-                        rec[FIELDS.Form_Question__c.FormPage.fieldApiName] = oldPageIdsToNew[existing];
-                    }
-                };
-                newQuestions.forEach(remapPageRef);
-                updatedQuestions.forEach(remapPageRef);
-                newPages.forEach(page => {
+            // Always run the remap, even when newPages.length === 0 - any
+            // stale UUID still in flight needs to be resolved before sections
+            // / questions DML reaches Apex. The map is just empty when there's
+            // nothing to remap, so the calls are cheap.
+            const pageFKField = FIELDS.Form_Section__c.FormPage.fieldApiName;
+            const questionPageFKField = FIELDS.Form_Question__c.FormPage.fieldApiName;
+            const remapSectionPage = (sec) => {
+                const cur = sec[pageFKField];
+                if (cur && oldPageIdsToNew[cur]) sec[pageFKField] = oldPageIdsToNew[cur];
+            };
+            const remapQuestionPage = (q) => {
+                const cur = q[questionPageFKField];
+                if (cur && oldPageIdsToNew[cur]) q[questionPageFKField] = oldPageIdsToNew[cur];
+            };
+            newSections.forEach(remapSectionPage);
+            updatedSections.forEach(remapSectionPage);
+            newQuestions.forEach(remapQuestionPage);
+            updatedQuestions.forEach(remapQuestionPage);
+            // Update the attributes Id and ALSO the JS object's lowercase id
+            // on formSettings.pages so a subsequent save in the same session
+            // doesn't try to insert with the old UUID.
+            newPages.forEach(page => {
+                if (page.Id && oldPageIdsToNew[page.Id]) {
                     page.Id = oldPageIdsToNew[page.Id];
-                });
-            }
+                }
+            });
+            this.formSettings.pages.forEach(p => {
+                if (p.id && oldPageIdsToNew[p.id]) {
+                    p.id = oldPageIdsToNew[p.id];
+                    if (p.attributes) p.attributes.Id = oldPageIdsToNew[p.attributes.Id] || p.attributes.Id;
+                }
+            });
 
             lastStep = 'saving sections';
             let oldSectionIdsToNew = await this.handleSectionOperations(newSections, updatedSections);
