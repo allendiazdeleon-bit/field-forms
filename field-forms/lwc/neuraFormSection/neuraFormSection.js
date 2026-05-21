@@ -6,6 +6,7 @@ export default class NeuraFormSection extends LightningElement {
 	@api formSection;
 	// Pass-through for Calculation reactivity. See neuraFormRenderer.answerMap.
 	@api answerMap;
+	@api skippedIds;
 
 	@api checkValidity() {
 		const allQuestions = this.template.querySelectorAll(
@@ -22,6 +23,13 @@ export default class NeuraFormSection extends LightningElement {
 		});
 
 		return isValid;
+	}
+
+	@api applyDictation(map) {
+		const allQuestions = this.template.querySelectorAll('c-neura-form-question');
+		allQuestions.forEach((q) => {
+			if (typeof q.applyDictation === 'function') q.applyDictation(map);
+		});
 	}
 
 	formQuestions;

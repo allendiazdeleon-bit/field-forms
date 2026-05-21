@@ -91,7 +91,7 @@ async function saveAnswersForOtherDevices(fields, value, questionAnswerMap) {
         await updateRecord(updateAnswerInput);
     }
 
-    if(value.filesData.length) {
+    if(value.filesData && value.filesData.length) {
         await uploadFilesForOtherDevices(value.Id, value.filesData);
     }
 
@@ -128,7 +128,7 @@ async function uploadFilesForDesktop(savedAnswers, questionAnswerMap) {
     savedAnswers.forEach((item) => {
         const answerAvailable = questionAnswerMap.get(item[formAnswerFields.FormQuestion.fieldApiName]);
 
-        if(answerAvailable.filesData.length) {
+        if(answerAvailable && answerAvailable.filesData && answerAvailable.filesData.length) {
             let filesData = [];
 
             answerAvailable.filesData.forEach(async (file) => {

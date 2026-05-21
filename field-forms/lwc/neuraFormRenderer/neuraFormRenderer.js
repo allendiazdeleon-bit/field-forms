@@ -1,4 +1,4 @@
-import { LightningElement, api, wire } from 'lwc';
+import { LightningElement, api, wire, track } from 'lwc';
 import { updateRecord, getRecord } from 'lightning/uiRecordApi';
 
 import AnswerField from '@salesforce/schema/Form_Answer__c.Answer__c';
@@ -24,6 +24,10 @@ import {
 import { saveAnswers, deleteAnswers } from './databaseLayer';
 
 import { reduceError } from 'c/nfCommonUtility';
+
+import mapTranscriptToQuestions from '@salesforce/apex/NeuraFormMobileController.mapTranscriptToQuestions';
+import getLastVisitAnswers from '@salesforce/apex/NeuraFormMobileController.getLastVisitAnswers';
+import generatePdfForLinkedForm from '@salesforce/apex/NeuraFormPdfController.generatePdfForLinkedForm';
 
 export default class NeuraFormRenderer extends LightningElement {
 	// Header Info
@@ -67,7 +71,13 @@ export default class NeuraFormRenderer extends LightningElement {
 	}
 
 	get isLoaded() {
-		return this._loaded && !this._completed;
+		// Suppress the form when we're either fully done OR routed into
+		// the review screen; the review LWC owns the full viewport.
+		return this._loaded && !this._completed && !this._inReview;
+	}
+
+	get linkedFormId() {
+		return this._formObject?.linkedForm?.Id;
 	}
 
 	get isCompleted() {
@@ -456,6 +466,19 @@ export default class NeuraFormRenderer extends LightningElement {
 			})
 		);
 
+		// Block final submit until the skip-and-return queue is cleared.
+		// "Next" / "Previous" stay free so the tech can still navigate
+		// between pages to revisit each skipped question.
+		if (actionType === 'finish' && this.hasSkipped) {
+			this.showToastMessage(
+				'Info',
+				`You still have ${this.skippedCount} field${this.skippedCount === 1 ? '' : 's'} flagged to revisit. Clear them before submitting.`,
+				'warning'
+			);
+			this.dispatchEvent(new CustomEvent('footerclick', { detail: false }));
+			return;
+		}
+
 		if (actionType === 'previous' || this.checkValidations()) {
 			const isDeleteSucces = await this.deleteAnswers();
 
@@ -484,11 +507,15 @@ export default class NeuraFormRenderer extends LightningElement {
 				}
 			}
 		} else {
-			this.showToastMessage(
-				'Error',
-				'Correct the errors below to continue.',
-				'error'
-			);
+			// Collect the labels of required questions that weren't answered so
+			// the user knows which field to fix, instead of the generic
+			// "errors below" message that's useless on mobile when the form is
+			// long enough to scroll.
+			const missing = this.collectMissingRequiredLabels();
+			const detail = missing.length
+				? 'Please complete: ' + missing.join(', ')
+				: 'Some required fields are missing or invalid.';
+			this.showToastMessage('Error', detail, 'error');
 		}
 
 		this.dispatchEvent(
@@ -496,6 +523,196 @@ export default class NeuraFormRenderer extends LightningElement {
 				detail: false
 			})
 		);
+	}
+
+	// Force a full re-mount of the form template. lightning-input doesn't
+	// always re-read its `value` prop after the initial render — toggling
+	// _loaded tears down the renderer's children and rebuilds them with
+	// the current _formObject state. Necessary after programmatic
+	// answer mutations (dictation, prefill) that the user didn't trigger
+	// through normal typing.
+	//
+	// Before tearing down, we mirror everything in questionAnswerMap into
+	// the corresponding question.answers[0]. Manually-typed values live in
+	// the answer map but aren't copied into the form object until the
+	// user advances pages — without this sync, the remount would render
+	// blank inputs for any field the user had already filled in.
+	async forceRerender() {
+		const wasLoaded = this._loaded;
+		const newPages = this._formObject.pages.map((p) => ({
+			...p,
+			sections: (p.sections || []).map((s) => ({
+				...s,
+				questions: (s.questions || []).map((q) => {
+					if (!this.questionAnswerMap.has(q.Id)) return q;
+					const ans = this.questionAnswerMap.get(q.Id);
+					const merged = { ...(q.answers?.[0] || {}), ...ans };
+					return { ...q, answers: [merged] };
+				})
+			}))
+		}));
+		this._formObject = { ...this._formObject, pages: newPages };
+		this.currentPage = this._formObject.pages[this.currentPageIndex];
+
+		this._loaded = false;
+		// Give LWC one render cycle to unmount the children before we
+		// flip the flag back. Promise.resolve() defers to the microtask
+		// queue, which fires after the current synchronous task.
+		await Promise.resolve();
+		this._loaded = wasLoaded;
+	}
+
+	// Page-level dictation entry point. Wired to c-neura-voice-capture's
+	// ontranscript event in the renderer template; receives the raw spoken
+	// text, asks Apex to map it across the current page's questions, then
+	// applies each suggestion through the same path manual edits use.
+	async handlePageDictation(event) {
+		const transcript = (event?.detail?.text || '').trim();
+		if (!transcript) return;
+
+		const questions = [];
+		(this.currentPage?.sections || []).forEach((s) => {
+			(s.questions || []).forEach((q) => {
+				if (q.shouldRender === false) return;
+				let allowed = [];
+				try {
+					const raw = q[FIELDS.Form_Question__c.ValueSet.fieldApiName];
+					if (raw) {
+						allowed = JSON.parse(raw).map((o) => o.value).filter(Boolean);
+					}
+				} catch (e) {
+					allowed = [];
+				}
+				questions.push({
+					questionId: q.Id,
+					label: q[FIELDS.Form_Question__c.Question.fieldApiName] || q.Name,
+					type: q[FIELDS.Form_Question__c.Type.fieldApiName],
+					allowedValues: allowed
+				});
+			});
+		});
+
+		try {
+			const result = await mapTranscriptToQuestions({ transcript, questions });
+			const mappings = result?.mappings || [];
+			if (!mappings.length) {
+				const qCount = result?.questionCount;
+				let detail;
+				if (qCount === 0) {
+					detail = "No questions visible on this page to match against.";
+				} else if (result?.diagnostic) {
+					detail = result.diagnostic;
+				} else {
+					detail = `Couldn't match any fields to what you said (${qCount} questions on page). Try mentioning the field name, like "the customer is John Doe".`;
+				}
+				this.showToastMessage('Info', detail, 'warning');
+				return;
+			}
+
+			// 1) Update the data layer so question.answers[0] is right for
+			//    every subsequent read (validation, save, future renders).
+			mappings.forEach((r) => this.applyDictatedAnswer(r.questionId, r.value));
+
+			// 2) Imperatively push values into the live input DOM via the
+			//    setExternalValue chain. On FSL Mobile WKWebView, the
+			//    @api -> getter -> lightning-input reactivity chain doesn't
+			//    reliably update the visible value after first render.
+			//    Walking the component tree and calling setExternalValue
+			//    on each matching answer sidesteps that gap.
+			const dictMap = {};
+			mappings.forEach((m) => { dictMap[m.questionId] = m.value; });
+			this.refs.formPage?.applyDictation?.(dictMap);
+
+			const src = result?.source === 'agentforce' ? ' (Agentforce)' : '';
+			this.showToastMessage(
+				'Info',
+				`Filled ${mappings.length} field${mappings.length === 1 ? '' : 's'} from dictation${src}. Review before continuing.`,
+				'info'
+			);
+		} catch (err) {
+			this.showToastMessage('Error', reduceError(err), 'error');
+		}
+	}
+
+	// Plug a dictated value into the questionAnswerMap AND mirror it into
+	// the question's answers array on the form object. The input components
+	// read their displayed value from question.answers[0] (via
+	// neuraFormAnswer's `value` getter), so updating only the answer map
+	// wouldn't update what the user sees — the toast would claim "Filled N
+	// fields" but the fields would still look empty.
+	applyDictatedAnswer(questionId, value) {
+		if (!questionId || value === null || value === undefined) return;
+
+		// Locate the question on the current page (we need its type for the
+		// Form_Answer payload, and we'll mutate its answers array below).
+		let targetQuestion = null;
+		(this.currentPage?.sections || []).forEach((s) => {
+			(s.questions || []).forEach((q) => {
+				if (q.Id === questionId) targetQuestion = q;
+			});
+		});
+
+		const questionType = targetQuestion
+			? targetQuestion[FIELDS.Form_Question__c.Type.fieldApiName]
+			: null;
+
+		const existing = this.questionAnswerMap.get(questionId) || {};
+		const next = { ...existing, uploadCompleted: false };
+		next[AnswerField.fieldApiName] = String(value);
+		next[FormQuestionField.fieldApiName] = questionId;
+		if (questionType) next[TypeField.fieldApiName] = questionType;
+
+		this.questionAnswerMap.set(questionId, next);
+
+		// Mirror the value into the question's answers array so the
+		// neuraFormAnswer component's `value` getter picks it up. LWC's
+		// @api setters only refire when the *reference* changes, so we
+		// rebuild the whole page → section → question chain with new
+		// object identities. Just mutating question.answers in place
+		// leaves all parent refs identical and no setter fires.
+		const newPages = this._formObject.pages.map((p, pIdx) => {
+			if (pIdx !== this.currentPageIndex) return p;
+			return {
+				...p,
+				sections: (p.sections || []).map((s) => ({
+					...s,
+					questions: (s.questions || []).map((q) => {
+						if (q.Id !== questionId) return q;
+						const merged = { ...(q.answers?.[0] || {}), ...next };
+						return { ...q, answers: [merged] };
+					})
+				}))
+			};
+		});
+
+		this._formObject = { ...this._formObject, pages: newPages };
+		this.currentPage = this._formObject.pages[this.currentPageIndex];
+
+		this.rebuildAnswerMap();
+		this.updateRendering(questionId, false);
+		this.dispatchUpdateFormDataEvent();
+	}
+
+	collectMissingRequiredLabels() {
+		const out = [];
+		try {
+			(this.currentPage?.sections || []).forEach((section) => {
+				(section.questions || []).forEach((q) => {
+					const required = q[FIELDS.Form_Question__c.Required.fieldApiName];
+					if (!required || q.shouldRender === false) return;
+					const answer = this.questionAnswerMap?.get?.(q.Id);
+					const value = answer?.[AnswerField.fieldApiName];
+					const empty = value === undefined || value === null || String(value).trim() === '';
+					if (empty) {
+						const label = q[FIELDS.Form_Question__c.Question.fieldApiName] || q.Name || 'Unnamed question';
+						out.push(label);
+					}
+				});
+			});
+		} catch (e) {
+			console.warn('collectMissingRequiredLabels failed', e);
+		}
+		return out;
 	}
 
 	checkValidations() {
@@ -693,9 +910,90 @@ export default class NeuraFormRenderer extends LightningElement {
 		}
 	}
 
+	// Tracked review-mode flag. When the tech taps "Finish" on the last
+	// page, we route them to the review screen FIRST (lists every answer,
+	// includes an AI-generated summary). They submit from there; that's
+	// what calls completeFinish() to mark the Linked_Form Completed.
+	@track _inReview = false;
+	get inReview() { return this._inReview; }
+
 	async handleFinish() {
+		// Save what we have before opening the review screen, so the
+		// summary AI call sees the latest answers.
+		try {
+			await this.uploadAnswers();
+		} catch (e) {
+			// Non-fatal — review screen still shows what's in the in-memory
+			// form object; tech can edit and resubmit.
+			console.warn('Auto-save before review failed:', e);
+		}
+		this._inReview = true;
+	}
+
+	// Final commit. Wired to the review screen's `submit` event.
+	// Persists the (possibly tech-edited) service summary, marks the LF
+	// Completed, and triggers PDF generation. PDF generation is fire-and-
+	// forget — we surface the resulting ContentDocumentId via state so
+	// the completion screen can show a Download link, but a PDF failure
+	// doesn't block the completion (the data is already saved).
+	@track _generatedPdfId = null;
+	@track _pdfGenerationStatus = 'idle'; // 'idle' | 'generating' | 'done' | 'error'
+	@track _pdfGenerationError = '';
+	get pdfGenerating() { return this._pdfGenerationStatus === 'generating'; }
+	get pdfReady() { return this._pdfGenerationStatus === 'done' && !!this._generatedPdfId; }
+	get pdfDownloadUrl() {
+		return this._generatedPdfId
+			? `/sfc/servlet.shepherd/document/download/${this._generatedPdfId}`
+			: null;
+	}
+
+	async completeFinish(opts) {
+		const summaryText = opts?.summary || '';
+		try {
+			// Save the summary to Linked_Form__c.Service_Summary__c so the
+			// PDF, reports, and Chatter posts can all read it.
+			if (summaryText && this.linkedFormId) {
+				await updateRecord({
+					fields: {
+						Id: this.linkedFormId,
+						Service_Summary__c: summaryText
+					}
+				});
+			}
+		} catch (e) {
+			console.warn('Failed to save service summary:', e);
+		}
 		await this.updateLinkedForm('Completed');
+		this._inReview = false;
 		this._completed = true;
+
+		// Kick off PDF generation. Awaited so the success screen can show
+		// the download link the moment it's ready, but errors don't roll
+		// back the completion.
+		this._pdfGenerationStatus = 'generating';
+		try {
+			const docId = await generatePdfForLinkedForm({
+				linkedFormId: this.linkedFormId
+			});
+			this._generatedPdfId = docId;
+			this._pdfGenerationStatus = 'done';
+		} catch (e) {
+			this._pdfGenerationStatus = 'error';
+			this._pdfGenerationError = reduceError(e);
+		}
+	}
+
+	// "Edit" link from the review screen jumps the tech back to a specific
+	// page so they can fix anything without losing context.
+	handleReviewEdit(event) {
+		const pageIndex = event?.detail?.pageIndex ?? 0;
+		this._inReview = false;
+		this.currentPageIndex = pageIndex;
+		this.currentPage = this._formObject.pages[pageIndex];
+	}
+
+	handleReviewSubmit(event) {
+		this.completeFinish({ summary: event?.detail?.summary });
 	}
 
 	/**
@@ -788,7 +1086,145 @@ export default class NeuraFormRenderer extends LightningElement {
 			this.updateRendering(questionId, false);
 			this.dispatchUpdateFormDataEvent();
 		}
+
+		// Auto-save the in-flight answer to the offline draft queue so a
+		// crash, phone call, or app kill doesn't lose this question's
+		// value. Debounced 1500ms so a rapid burst of keystrokes coalesces
+		// into a single save round-trip.
+		this.scheduleAutoSave();
 	}
+
+	// --- Auto-save -----------------------------------------------------------
+	//
+	// Drafts are enqueued via uiRecordApi (which IS drafts-enabled offline)
+	// inside saveAnswers(). Each successful save flips the answer's
+	// uploadCompleted to true so subsequent auto-save passes skip it.
+	@track autoSaveStatus = 'idle'; // 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+	@track autoSaveLabel = '';
+	_autoSaveTimer = null;
+
+	// --- Skip-and-return queue ---
+	// Set of question Ids the tech long-pressed to defer. Surfaced as a
+	// badge near the footer and blocks final submit until empty.
+	@track _skippedIds = [];
+	get skippedCount() { return this._skippedIds.length; }
+	get hasSkipped() { return this._skippedIds.length > 0; }
+	get skippedBadgeLabel() {
+		const n = this._skippedIds.length;
+		return n === 1 ? '1 to revisit' : `${n} to revisit`;
+	}
+
+	// --- Same-as-last-visit prefill ---
+	get _prefillParentField() {
+		switch (this.hostObjectApiName) {
+			case 'WorkOrder':            return 'Work_Order__c';
+			case 'WorkOrderLineItem':    return 'Work_Order_Line_Item__c';
+			case 'ServiceAppointment':   return 'Service_Appointment__c';
+			default: return null;
+		}
+	}
+
+	async handlePrefillLastVisit() {
+		const parentField = this._prefillParentField;
+		const templateId = this._formObject?.Id;
+		if (!parentField || !this.hostRecordId || !templateId) {
+			this.showToastMessage(
+				'Info',
+				'Prefill requires the host record context to be available.',
+				'warning'
+			);
+			return;
+		}
+		try {
+			const prior = await getLastVisitAnswers({
+				currentLinkedFormId: this.linkedFormId,
+				formTemplateId: templateId,
+				parentId: this.hostRecordId,
+				parentField
+			});
+			if (!prior || !prior.length) {
+				this.showToastMessage(
+					'Info',
+					'No prior completed visit found for this asset to copy from.',
+					'info'
+				);
+				return;
+			}
+			const dictMap = {};
+			prior.forEach((p) => {
+				this.applyDictatedAnswer(p.questionId, p.value);
+				dictMap[p.questionId] = p.value;
+			});
+			this.refs.formPage?.applyDictation?.(dictMap);
+			this.showToastMessage(
+				'Info',
+				`Copied ${prior.length} answer${prior.length === 1 ? '' : 's'} from the last visit. Review and adjust.`,
+				'info'
+			);
+		} catch (e) {
+			this.showToastMessage('Error', reduceError(e), 'error');
+		}
+	}
+
+	handleSkipToggle(event) {
+		const id = event?.detail?.questionId;
+		if (!id) return;
+		const idx = this._skippedIds.indexOf(id);
+		if (idx >= 0) {
+			this._skippedIds = this._skippedIds.filter((x) => x !== id);
+		} else {
+			this._skippedIds = [...this._skippedIds, id];
+		}
+	}
+
+	get autoSaveBadgeClass() {
+		const base = 'autosave-badge';
+		return `${base} ${base}_${this.autoSaveStatus}`;
+	}
+
+	scheduleAutoSave() {
+		this.autoSaveStatus = 'pending';
+		this.autoSaveLabel = 'Unsaved changes';
+		if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
+		this._autoSaveTimer = setTimeout(() => {
+			this._runAutoSave();
+		}, 1500);
+	}
+
+	async _runAutoSave() {
+		// Only run if there's something dirty. saveAnswers already filters
+		// to uploadCompleted=false; this short-circuit avoids the call
+		// entirely when the map is clean.
+		let hasDirty = false;
+		for (const v of this.questionAnswerMap.values()) {
+			if (!v.uploadCompleted) { hasDirty = true; break; }
+		}
+		if (!hasDirty) {
+			this.autoSaveStatus = 'idle';
+			this.autoSaveLabel = '';
+			return;
+		}
+
+		this.autoSaveStatus = 'saving';
+		this.autoSaveLabel = 'Saving…';
+		try {
+			await saveAnswers(
+				this.questionAnswerMap,
+				this._formObject.linkedForm.Id,
+				formFactorPropertyName
+			);
+			this.autoSaveStatus = 'saved';
+			const now = new Date();
+			const hh = String(now.getHours() % 12 || 12);
+			const mm = String(now.getMinutes()).padStart(2, '0');
+			const ampm = now.getHours() >= 12 ? 'pm' : 'am';
+			this.autoSaveLabel = `Saved ${hh}:${mm} ${ampm}`;
+		} catch (e) {
+			this.autoSaveStatus = 'error';
+			this.autoSaveLabel = 'Save failed (will retry on Next)';
+		}
+	}
+	// --- /Auto-save ----------------------------------------------------------
 
 	getBooleanQuestions(section) {
 		return section.questions.filter((item) => {

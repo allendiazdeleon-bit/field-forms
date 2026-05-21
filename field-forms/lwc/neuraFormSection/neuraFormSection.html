@@ -9,7 +9,7 @@
             <div class="slds-grid slds-wrap">
                 <template for:each={formSection.questions} for:item="formQuestion">
                     <div if:true={formQuestion.shouldRender} key={formQuestion.Id} class={questionClass} style={sectionStyle}>
-                        <c-neura-form-question record-id={recordId} form-question={formQuestion} answer-map={answerMap}></c-neura-form-question>
+                        <c-neura-form-question record-id={recordId} form-question={formQuestion} answer-map={answerMap} skipped-ids={skippedIds}></c-neura-form-question>
                        <!-- <c-neura-form-question record-id={recordId} form-question={formQuestion}></c-neura-form-question>-->
                     </div>
                 </template>

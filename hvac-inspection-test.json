@@ -1,0 +1,271 @@
+[
+  {
+    "template": {
+      "attributes": { "type": "Form_Template__c" },
+      "Name": "HVAC Service Inspection (Test)",
+      "External_Reference__c": "TEST_HVAC_INSPECTION_v1",
+      "Indicator_Type__c": "Ring",
+      "Selector_Color__c": "#0073b7"
+    },
+    "pages": [
+      {
+        "attributes": { "type": "Form_Page__c" },
+        "Name": "Service Info",
+        "External_Reference__c": "TEST_HVAC_P1",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Order__c": 1,
+        "Title__c": "Service Info"
+      },
+      {
+        "attributes": { "type": "Form_Page__c" },
+        "Name": "Equipment Check",
+        "External_Reference__c": "TEST_HVAC_P2",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Order__c": 2,
+        "Title__c": "Equipment Check"
+      },
+      {
+        "attributes": { "type": "Form_Page__c" },
+        "Name": "Sign-off",
+        "External_Reference__c": "TEST_HVAC_P3",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Order__c": 3,
+        "Title__c": "Sign-off"
+      }
+    ],
+    "sections": [
+      {
+        "attributes": { "type": "Form_Section__c" },
+        "Name": "Customer",
+        "External_Reference__c": "TEST_HVAC_S_P1_CUSTOMER",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P1",
+        "Order__c": 1,
+        "Title__c": "Customer",
+        "Show_Title__c": true,
+        "Columns__c": "1"
+      },
+      {
+        "attributes": { "type": "Form_Section__c" },
+        "Name": "Unit Details",
+        "External_Reference__c": "TEST_HVAC_S_P2_UNIT",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Order__c": 1,
+        "Title__c": "Unit Details",
+        "Show_Title__c": true,
+        "Columns__c": "2"
+      },
+      {
+        "attributes": { "type": "Form_Section__c" },
+        "Name": "Condition",
+        "External_Reference__c": "TEST_HVAC_S_P2_CONDITION",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Order__c": 2,
+        "Title__c": "Condition",
+        "Show_Title__c": true,
+        "Columns__c": "1"
+      },
+      {
+        "attributes": { "type": "Form_Section__c" },
+        "Name": "Sign-off Section",
+        "External_Reference__c": "TEST_HVAC_S_P3_SIGNOFF",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P3",
+        "Order__c": 1,
+        "Title__c": "Customer Sign-off",
+        "Show_Title__c": true,
+        "Columns__c": "1"
+      }
+    ],
+    "questions": [
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Instructions",
+        "External_Reference__c": "TEST_HVAC_Q_P1_INSTR",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P1",
+        "Form_Section__c": "TEST_HVAC_S_P1_CUSTOMER",
+        "Order__c": 1,
+        "Column__c": "1",
+        "Question__c": "Instructions",
+        "Type__c": "Display Text",
+        "Display_Rich_Text__c": "<p><strong>Welcome.</strong> Confirm the customer details below, then move to Equipment Check.</p>"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Customer Name",
+        "External_Reference__c": "TEST_HVAC_Q_P1_CUST_NAME",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P1",
+        "Form_Section__c": "TEST_HVAC_S_P1_CUSTOMER",
+        "Order__c": 2,
+        "Column__c": "1",
+        "Question__c": "Customer name",
+        "Type__c": "Text",
+        "Required__c": true,
+        "Default_Value_Source__c": "Account.Name"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Service Address",
+        "External_Reference__c": "TEST_HVAC_Q_P1_ADDRESS",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P1",
+        "Form_Section__c": "TEST_HVAC_S_P1_CUSTOMER",
+        "Order__c": 3,
+        "Column__c": "1",
+        "Question__c": "Service address (use mic to dictate)",
+        "Type__c": "Text Area",
+        "Default_Value_Source__c": "Account.BillingStreet"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Visit Reason",
+        "External_Reference__c": "TEST_HVAC_Q_P1_REASON",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P1",
+        "Form_Section__c": "TEST_HVAC_S_P1_CUSTOMER",
+        "Order__c": 4,
+        "Column__c": "1",
+        "Question__c": "Reason for visit",
+        "Type__c": "Multiple Choice",
+        "Required__c": true,
+        "Value_Set__c": "[{\"id\":\"vr1\",\"label\":\"Routine maintenance\",\"value\":\"Routine maintenance\",\"icon\":\"\"},{\"id\":\"vr2\",\"label\":\"Repair\",\"value\":\"Repair\",\"icon\":\"\"},{\"id\":\"vr3\",\"label\":\"Install\",\"value\":\"Install\",\"icon\":\"\"},{\"id\":\"vr4\",\"label\":\"Warranty claim\",\"value\":\"Warranty claim\",\"icon\":\"\"}]"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Serial Number",
+        "External_Reference__c": "TEST_HVAC_Q_P2_SERIAL",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Form_Section__c": "TEST_HVAC_S_P2_UNIT",
+        "Order__c": 1,
+        "Column__c": "1",
+        "Question__c": "Serial number (scan or photograph)",
+        "Type__c": "Text",
+        "Required__c": true,
+        "Include_Photo__c": true,
+        "Include_Comment__c": true
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Manufacturer",
+        "External_Reference__c": "TEST_HVAC_Q_P2_MFR",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Form_Section__c": "TEST_HVAC_S_P2_UNIT",
+        "Order__c": 2,
+        "Column__c": "2",
+        "Question__c": "Manufacturer",
+        "Type__c": "Dropdown",
+        "Value_Set__c": "[{\"id\":\"m1\",\"label\":\"Carrier\",\"value\":\"Carrier\",\"icon\":\"\"},{\"id\":\"m2\",\"label\":\"Trane\",\"value\":\"Trane\",\"icon\":\"\"},{\"id\":\"m3\",\"label\":\"Lennox\",\"value\":\"Lennox\",\"icon\":\"\"},{\"id\":\"m4\",\"label\":\"Goodman\",\"value\":\"Goodman\",\"icon\":\"\"},{\"id\":\"m5\",\"label\":\"Other\",\"value\":\"Other\",\"icon\":\"\"}]"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Equipment Age",
+        "External_Reference__c": "TEST_HVAC_Q_P2_AGE",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Form_Section__c": "TEST_HVAC_S_P2_UNIT",
+        "Order__c": 3,
+        "Column__c": "1",
+        "Question__c": "Equipment age (years)",
+        "Type__c": "Number",
+        "Decimal_Places__c": "0",
+        "Min__c": "0",
+        "Max__c": "100"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Last Service Date",
+        "External_Reference__c": "TEST_HVAC_Q_P2_LASTSVC",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Form_Section__c": "TEST_HVAC_S_P2_UNIT",
+        "Order__c": 4,
+        "Column__c": "2",
+        "Question__c": "Last service date",
+        "Type__c": "Date"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Overall Condition",
+        "External_Reference__c": "TEST_HVAC_Q_P2_RATING",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Form_Section__c": "TEST_HVAC_S_P2_CONDITION",
+        "Order__c": 1,
+        "Column__c": "1",
+        "Question__c": "Overall condition",
+        "Type__c": "Rating",
+        "Required__c": true
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Issues Found",
+        "External_Reference__c": "TEST_HVAC_Q_P2_ISSUES",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Form_Section__c": "TEST_HVAC_S_P2_CONDITION",
+        "Order__c": 2,
+        "Column__c": "1",
+        "Question__c": "Issues found (select all that apply)",
+        "Type__c": "Checkboxes",
+        "Value_Set__c": "[{\"id\":\"i1\",\"label\":\"Refrigerant leak\",\"value\":\"Refrigerant leak\",\"icon\":\"\"},{\"id\":\"i2\",\"label\":\"Dirty filter\",\"value\":\"Dirty filter\",\"icon\":\"\"},{\"id\":\"i3\",\"label\":\"Coil damage\",\"value\":\"Coil damage\",\"icon\":\"\"},{\"id\":\"i4\",\"label\":\"Electrical issue\",\"value\":\"Electrical issue\",\"icon\":\"\"},{\"id\":\"i5\",\"label\":\"None\",\"value\":\"None\",\"icon\":\"\"}]"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Inspection Notes",
+        "External_Reference__c": "TEST_HVAC_Q_P2_NOTES",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P2",
+        "Form_Section__c": "TEST_HVAC_S_P2_CONDITION",
+        "Order__c": 3,
+        "Column__c": "1",
+        "Question__c": "Inspection notes (tap mic to dictate)",
+        "Type__c": "Text Area",
+        "Include_Photo__c": true
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Tech Name",
+        "External_Reference__c": "TEST_HVAC_Q_P3_TECH",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P3",
+        "Form_Section__c": "TEST_HVAC_S_P3_SIGNOFF",
+        "Order__c": 1,
+        "Column__c": "1",
+        "Question__c": "Technician name",
+        "Type__c": "Text",
+        "Default_Value_Static__c": "Service Technician"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Capture Location",
+        "External_Reference__c": "TEST_HVAC_Q_P3_LOC",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P3",
+        "Form_Section__c": "TEST_HVAC_S_P3_SIGNOFF",
+        "Order__c": 2,
+        "Column__c": "1",
+        "Question__c": "Capture on-site location",
+        "Type__c": "Geolocation"
+      },
+      {
+        "attributes": { "type": "Form_Question__c" },
+        "Name": "Customer Signature",
+        "External_Reference__c": "TEST_HVAC_Q_P3_SIG",
+        "Form_Template__c": "TEST_HVAC_INSPECTION_v1",
+        "Form_Page__c": "TEST_HVAC_P3",
+        "Form_Section__c": "TEST_HVAC_S_P3_SIGNOFF",
+        "Order__c": 3,
+        "Column__c": "1",
+        "Question__c": "Customer signature",
+        "Type__c": "Signature",
+        "Required__c": true
+      }
+    ]
+  }
+]

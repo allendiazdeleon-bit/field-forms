@@ -17,9 +17,43 @@ export default class NeuraFormQuestion extends LightningElement {
 	@api formQuestion;
 	// Pass-through for Calculation reactivity. See neuraFormRenderer.answerMap.
 	@api answerMap;
+	// Set of question Ids currently in the skip-and-return queue. Threaded
+	// down from the renderer so each question can render its bookmark icon
+	// in the right state without owning the source of truth.
+	@api skippedIds;
+
+	get isSkipped() {
+		return Array.isArray(this.skippedIds) &&
+			this.skippedIds.indexOf(this.formQuestion?.Id) >= 0;
+	}
+	get isSkippedString() { return String(!!this.isSkipped); }
+	get skipIcon() { return this.isSkipped ? 'utility:flag' : 'utility:bookmark'; }
+	get skipButtonClass() {
+		return this.isSkipped
+			? 'skip-btn skip-btn_active'
+			: 'skip-btn';
+	}
+	get skipButtonTitle() {
+		return this.isSkipped ? 'Clear revisit-later flag' : 'Mark to revisit later';
+	}
+
+	handleSkipClick() {
+		this.dispatchEvent(new CustomEvent('skiptoggle', {
+			detail: { questionId: this.formQuestion?.Id },
+			bubbles: true,
+			composed: true
+		}));
+	}
 
 	@api checkValidity() {
 		return !this.isLayoutItem ? this.refs.formAnswer.checkValidity() : true;
+	}
+
+	@api applyDictation(map) {
+		if (this.isLayoutItem) return;
+		const id = this.formQuestion?.Id;
+		if (!id || !map || !(id in map)) return;
+		this.refs.formAnswer?.setExternalValue?.(map[id]);
 	}
 
 	showFileUpload = false;

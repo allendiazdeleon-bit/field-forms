@@ -4,3 +4,37 @@
     --header-bg: #dddad9;
     --header-backdrop-color: #F5F9FF;
 }
+/* Auto-save status badge. Small text, color-coded by state.
+   Sits above the page content; quiet enough not to distract but
+   visible enough that techs feel reassured their work is persisting. */
+.autosave-badge {
+    margin: 0.25rem 1rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #706e6b;
+    display: inline-flex;
+    align-items: center;
+}
+.autosave-badge_pending { color: #8a6d00; }
+.autosave-badge_saving  { color: #0070d2; }
+.autosave-badge_saved   { color: #194e2b; }
+.autosave-badge_error   { color: #a8341c; }
+
+/* Skip-and-return queue badge. Sits between the form questions and the
+   footer so the count is visible even when the tech is mid-page. */
+.skip-queue-badge {
+    margin: 0.5rem 1rem 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #fff5d6;
+    color: #8a6d00;
+    border: 1px solid #d4a017;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+.skip-queue-badge__icon {
+    --slds-c-icon-color-foreground: currentColor;
+}

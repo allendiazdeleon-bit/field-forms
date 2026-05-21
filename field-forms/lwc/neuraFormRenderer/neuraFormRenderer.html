@@ -1,4 +1,16 @@
 <template>
+	<!-- Review-and-submit screen. Shown when the tech taps Finish; lets
+	     them confirm every answer, regenerate / edit an AI summary, and
+	     jump back to any page before final submit. -->
+	<template if:true={inReview}>
+		<c-neura-form-review
+			form-object={formObject}
+			linked-form-id={linkedFormId}
+			onedit={handleReviewEdit}
+			onsubmit={handleReviewSubmit}
+		></c-neura-form-review>
+	</template>
+
 	<template if:true={isLoaded}>
 		<div class="renderer-wrapper">
 			<div class="temp-test"></div>
@@ -10,6 +22,37 @@
 				current-step-index={currentPageIndex}
 				current-step={currentPageTitle}
 			></c-neura-form-header>
+
+			<!-- Auto-save status badge. Lets the tech see at a glance that
+			     their changes are persisting; "Save failed" alerts to a
+			     connectivity issue without breaking page navigation. -->
+			<template if:true={autoSaveLabel}>
+				<div class={autoSaveBadgeClass}>{autoSaveLabel}</div>
+			</template>
+
+			<!-- "Same as last visit" prefill. Pulls the most recent
+			     completed Linked_Form for this asset and copies its
+			     answers in. Routine maintenance forms repeat 70%+ of the
+			     same answers, so this saves a meaningful amount of time. -->
+			<div class="slds-m-horizontal_small slds-m-bottom_x-small">
+				<lightning-button
+					label="Same as last visit"
+					icon-name="utility:copy"
+					icon-position="left"
+					variant="neutral"
+					onclick={handlePrefillLastVisit}
+				></lightning-button>
+			</div>
+
+			<!-- Page-level dictation entry. Speaking (or typing) once and
+			     letting the system distribute the transcript across this
+			     page's fields beats tapping a mic on every field. The panel
+			     uses a textarea so it works in FSL Mobile's WebView where
+			     window.SpeechRecognition isn't exposed. -->
+			<c-neura-page-dictation
+				ondictate={handlePageDictation}
+			></c-neura-page-dictation>
+
 			<div
 				style="margin-bottom: 56px"
 			>
@@ -18,8 +61,24 @@
 					record-id={recordId}
 					form-page={currentPage}
 					answer-map={answerMap}
+					skipped-ids={_skippedIds}
 					onanswerchange={handleAnswerChange}
+					onskiptoggle={handleSkipToggle}
 				></c-neura-form-page>
+
+				<!-- Skip-and-return queue badge. Only renders when the
+				     queue isn't empty so it doesn't clutter the chrome on
+				     normal-flow forms. -->
+				<template if:true={hasSkipped}>
+					<div class="skip-queue-badge">
+						<lightning-icon
+							icon-name="utility:flag"
+							size="x-small"
+							class="skip-queue-badge__icon"
+						></lightning-icon>
+						{skippedBadgeLabel}
+					</div>
+				</template>
 			</div>
 			<c-neura-form-footer
 				onbuttonclick={handleFooterButtonClick}
@@ -31,6 +90,9 @@
 	<template if:true={isCompleted}>
 		<c-neura-form-complete
 			is-desktop={isDesktop}
+			pdf-generating={pdfGenerating}
+			pdf-ready={pdfReady}
+			pdf-download-url={pdfDownloadUrl}
 		></c-neura-form-complete>
 	</template>
 </template>

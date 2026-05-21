@@ -12,7 +12,12 @@
         ></c-neura-form-files-data>
     </div>
 
-    <div lwc:if={showInlineMessage}>
+    <!-- Inline message is shown ABOVE the form (not in place of it) so users
+         can see what failed and still interact with the underlying fields.
+         Previously this used lwc:if/lwc:else which unmounted the renderer the
+         moment a validation toast fired — leaving users stuck with no way to
+         get back to the questions. -->
+    <div if:true={showInlineMessage}>
         <c-neura-inline-message
             message={messageObj.message}
             variant={messageObj.variant}
@@ -20,7 +25,7 @@
         ></c-neura-inline-message>
     </div>
 
-    <div lwc:else>
+    <div>
         <template if:true={showSelector}>
             <div class="slds-m-vertical_medium">
                 <c-neura-form-selector form-options={formOptions} onformselected={handleFormSelected}></c-neura-form-selector>
@@ -58,7 +63,7 @@
                 record-id={recordId}
                 form-object={selectedForm}
                 host-record-id={recordId}
-                host-object-api-name={objectApiName}
+                host-object-api-name={hostObjectApiName}
                 onreturnhome={handleReturnToHome}
                 onfooterclick={handleFooterClick}
                 oncapturelocation={handleCaptureGeolocation}

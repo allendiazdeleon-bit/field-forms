@@ -1,0 +1,78 @@
+<template>
+    <div class="review-wrapper">
+        <h1 class="review-title">Review &amp; submit</h1>
+        <p class="review-subtitle">
+            Confirm the answers below. Tap any section to jump back and edit.
+        </p>
+
+        <!-- AI summary block. Editable so the tech can tweak the wording
+             before submitting; it's the customer-facing report draft. -->
+        <div class="summary-card">
+            <div class="summary-card__header">
+                <strong>Service summary</strong>
+                <template if:true={summarySourceLabel}>
+                    <span class="summary-card__source">{summarySourceLabel}</span>
+                </template>
+            </div>
+            <template if:true={summaryLoading}>
+                <p class="summary-card__loading">Generating summary…</p>
+            </template>
+            <template if:false={summaryLoading}>
+                <lightning-textarea
+                    label="Summary"
+                    variant="label-hidden"
+                    value={summary}
+                    onchange={handleSummaryEdit}
+                    class="summary-card__text"
+                ></lightning-textarea>
+                <div class="summary-card__actions">
+                    <lightning-button
+                        label="Regenerate"
+                        variant="neutral"
+                        icon-name="utility:refresh"
+                        onclick={handleRegenerate}
+                    ></lightning-button>
+                </div>
+            </template>
+            <template if:true={summaryError}>
+                <p class="summary-card__error">{summaryError}</p>
+            </template>
+        </div>
+
+        <!-- Answers list grouped by page, with Edit link per page. -->
+        <template for:each={pages} for:item="page">
+            <div key={page.Id} class="review-page">
+                <div class="review-page__header">
+                    <h2 class="review-page__title">{page.title}</h2>
+                    <button
+                        type="button"
+                        class="review-page__edit-btn"
+                        data-page={page.pageNumber}
+                        onclick={handleEditClick}
+                    >
+                        Edit
+                    </button>
+                </div>
+                <ul class="review-page__rows">
+                    <template for:each={page.rows} for:item="row">
+                        <li key={row.id} class="review-row">
+                            <div class="review-row__label">{row.label}</div>
+                            <div class={row.valueClass}>
+                                {row.value}
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+
+        <div class="review-footer">
+            <lightning-button
+                label="Submit"
+                variant="brand"
+                onclick={handleSubmit}
+                class="review-submit-btn"
+            ></lightning-button>
+        </div>
+    </div>
+</template>

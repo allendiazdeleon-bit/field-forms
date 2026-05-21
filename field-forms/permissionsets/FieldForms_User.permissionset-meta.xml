@@ -9,6 +9,14 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>NeuraFormMobileController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormPdfController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>NeuraFormSnapshotQueueable</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -343,6 +351,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Linked_Form__c.Service_Summary__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Linked_Form__c.Status__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -421,4 +434,8 @@
         <object>WorkType</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
+    <pageAccesses>
+        <apexPage>NeuraFormReportPDF</apexPage>
+        <enabled>true</enabled>
+    </pageAccesses>
 </PermissionSet>

@@ -1,11 +1,69 @@
 <template>
-    <fieldset class="slds-form-element">
-        <div class="slds-form-element__control slds-grid slds-wrap slds-gutters tile-margin">
-                <template for:each={forms} for:item="form" for:index="index">
-                    <div key={form.id} class="slds-col slds-size_1-of-2 slds-small-size_1-of-2 slds-medium-size_1-of-4 slds-large-size_1-of-6">
-                     <c-neura-form-selector-item form={form}></c-neura-form-selector-item>
-                    </div>
-                </template>
+    <!-- Resume hero card. Pinned at the top when any form is in progress
+         so the tech can jump straight back into it without scanning the
+         list below. -->
+    <template if:true={hasResumeForm}>
+        <div
+            class="resume-hero"
+            data-id={resumeForm.id}
+            onclick={handleClick}
+            role="button"
+            tabindex="0"
+        >
+            <div class="resume-hero__eyebrow">Resume</div>
+            <div class="resume-hero__title">{resumeForm.name}</div>
+            <div class="resume-hero__meta">{resumeForm.detailLine}</div>
+            <div class="resume-hero__progress-track">
+                <div class="resume-hero__progress-fill" style={resumeForm.progressBarStyle}></div>
+            </div>
+            <div class="resume-hero__progress-label">{resumeForm.progress} complete</div>
+            <div class="resume-hero__cta">
+                Continue
+                <lightning-icon
+                    icon-name="utility:chevronright"
+                    size="xx-small"
+                    class="resume-hero__cta-icon"
+                ></lightning-icon>
+            </div>
         </div>
-    </fieldset>
+
+        <template if:true={otherForms.length}>
+            <div class="form-list__section-header">Other forms</div>
+        </template>
+    </template>
+
+    <ul class="form-list">
+        <template for:each={otherForms} for:item="form">
+            <li
+                key={form.id}
+                class="form-list__row"
+                data-id={form.id}
+                onclick={handleClick}
+                role="button"
+                tabindex="0"
+            >
+                <div class="form-list__main">
+                    <div class="form-list__title">{form.name}</div>
+                    <div class="form-list__meta">
+                        <span class={form.statusPillClass}>
+                            <lightning-icon
+                                icon-name={form.statusIcon}
+                                size="xx-small"
+                                class="status-pill__icon"
+                            ></lightning-icon>
+                            {form.status}
+                        </span>
+                        <span class="form-list__detail">{form.detailLine}</span>
+                    </div>
+                </div>
+                <div class="form-list__chevron">
+                    <lightning-icon
+                        icon-name="utility:chevronright"
+                        size="small"
+                        alternative-text="Open form"
+                    ></lightning-icon>
+                </div>
+            </li>
+        </template>
+    </ul>
 </template>

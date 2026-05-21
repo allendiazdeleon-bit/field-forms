@@ -71,3 +71,24 @@
         box-shadow: inset 0px 0px 0px 30px #45c65a
     }
 }
+.pdf-status {
+    display: inline-flex;
+    align-items: center;
+    color: #706e6b;
+    font-size: 0.875rem;
+}
+.pdf-download-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: #0070d2;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 0.25rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+.pdf-download-link:active { background: #005fb2; }
+.pdf-download-link lightning-icon {
+    --slds-c-icon-color-foreground-default: #fff;
+}

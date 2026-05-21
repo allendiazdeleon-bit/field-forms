@@ -7,20 +7,38 @@
 
 	<div lwc:else>
 		<div
-			class="slds-m-bottom_x-small slds-text-body_regular"
+			class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_x-small slds-text-body_regular"
 		>
-			<abbr
-				if:true={isRequired}
-				class="slds-required"
+			<div>
+				<abbr
+					if:true={isRequired}
+					class="slds-required"
+				>
+					*
+				</abbr>
+				<span
+					class="question-label"
+					style={labelStyle}
+				>
+					{question}
+				</span>
+			</div>
+			<!-- Skip-and-return toggle. Lets the tech mark a question to
+			     revisit later; the renderer maintains the queue and shows
+			     a count in the page chrome. Filled bookmark when active. -->
+			<button
+				type="button"
+				class={skipButtonClass}
+				onclick={handleSkipClick}
+				title={skipButtonTitle}
+				aria-pressed={isSkippedString}
 			>
-				*
-			</abbr>
-			<span
-				class="question-label"
-				style={labelStyle}
-			>
-				{question}
-			</span>
+				<lightning-icon
+					icon-name={skipIcon}
+					size="x-small"
+					alternative-text={skipButtonTitle}
+				></lightning-icon>
+			</button>
 		</div>
 
 		<c-neura-form-answer

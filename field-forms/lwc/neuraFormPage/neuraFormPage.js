@@ -11,6 +11,7 @@ export default class NeuraFormPage extends LightningElement {
 	// Calculation question can evaluate its formula against every other
 	// answer on the form. Plain object: { questionId -> answer string }.
 	@api answerMap;
+	@api skippedIds;
 	formSections;
 
 	answersToSave = [];
@@ -42,6 +43,19 @@ export default class NeuraFormPage extends LightningElement {
 		});
 
 		return isValid;
+	}
+
+	// Renderer → page → section → question → answer dictation propagation.
+	// Shadow DOM blocks the renderer from reaching deeply nested answers
+	// directly; this thin pass-through lets it fire setExternalValue() on
+	// every answer that matches a dictated questionId.
+	@api applyDictation(map) {
+		const allSections = this.template.querySelectorAll('c-neura-form-section');
+		allSections.forEach((section) => {
+			if (typeof section.applyDictation === 'function') {
+				section.applyDictation(map);
+			}
+		});
 	}
 
 	handleOverlayStateChange(event) {

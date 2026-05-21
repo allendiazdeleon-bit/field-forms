@@ -3,7 +3,7 @@
         <div class="page-wrapper">
             <template for:item="formSection" for:each={formPage.sections}>
                 <div if:true={formSection.shouldRender} key={formSection.Id} class="form-section">
-                   <c-neura-form-section record-id={recordId} form-section={formSection} answer-map={answerMap} onoverlaystate={handleOverlayStateChange}></c-neura-form-section>
+                   <c-neura-form-section record-id={recordId} form-section={formSection} answer-map={answerMap} skipped-ids={skippedIds} onoverlaystate={handleOverlayStateChange}></c-neura-form-section>
                 </div>
             </template>
         </div>

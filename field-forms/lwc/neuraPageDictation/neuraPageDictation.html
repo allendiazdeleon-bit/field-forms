@@ -1,0 +1,54 @@
+<template>
+    <div class="slds-m-horizontal_small slds-m-bottom_x-small">
+        <lightning-button
+            label={togglerLabel}
+            icon-name="utility:unmuted"
+            icon-position="left"
+            variant="neutral"
+            onclick={handleToggle}
+        ></lightning-button>
+
+        <template if:true={showPanel}>
+            <div class="slds-box slds-box_x-small slds-m-top_x-small">
+                <p class="slds-text-body_small slds-m-bottom_x-small">
+                    Speak naturally about this page (use your keyboard's mic key,
+                    or type/paste), then tap Apply. Example:
+                    <em>"The customer is John Doe. Reason is repair."</em>
+                </p>
+                <lightning-textarea
+                    label="Dictation"
+                    variant="label-hidden"
+                    placeholder="Type or dictate your notes for this page..."
+                    value={transcriptText}
+                    onchange={handleTextChange}
+                ></lightning-textarea>
+
+                <div class="slds-grid slds-grid_align-spread slds-m-top_x-small">
+                    <div class="slds-col">
+                        <template if:true={isWebSpeechAvailable}>
+                            <c-neura-voice-capture
+                                aria-label="Dictate into the textarea"
+                                ontranscript={handleVoiceTranscript}
+                            ></c-neura-voice-capture>
+                        </template>
+                    </div>
+                    <div class="slds-col slds-no-flex">
+                        <lightning-button
+                            label="Clear"
+                            variant="neutral"
+                            class="slds-m-right_x-small"
+                            onclick={handleClear}
+                            disabled={hasNoText}
+                        ></lightning-button>
+                        <lightning-button
+                            label="Apply"
+                            variant="brand"
+                            onclick={handleApply}
+                            disabled={hasNoText}
+                        ></lightning-button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</template>

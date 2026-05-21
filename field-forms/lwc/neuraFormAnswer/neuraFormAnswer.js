@@ -390,11 +390,26 @@ export default class NeuraFormAnswer extends LightningElement {
 
 	get radioOptions() {
 		// the question will have a list of options in a comma separated string, we need to split it into a option select style list {lavel: 'label', value: 'value'}
-		return getValue(
+		const raw = getValue(
 			this.question,
 			FIELDS.Form_Question__c.ValueSet.fieldApiName,
-			'[{}]'
+			''
 		);
+		// Rating questions without an explicit value set used to render a
+		// single empty radio (1 star with no value), which the user could
+		// "click" but selection silently produced an undefined value and
+		// required-field validation always failed. Default to 1-5 so the
+		// star input is always functional.
+		if ((!raw || raw === '[{}]' || raw === '[]') && this.inputType === 'Rating') {
+			return JSON.stringify([
+				{ id: 'r1', label: '1', value: '1', icon: '' },
+				{ id: 'r2', label: '2', value: '2', icon: '' },
+				{ id: 'r3', label: '3', value: '3', icon: '' },
+				{ id: 'r4', label: '4', value: '4', icon: '' },
+				{ id: 'r5', label: '5', value: '5', icon: '' }
+			]);
+		}
+		return raw || '[{}]';
 	}
 
 	get sliderSize() {
@@ -589,6 +604,50 @@ export default class NeuraFormAnswer extends LightningElement {
 		if (this.unsubscribe) {
 			this.unsubscribe();
 		}
+	}
+
+	/**
+	 * Imperatively push a dictation/prefill value into the rendered input
+	 * AND propagate it through the normal answer-change pipeline. Used by
+	 * the renderer after an Agentforce dictation maps a transcript to
+	 * fields — see neuraFormRenderer.applyDictatedAnswer.
+	 *
+	 * Why imperative? On FSL Mobile (WKWebView), lightning-input doesn't
+	 * always re-pick up its `value` prop after the first render, so just
+	 * updating question.answers[0] doesn't visually fill the field. We
+	 * find the DOM element and set .value directly, then dispatch the
+	 * standard change event so the upstream questionAnswerMap also
+	 * updates as if the user had typed.
+	 */
+	@api
+	setExternalValue(val) {
+		if (val === undefined || val === null) return;
+		const str = String(val);
+		this.answerValue = str;
+
+		// Cover the input types that hold a freeform string value. For
+		// choice types (multiple choice, dropdown, checkboxes), the value
+		// gets picked up through the @api question -> value getter path
+		// because their components read each render — only the freeform
+		// inputs need the imperative shove.
+		const candidates = [
+			'lightning-input[data-id="textBox"]',
+			'lightning-input[data-id="numberInput"]',
+			'lightning-input[data-id="email"]',
+			'lightning-input[data-id="phone"]',
+			'lightning-input[data-id="datePicker"]',
+			'lightning-input[data-id="timePicker"]',
+			'lightning-textarea[data-id="textArea"]'
+		];
+		for (const sel of candidates) {
+			const el = this.template.querySelector(sel);
+			if (el) {
+				el.value = str;
+			}
+		}
+
+		this.resetInlineMessageError();
+		this.dispatchChangeEvent();
 	}
 
 	// Add similar getters for other input types (Checkboxes, Dropdown Menu, etc.)

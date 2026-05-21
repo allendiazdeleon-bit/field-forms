@@ -8,6 +8,10 @@ import LinkedFormStatusField from '@salesforce/schema/Linked_Form__c.Status__c';
 import LinkedFormPageField from '@salesforce/schema/Linked_Form__c.Current_Page__c';
 import { isChangeInDataForGraphQLResult } from 'c/neuraCommonUtility';
 import { reduceError } from 'c/nfCommonUtility';
+// Apex-based fetch path (bypasses Briefcase priming dependency for orgs that
+// haven't set it up). See NeuraFormMobileController.cls for the trade-offs.
+import getMobileFormList from '@salesforce/apex/NeuraFormMobileController.getMobileFormList';
+import getMobileFormDetails from '@salesforce/apex/NeuraFormMobileController.getMobileFormDetails';
 
 import { FIELDS, OBJECTS } from 'c/neuraFormSchemaUtils';
 import {
@@ -31,6 +35,26 @@ export default class NeuraFormMobile extends LightningElement {
     get isDesktop() {
         return formFactorPropertyName === 'Large';
     }
+
+    // Salesforce auto-injects @api objectApiName for lightning__RecordPage components
+    // but NOT for lightning__RecordAction (quick actions) — only @api recordId is set
+    // there. When the LWC is opened as the NeuraForms quick action from FSL Mobile,
+    // objectApiName is undefined, parentRelationshipField returns undefined, and the
+    // GraphQL list query never fires. Fall back to the recordId's 3-char key prefix,
+    // which is stable for the three host types this LWC supports.
+    get hostObjectApiName() {
+        if (this.objectApiName) return this.objectApiName;
+        if (!this.recordId) return undefined;
+        const prefix = String(this.recordId).substring(0, 3);
+        switch (prefix) {
+            case '0WO': return 'WorkOrder';
+            case '0WL': return 'WorkOrderLineItem';
+            case '08p': return 'ServiceAppointment';
+            default: return undefined;
+        }
+    }
+
+    listInitialised = false;
 
     selectedRecordId;
     formOptions;
@@ -66,31 +90,22 @@ export default class NeuraFormMobile extends LightningElement {
     
     @track selectedLinkedFormId;
 
-    @wire(graphql, {
-        query: '$listQuery',
-        variables: '$listVariables'
+    @wire(getMobileFormList, {
+        parentId: '$recordId',
+        parentField: '$parentRelationshipField'
     })
-    listQueryResult(result) {
-        const { data, errors } = result;
-        this.listGraphqlData = result;
-
-        if (errors) {
-            this.setCriticalInlineMessage(reduceError(errors), MESSAGE_VARIANT.ERROR);
+    listQueryResult({ data, error }) {
+        if (error) {
+            this.setCriticalInlineMessage(reduceError(error), MESSAGE_VARIANT.ERROR);
             this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
             return;
         }
-        if (!data) return;
+        if (data === undefined) return;
 
-        const next = data.uiapi.query;
-        if (this.listInitialised && !isChangeInDataForGraphQLResult(result, this._lastListResult)) {
-            return;
-        }
-        this._lastListResult = result;
         this.setCriticalInlineMessage(null, null);
-
         try {
-            this.formData = this.transformListData(next);
-            this.formAdditionalStructures(this.formData);
+            this.formData = this.transformListDataApex(data || []);
+            this.formAdditionalStructuresApex(this.formData);
             this.showSelector = true;
             this.listInitialised = true;
         } catch (e) {
@@ -100,34 +115,32 @@ export default class NeuraFormMobile extends LightningElement {
         }
     }
 
-    @wire(graphql, {
-        query: '$detailsQuery',
-        variables: '$detailsVariables'
-    })
-    detailsQueryResult(result) {
-        const { data, errors } = result;
-        this.detailsGraphqlData = result;
-
-        if (errors) {
-            this.setCriticalInlineMessage(reduceError(errors), MESSAGE_VARIANT.ERROR);
+    @wire(getMobileFormDetails, { linkedFormId: '$selectedLinkedFormId' })
+    detailsQueryResult({ data, error }) {
+        if (error) {
+            this.setCriticalInlineMessage(reduceError(error), MESSAGE_VARIANT.ERROR);
             this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
             return;
         }
-        if (!data) return;
+        if (data === undefined || data === null) return;
 
         try {
-            const queryData = data.uiapi.query;
-            const fullForm = this.transformDetailData(queryData);
+            const fullForm = this.transformDetailDataApex(data);
             if (!fullForm) return;
 
-            // Replace the lightweight entry in formData with the full structure.
-            this.formData = this.formData.map(f =>
+            if (data.answersTruncated) {
+                this.setCriticalInlineMessage(
+                    `Only the first ${FORM_ANSWER_FETCH_LIMIT} answers were loaded for this form. Some previous answers may be missing.`,
+                    MESSAGE_VARIANT.WARN
+                );
+            }
+
+            this.formData = (this.formData || []).map(f =>
                 f?.linkedForm?.Id === fullForm.linkedForm.Id ? fullForm : f
             );
             this.selectedForm = fullForm;
             this.showForm = true;
             this.showSelector = false;
-
             this.loadAnswerFiles = this.answersId.length > 0;
         } catch (e) {
             this.setCriticalInlineMessage(reduceError(e), MESSAGE_VARIANT.ERROR);
@@ -150,7 +163,7 @@ export default class NeuraFormMobile extends LightningElement {
     // parent SObject; the getter returns the right one and undefined when the
     // host type isn't supported (in which case the wire is skipped).
     get hostRecordFields() {
-        switch (this.objectApiName) {
+        switch (this.hostObjectApiName) {
             case 'WorkOrder':
                 return ['WorkOrder.WorkTypeId'];
             case 'ServiceAppointment':
@@ -233,7 +246,7 @@ export default class NeuraFormMobile extends LightningElement {
             this.listInitialised &&
             (!this.formData || this.formData.length === 0) &&
             this.availableDefaultForms.length > 0 &&
-            !!parentLookupFieldFor(this.objectApiName)
+            !!parentLookupFieldFor(this.hostObjectApiName)
         );
     }
 
@@ -244,7 +257,7 @@ export default class NeuraFormMobile extends LightningElement {
         );
         if (!def) return;
 
-        const parentField = parentLookupFieldFor(this.objectApiName);
+        const parentField = parentLookupFieldFor(this.hostObjectApiName);
         if (!parentField) return;
 
         this.setLoading(LOADING_TOKENS.DATA_LOAD, true);
@@ -481,6 +494,105 @@ export default class NeuraFormMobile extends LightningElement {
         return this.transformListData(graphqlData);
     }
 
+    // ---- Apex-shape transforms ---------------------------------------------
+    // NeuraFormMobileController returns plain SObjects (no GraphQL edges/value
+    // wrapping). These two methods produce the same end-state objects as the
+    // GraphQL transforms above, so the rest of the LWC doesn't care which path
+    // delivered the data.
+
+    transformListDataApex(items) {
+        return items.map(item => {
+            const linkedForm = {
+                Id: item.id,
+                [FIELDS.Linked_Form__c.Status.fieldApiName]: item.status,
+                [FIELDS.Linked_Form__c.CurrentPage.fieldApiName]: item.currentPage
+            };
+            const formTemplate = {
+                Id: item.formTemplateId,
+                Name: item.formTemplateName,
+                [FIELDS.Form_Template__c.SelectorColor.fieldApiName]: item.selectorColor
+            };
+            return {
+                Id: item.formTemplateId,
+                Name: item.formTemplateName,
+                pages: [],
+                [FIELDS.Form_Template__c.SelectorColor.fieldApiName]: item.selectorColor,
+                linkedForm
+            };
+        });
+    }
+
+    formAdditionalStructuresApex(formTemplates) {
+        // Same shape as formAdditionalStructures — the list-item path doesn't
+        // know page count yet (details haven't been fetched), so totalPages is
+        // omitted; the selector renders fine without it.
+        this.formOptions = formTemplates.map(t => ({
+            id: t.Id,
+            name: t.Name,
+            status: t?.linkedForm?.[FIELDS.Linked_Form__c.Status.fieldApiName] ?? DEFAULT_STATUS,
+            currentPage: t?.linkedForm?.[FIELDS.Linked_Form__c.CurrentPage.fieldApiName] ?? 1,
+            totalPages: t?.pages?.length ?? 0,
+            color: t?.[FIELDS.Form_Template__c.SelectorColor.fieldApiName] ?? DEFAULT_COLOR,
+            linkedFormId: t?.linkedForm?.Id
+        }));
+    }
+
+    transformDetailDataApex(details) {
+        if (!details?.template || !details?.linkedForm) return undefined;
+        const tpl = details.template;
+        const lf = details.linkedForm;
+
+        // Build the linkedTemplate shape that matches what the GraphQL path
+        // produced: a plain object keyed by field API name.
+        const linkedTemplate = { Id: lf.Id };
+        linkedTemplate[FIELDS.Linked_Form__c.Status.fieldApiName] = lf.Status__c;
+        linkedTemplate[FIELDS.Linked_Form__c.CurrentPage.fieldApiName] = lf.Current_Page__c;
+
+        // Form_Template fields are returned as bare SObject properties; alias
+        // them under the schema field-api-name constants so downstream code
+        // (constructFormObject, renderer) reads them consistently.
+        const formTemplate = {
+            Id: tpl.Id,
+            Name: tpl.Name,
+            [FIELDS.Form_Template__c.SelectorColor.fieldApiName]: tpl.Selector_Color__c,
+            [FIELDS.Form_Template__c.IndicatorType.fieldApiName]: tpl.Indicator_Type__c,
+            [FIELDS.Form_Template__c.PagesJSON.fieldApiName]: tpl.Pages_JSON__c,
+            [FIELDS.Form_Template__c.SectionsJSON.fieldApiName]: tpl.Sections_JSON__c,
+            [FIELDS.Form_Template__c.QuestionsJSON.fieldApiName]: tpl.Questions_JSON__c,
+            [FIELDS.Form_Template__c.QuestionsJSON1.fieldApiName]: tpl.Questions_JSON_1__c,
+            [FIELDS.Form_Template__c.QuestionsJSON2.fieldApiName]: tpl.Questions_JSON_2__c,
+            [FIELDS.Form_Template__c.PageConditions.fieldApiName]: tpl.Page_Conditions__c,
+            [FIELDS.Form_Template__c.SectionConditions.fieldApiName]: tpl.Section_Conditions__c,
+            [FIELDS.Form_Template__c.QuestionConditions.fieldApiName]: tpl.Question_Conditions__c
+        };
+
+        const answers = (details.answers || []).map(a => ({
+            Id: a.Id,
+            Answer__c: a.Answer__c,
+            Form_Question__c: a.Form_Question__c,
+            Linked_Form__c: a.Linked_Form__c,
+            Related_Comment__c: a.Related_Comment__c,
+            Type__c: a.Type__c
+        }));
+        this.updateAnswerIds(answers);
+
+        const questionJSONArray = [
+            formTemplate[FIELDS.Form_Template__c.QuestionsJSON.fieldApiName],
+            formTemplate[FIELDS.Form_Template__c.QuestionsJSON1.fieldApiName],
+            formTemplate[FIELDS.Form_Template__c.QuestionsJSON2.fieldApiName]
+        ];
+        let questions = this.combineAndTransformJSON(questionJSONArray, answers, 'answers', OBJECTS.Form_Question__c.objectApiName);
+        questions = this.updateRenderingConditions(questions, formTemplate[FIELDS.Form_Template__c.QuestionConditions.fieldApiName]);
+
+        let sections = this.transformJSON(formTemplate[FIELDS.Form_Template__c.SectionsJSON.fieldApiName], questions, 'questions', OBJECTS.Form_Section__c.objectApiName);
+        sections = this.updateRenderingConditions(sections, formTemplate[FIELDS.Form_Template__c.SectionConditions.fieldApiName]);
+
+        let pages = this.transformJSON(formTemplate[FIELDS.Form_Template__c.PagesJSON.fieldApiName], sections, 'sections', OBJECTS.Form_Page__c.objectApiName);
+        pages = this.updateRenderingConditions(pages, formTemplate[FIELDS.Form_Template__c.PageConditions.fieldApiName]);
+
+        return this.constructFormObject(linkedTemplate, formTemplate, pages);
+    }
+
     updateRenderingConditions(jsonObject, conditionJson) {
         let conditions = [];
         if(conditionJson) {
@@ -635,7 +747,7 @@ export default class NeuraFormMobile extends LightningElement {
     // answers in a single round trip — far over the offline limit.
 
     get parentRelationshipField() {
-        switch (this.objectApiName) {
+        switch (this.hostObjectApiName) {
             case 'WorkOrder':
                 return 'Work_Order__c';
             case 'WorkOrderLineItem':

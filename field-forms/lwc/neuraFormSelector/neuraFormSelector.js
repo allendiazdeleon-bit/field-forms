@@ -21,8 +21,25 @@ export default class NeuraFormSelector extends LightningElement {
         // loop over formOptions and call determineProgress on each.
         this.forms = this.formOptions.map(form => {
             return this.determineProgress(form);
-        })
+        });
+    }
 
+    // First in-progress form gets pinned to a "Resume" hero card above the
+    // list. Common field-service pattern: techs almost always have one
+    // active form they're returning to, and showing it as a primary CTA
+    // beats making them scan the list to find it.
+    get resumeForm() {
+        return (this.forms || []).find((f) => f.inProgress) || null;
+    }
+
+    get hasResumeForm() {
+        return !!this.resumeForm;
+    }
+
+    // The non-resume forms render in the list below the hero card.
+    get otherForms() {
+        const resumeId = this.resumeForm?.id;
+        return (this.forms || []).filter((f) => f.id !== resumeId);
     }
 
     determineProgress(form){
@@ -30,16 +47,37 @@ export default class NeuraFormSelector extends LightningElement {
         // determine progress
         if(form.status === 'In Progress'){
             newForm.inProgress = true;
-            newForm.progress = Math.round((form.currentPage / form.totalPages) * 100) + '%';
-        } else if (form.status === 'Completed'){
+            newForm.isComplete = false;
+            newForm.isNotStarted = false;
+            newForm.progressPct = form.totalPages
+                ? Math.round((form.currentPage / form.totalPages) * 100)
+                : 0;
+            newForm.progress = newForm.progressPct + '%';
+            newForm.progressBarStyle = 'width: ' + newForm.progressPct + '%';
+            newForm.statusPillClass = 'status-pill status-pill_inprogress';
+            newForm.statusIcon = 'utility:pause';
+        } else if (form.status === 'Completed' || form.status === 'Complete') {
             newForm.inProgress = false;
+            newForm.isComplete = true;
+            newForm.isNotStarted = false;
+            newForm.progressPct = 100;
             newForm.progress = '100%';
+            newForm.progressBarStyle = 'width: 100%';
+            newForm.statusPillClass = 'status-pill status-pill_complete';
+            newForm.statusIcon = 'utility:check';
         } else {
             newForm.inProgress = false;
+            newForm.isComplete = false;
+            newForm.isNotStarted = true;
+            newForm.progressPct = 0;
             newForm.progress = '0%';
+            newForm.progressBarStyle = 'width: 0%';
+            newForm.statusPillClass = 'status-pill status-pill_notstarted';
+            newForm.statusIcon = 'utility:dash';
         }
-
-        console.log(JSON.stringify(newForm));
+        newForm.detailLine = form.totalPages
+            ? `Step ${form.currentPage || 0} of ${form.totalPages}`
+            : form.status;
         return newForm;
     }
 

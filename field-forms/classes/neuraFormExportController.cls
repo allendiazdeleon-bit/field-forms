@@ -489,10 +489,20 @@ public with sharing class neuraFormExportController {
 
             // "Import as new" regenerates External_Reference__c on every
             // record so the upsert creates fresh rows instead of overwriting
-            // any existing rows that share the source-org Id. Caller passes
-            // true via importTemplatesAsNew().
+            // any existing rows that share the source-org Id. The FK fields
+            // on child rows still hold the OLD external-ref strings (we can't
+            // safely rewrite them to synthetic placeholders because Apex
+            // validates Reference-field assignments at runtime), so we build
+            // an inverse map and key the lookups by the OLD ref below.
+            Map<String, String> newToOldRef = null;
             if (importAsNew) {
-                regenerateExternalReferences(templates, pages, sections, questions, externalReferenceField);
+                Map<String, String> oldToNew = regenerateExternalReferences(
+                    templates, pages, sections, questions, externalReferenceField
+                );
+                newToOldRef = new Map<String, String>();
+                for (String oldR : oldToNew.keySet()) {
+                    newToOldRef.put(oldToNew.get(oldR), oldR);
+                }
             }
 
             // Track created vs. updated by checking Id presence before upsert.
@@ -507,7 +517,10 @@ public with sharing class neuraFormExportController {
                 if (r.isCreated()) result.createdCount++;
                 else result.updatedCount++;
             }
-            Map<String, Id> templateIdMap = createIdMap(templates, externalReferenceField);
+            // In importAsNew mode we want the map keyed by the OLD external
+            // ref (because that's still what's sitting on child FK fields).
+            // In normal mode the OLD and current refs are identical.
+            Map<String, Id> templateIdMap = buildIdMap(templates, externalReferenceField, newToOldRef);
 
             for (Form_Page__c page : pages) {
                 page.Form_Template__c = templateIdMap.get((String) page.Form_Template__c);
@@ -516,7 +529,7 @@ public with sharing class neuraFormExportController {
                 .getDescribe().fields.getMap().get(externalReferenceField);
             Database.UpsertResult[] pageResults = Database.upsert(pages, pageExt, false);
             throwOnFailures(pageResults, 'Form Page');
-            Map<String, Id> pageIdMap = createIdMap(pages, externalReferenceField);
+            Map<String, Id> pageIdMap = buildIdMap(pages, externalReferenceField, newToOldRef);
 
             for (Form_Section__c section : sections) {
                 section.Form_Template__c = templateIdMap.get((String) section.Form_Template__c);
@@ -526,7 +539,7 @@ public with sharing class neuraFormExportController {
                 .getDescribe().fields.getMap().get(externalReferenceField);
             Database.UpsertResult[] sectionResults = Database.upsert(sections, sectionExt, false);
             throwOnFailures(sectionResults, 'Form Section');
-            Map<String, Id> sectionIdMap = createIdMap(sections, externalReferenceField);
+            Map<String, Id> sectionIdMap = buildIdMap(sections, externalReferenceField, newToOldRef);
 
             for (Form_Question__c question : questions) {
                 question.Form_Template__c = templateIdMap.get((String) question.Form_Template__c);
@@ -537,7 +550,7 @@ public with sharing class neuraFormExportController {
                 .getDescribe().fields.getMap().get(externalReferenceField);
             Database.UpsertResult[] questionResults = Database.upsert(questions, questionExt, false);
             throwOnFailures(questionResults, 'Form Question');
-            Map<String, Id> questionIdMap = createIdMap(questions, externalReferenceField);
+            Map<String, Id> questionIdMap = buildIdMap(questions, externalReferenceField, newToOldRef);
 
             // Second pass: rewrite Conditions JSON references from the source
             // org's Ids/UUIDs to the new org's Ids. Track which records
@@ -615,41 +628,50 @@ public with sharing class neuraFormExportController {
         return importTemplatesInternal(jsonContent, /* importAsNew */ true);
     }
 
-    private static void regenerateExternalReferences(
+    /**
+     * Regenerates External_Reference__c on every record so the upsert creates
+     * fresh rows. Returns a remap of old External_Reference -> new External_Reference
+     * so the caller can translate the original FK strings (still sitting in
+     * Form_Template__c / Form_Page__c / Form_Section__c on child rows) into
+     * the new external refs once the parents have been upserted.
+     *
+     * Important: we deliberately do NOT mutate the FK fields here. Reference
+     * fields in Apex validate their assigned value as a real Salesforce Id at
+     * assignment time, so writing a synthetic "IMP_t_..." string into them
+     * throws System.StringException: Invalid id. The FK fields keep the old
+     * external-ref strings that JSON.deserialize put there, and the caller
+     * uses the returned remap to translate them after upsert.
+     */
+    private static Map<String, String> regenerateExternalReferences(
         List<Form_Template__c> templates,
         List<Form_Page__c> pages,
         List<Form_Section__c> sections,
         List<Form_Question__c> questions,
         String externalReferenceField
     ) {
-        // Map old reference -> new reference so we can rewrite FK strings on
-        // children before upsert.
         Map<String, String> remap = new Map<String, String>();
         for (SObject record : (List<SObject>) templates) remap.put((String) record.get(externalReferenceField), freshRef('t'));
         for (SObject record : (List<SObject>) pages)     remap.put((String) record.get(externalReferenceField), freshRef('p'));
         for (SObject record : (List<SObject>) sections)  remap.put((String) record.get(externalReferenceField), freshRef('s'));
         for (SObject record : (List<SObject>) questions) remap.put((String) record.get(externalReferenceField), freshRef('q'));
 
+        // Only the text External_Reference__c field is mutated. FK fields stay
+        // pointing at the OLD external refs; caller resolves them via remap.
         for (Form_Template__c t : templates) t.put(externalReferenceField, remap.get((String) t.get(externalReferenceField)));
-        for (Form_Page__c p : pages) {
-            p.put(externalReferenceField, remap.get((String) p.get(externalReferenceField)));
-            p.Form_Template__c = remap.get((String) p.Form_Template__c);
-        }
-        for (Form_Section__c s : sections) {
-            s.put(externalReferenceField, remap.get((String) s.get(externalReferenceField)));
-            s.Form_Template__c = remap.get((String) s.Form_Template__c);
-            s.Form_Page__c = remap.get((String) s.Form_Page__c);
-        }
-        for (Form_Question__c q : questions) {
-            q.put(externalReferenceField, remap.get((String) q.get(externalReferenceField)));
-            q.Form_Template__c = remap.get((String) q.Form_Template__c);
-            q.Form_Section__c = remap.get((String) q.Form_Section__c);
-            q.Form_Page__c = remap.get((String) q.Form_Page__c);
-        }
+        for (Form_Page__c p : pages)         p.put(externalReferenceField, remap.get((String) p.get(externalReferenceField)));
+        for (Form_Section__c s : sections)   s.put(externalReferenceField, remap.get((String) s.get(externalReferenceField)));
+        for (Form_Question__c q : questions) q.put(externalReferenceField, remap.get((String) q.get(externalReferenceField)));
+
+        return remap;
     }
 
     private static String freshRef(String prefix) {
-        return 'IMP_' + prefix + '_' + Crypto.getRandomLong() + '_' + System.currentTimeMillis();
+        // Keep under 80 chars (current External_Reference__c length). Hex of
+        // a 16-byte AES key is 32 chars; combined with the prefix and "IMP_"
+        // we land around 40 chars total — plenty of headroom and short
+        // enough that collisions across imports are astronomically unlikely.
+        String randHex = EncodingUtil.convertToHex(Crypto.generateAesKey(128));
+        return 'IMP_' + prefix + '_' + randHex;
     }
 
     private static void throwOnFailures(Database.UpsertResult[] results, String label) {
@@ -677,6 +699,31 @@ public with sharing class neuraFormExportController {
         Map<String, Id> idMap = new Map<String, Id>();
         for (SObject record : records) {
             idMap.put((String) record.get(externalRefField), record.Id);
+        }
+        return idMap;
+    }
+
+    /**
+     * Like createIdMap, but when newToOldRef is non-null (importAsNew mode) the
+     * map is keyed by the ORIGINAL external reference instead of the current
+     * one. Used by the importAsNew path so the FK strings still sitting on
+     * child rows (which were never rewritten — see regenerateExternalReferences
+     * for why) resolve to the right Ids.
+     */
+    private static Map<String, Id> buildIdMap(
+        List<SObject> records,
+        String externalRefField,
+        Map<String, String> newToOldRef
+    ) {
+        Map<String, Id> idMap = new Map<String, Id>();
+        for (SObject record : records) {
+            String currentRef = (String) record.get(externalRefField);
+            String keyRef = (newToOldRef != null && newToOldRef.containsKey(currentRef))
+                ? newToOldRef.get(currentRef)
+                : currentRef;
+            if (keyRef != null) {
+                idMap.put(keyRef, record.Id);
+            }
         }
         return idMap;
     }
