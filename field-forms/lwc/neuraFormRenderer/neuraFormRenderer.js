@@ -1,4 +1,4 @@
-import { LightningElement, api } from 'lwc';
+import { LightningElement, api, wire } from 'lwc';
 import { updateRecord, getRecord } from 'lightning/uiRecordApi';
 
 import AnswerField from '@salesforce/schema/Form_Answer__c.Answer__c';
@@ -93,106 +93,148 @@ export default class NeuraFormRenderer extends LightningElement {
 			try {
 				this.setInitialValues();
 				this.loadComplete();
-				// Best-effort prefill from the host record. Errors here are
-				// non-fatal - we still render the form so the user can fill
-				// it manually.
-				this.applyHostRecordDefaults().catch((error) => {
-					console.error('applyHostRecordDefaults failed', error);
-				});
+				// Apply Default_Value_Static__c synchronously here; source
+				// defaults arrive later via the @wire(getRecord) below.
+				this.applyStaticDefaults();
 			} catch (error) {
 				this.dispatchEvent(new CustomEvent('error', { detail: error }));
 			}
 		}
 	}
 
+	// One-shot guard so source defaults don't re-apply on every wire refresh.
+	_sourceDefaultsApplied = false;
+
 	/**
-	 * For each question with a Default_Value_Source__c field path or a
-	 * Default_Value_Static__c literal, pre-fill an empty answer. Source wins
-	 * over static; static is the fallback when the source resolves to null.
-	 *
-	 * Existing answers (from a partially-completed Linked_Form) are not
-	 * overwritten. The resolved value is stored in questionAnswerMap with
-	 * uploadCompleted=false so it persists on the next save like any other
-	 * user-entered answer.
-	 *
-	 * Skipped entirely on the desktop preview path (no hostRecordId).
+	 * Compute the union of all `Default_Value_Source__c` field paths across
+	 * the form's questions. Used as the reactive `fields` argument to the
+	 * @wire(getRecord) below. Returns undefined to disable the wire when
+	 * there's no host context or no source paths to fetch.
 	 */
-	async applyHostRecordDefaults() {
-		if (!this._formObject || !this.hostRecordId || !this.hostObjectApiName) {
-			return;
-		}
-
-		// Collect questions that need defaults and aren't already answered.
+	get hostFieldsForDefaults() {
+		if (this._sourceDefaultsApplied) return undefined;
+		if (!this._formObject || !this.hostRecordId || !this.hostObjectApiName) return undefined;
 		const defaultsFieldSource = FIELDS.Form_Question__c.DefaultValueSource?.fieldApiName;
-		const defaultsFieldStatic = FIELDS.Form_Question__c.DefaultValueStatic?.fieldApiName;
-		if (!defaultsFieldSource && !defaultsFieldStatic) return;
+		if (!defaultsFieldSource) return undefined;
 
-		const pendingSourceFields = new Set();
-		const candidates = [];
+		const fields = new Set();
 		this._formObject.pages.forEach((page) => {
 			page.sections.forEach((section) => {
 				section.questions.forEach((question) => {
-					if (this.questionAnswerMap.has(question.Id)) return; // already answered
+					if (this.questionAnswerMap.has(question.Id)) return;
 					const sourcePath = question[defaultsFieldSource];
-					const staticVal = question[defaultsFieldStatic];
-					if (!sourcePath && !staticVal) return;
-					candidates.push({ question, sourcePath, staticVal });
-					if (sourcePath) {
-						// uiRecordApi expects field paths qualified by object,
-						// e.g. WorkOrder.Account.Name. If the admin entered a
-						// bare path, prefix the host object so callers do not
-						// need to repeat it.
-						const qualified = sourcePath.includes('.')
-							? sourcePath
-							: `${this.hostObjectApiName}.${sourcePath}`;
-						pendingSourceFields.add(qualified);
-					}
+					if (!sourcePath) return;
+					// uiRecordApi expects field paths qualified by object,
+					// e.g. WorkOrder.Account.Name. Bare paths are prefixed
+					// with the host object so admins don't have to repeat it.
+					const qualified = sourcePath.includes('.')
+						? sourcePath
+						: `${this.hostObjectApiName}.${sourcePath}`;
+					fields.add(qualified);
 				});
 			});
 		});
+		return fields.size > 0 ? Array.from(fields) : undefined;
+	}
 
-		if (candidates.length === 0) return;
+	/**
+	 * Wire on the host record once we know which fields the form's questions
+	 * want pre-filled. lightning/uiRecordApi exposes getRecord as a wire
+	 * adapter only - the previous imperative call was a compile error.
+	 *
+	 * Errors are non-fatal: static defaults still apply, the form still
+	 * renders, and the field tech can fill the rest manually.
+	 */
+	@wire(getRecord, {
+		recordId: '$hostRecordId',
+		fields: '$hostFieldsForDefaults'
+	})
+	hostRecordForDefaults({ data, error }) {
+		if (this._sourceDefaultsApplied) return;
+		if (error) {
+			console.warn('Host record fetch for default-value sources failed', error);
+			// Mark applied so we don't keep retrying; static defaults already
+			// ran in connectedCallback so the form is still usable.
+			this._sourceDefaultsApplied = true;
+			return;
+		}
+		if (!data) return; // wire still resolving
+		this.applySourceDefaults(data);
+		this._sourceDefaultsApplied = true;
+	}
 
-		// Fetch the host record once with the union of all field paths.
-		let hostRecord;
-		if (pendingSourceFields.size > 0) {
-			try {
-				hostRecord = await getRecord({
-					recordId: this.hostRecordId,
-					fields: Array.from(pendingSourceFields)
+	/**
+	 * Apply only the Default_Value_Static__c literals - runs synchronously on
+	 * mount so the user sees their static defaults immediately, without
+	 * waiting for the host-record wire to resolve. Source defaults apply
+	 * later via applySourceDefaults().
+	 */
+	applyStaticDefaults() {
+		if (!this._formObject) return;
+		const fieldStatic = FIELDS.Form_Question__c.DefaultValueStatic?.fieldApiName;
+		if (!fieldStatic) return;
+		let anyApplied = false;
+		this._formObject.pages.forEach((page) => {
+			page.sections.forEach((section) => {
+				section.questions.forEach((question) => {
+					if (this.questionAnswerMap.has(question.Id)) return;
+					const staticVal = question[fieldStatic];
+					if (!staticVal) return;
+					this.storeAnswerForDefault(question, staticVal);
+					anyApplied = true;
 				});
-			} catch (e) {
-				// Some paths may not be primed offline or the user may lack
-				// FLS - degrade gracefully to static defaults.
-				console.warn('Host record getRecord failed; using static defaults only.', e);
-			}
+			});
+		});
+		if (anyApplied) {
+			this.rebuildAnswerMap();
+			this._formObject = { ...this._formObject };
 		}
+	}
 
-		for (const c of candidates) {
-			let value;
-			if (c.sourcePath) {
-				value = this.resolveFieldPath(hostRecord, c.sourcePath);
-			}
-			if ((value === undefined || value === null || value === '') && c.staticVal) {
-				value = c.staticVal;
-			}
-			if (value === undefined || value === null || value === '') continue;
+	applySourceDefaults(hostRecord) {
+		if (!this._formObject || !hostRecord) return;
+		const fieldSource = FIELDS.Form_Question__c.DefaultValueSource?.fieldApiName;
+		const fieldStatic = FIELDS.Form_Question__c.DefaultValueStatic?.fieldApiName;
+		if (!fieldSource) return;
 
-			const tempAns = { uploadCompleted: false };
-			this.assignFieldValues(tempAns, AnswerField.fieldApiName, String(value));
-			this.assignFieldValues(tempAns, FormQuestionField.fieldApiName, c.question.Id);
-			this.assignFieldValues(
-				tempAns,
-				TypeField.fieldApiName,
-				c.question[FIELDS.Form_Question__c.Type.fieldApiName]
-			);
-			this.questionAnswerMap.set(c.question.Id, tempAns);
+		let anyApplied = false;
+		this._formObject.pages.forEach((page) => {
+			page.sections.forEach((section) => {
+				section.questions.forEach((question) => {
+					if (this.questionAnswerMap.has(question.Id)) return;
+					const sourcePath = question[fieldSource];
+					if (!sourcePath) return;
+
+					let value = this.resolveFieldPath(hostRecord, sourcePath);
+					// Fall back to static when the host record resolves to null
+					// (e.g. FLS blocked or the field is empty on the host).
+					if ((value === undefined || value === null || value === '')
+						&& fieldStatic && question[fieldStatic]) {
+						value = question[fieldStatic];
+					}
+					if (value === undefined || value === null || value === '') return;
+
+					this.storeAnswerForDefault(question, value);
+					anyApplied = true;
+				});
+			});
+		});
+		if (anyApplied) {
+			this.rebuildAnswerMap();
+			this._formObject = { ...this._formObject };
 		}
+	}
 
-		// Refresh the calculation-visible answer map + force a re-render so
-		// prefilled inputs and any dependent Calculation questions update.
-		this.rebuildAnswerMap();
-		this._formObject = { ...this._formObject };
+	storeAnswerForDefault(question, value) {
+		const tempAns = { uploadCompleted: false };
+		this.assignFieldValues(tempAns, AnswerField.fieldApiName, String(value));
+		this.assignFieldValues(tempAns, FormQuestionField.fieldApiName, question.Id);
+		this.assignFieldValues(
+			tempAns,
+			TypeField.fieldApiName,
+			question[FIELDS.Form_Question__c.Type.fieldApiName]
+		);
+		this.questionAnswerMap.set(question.Id, tempAns);
 	}
 
 	/**

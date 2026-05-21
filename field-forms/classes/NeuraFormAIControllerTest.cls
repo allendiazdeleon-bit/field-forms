@@ -208,10 +208,13 @@ private class NeuraFormAIControllerTest {
 
     @isTest
     static void valueSetJsonShape() {
-        String json = NeuraFormAIController.buildValueSetJson(
+        // Note: do NOT name the local "json" - Apex is case-insensitive,
+        // so the local would shadow the System.JSON class and the
+        // deserializeUntyped call on the next line would target String.
+        String jsonStr = NeuraFormAIController.buildValueSetJson(
             new List<Object>{ 'New', 'Used', 'Damaged' }
         );
-        List<Object> parsed = (List<Object>) JSON.deserializeUntyped(json);
+        List<Object> parsed = (List<Object>) JSON.deserializeUntyped(jsonStr);
         System.assertEquals(3, parsed.size());
         Map<String, Object> first = (Map<String, Object>) parsed[0];
         System.assertEquals('New', first.get('label'));
@@ -221,11 +224,12 @@ private class NeuraFormAIControllerTest {
 
     @isTest
     static void promptsAreNonEmpty() {
-        // Light coverage that the prompt-builders produce something usable.
-        String system = NeuraFormAIController.buildSystemPrompt();
-        String user = NeuraFormAIController.buildUserPrompt('test', 'industry');
-        System.assert(system.contains('JSON'));
-        System.assert(user.contains('test'));
-        System.assert(user.contains('industry'));
+        // "system" is a reserved identifier (collides with the System class);
+        // use a different name for the local.
+        String systemPrompt = NeuraFormAIController.buildSystemPrompt();
+        String userPrompt = NeuraFormAIController.buildUserPrompt('test', 'industry');
+        System.assert(systemPrompt.contains('JSON'));
+        System.assert(userPrompt.contains('test'));
+        System.assert(userPrompt.contains('industry'));
     }
 }

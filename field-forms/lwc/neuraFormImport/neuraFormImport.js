@@ -34,6 +34,19 @@ export default class NeuraFormImport extends LightningElement {
         return this.importWarnings && this.importWarnings.length > 0;
     }
 
+    // LWC's template syntax doesn't allow {idx} as a for:each key. Wrap each
+    // string warning in { id, text } so the template can key off a stable
+    // property on the iterated item instead of the index.
+    get importWarningItems() {
+        return (this.importWarnings || []).map((w, i) => ({ id: 'iw_' + i, text: w }));
+    }
+    get previewCollisionItems() {
+        return (this.preview?.nameCollisions || []).map((w, i) => ({ id: 'pc_' + i, text: w }));
+    }
+    get previewWarningItems() {
+        return (this.preview?.warnings || []).map((w, i) => ({ id: 'pw_' + i, text: w }));
+    }
+
     get importButtonLabel() {
         return this.parsedTemplateCount > 0
             ? `Import ${this.parsedTemplateCount} template(s)`

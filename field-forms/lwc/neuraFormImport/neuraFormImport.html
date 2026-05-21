@@ -77,8 +77,8 @@
                                 <div class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_medium" role="alert">
                                     <h3 class="slds-text-heading_small">Name collisions</h3>
                                     <ul class="slds-list_dotted slds-m-top_x-small">
-                                        <template for:each={preview.nameCollisions} for:item="msg" for:index="idx">
-                                            <li key={idx}>{msg}</li>
+                                        <template for:each={previewCollisionItems} for:item="item">
+                                            <li key={item.id}>{item.text}</li>
                                         </template>
                                     </ul>
                                 </div>
@@ -88,8 +88,8 @@
                                 <div class="slds-notify slds-notify_alert slds-alert_warning" role="alert">
                                     <h3 class="slds-text-heading_small">Condition warnings</h3>
                                     <ul class="slds-list_dotted slds-m-top_x-small">
-                                        <template for:each={preview.warnings} for:item="msg" for:index="idx">
-                                            <li key={idx}>{msg}</li>
+                                        <template for:each={previewWarningItems} for:item="item">
+                                            <li key={item.id}>{item.text}</li>
                                         </template>
                                     </ul>
                                 </div>
@@ -112,8 +112,8 @@
                         <div class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_small" role="alert">
                             <h2 class="slds-text-heading_small">Import warnings:</h2>
                             <ul class="slds-list_dotted slds-m-top_x-small">
-                                <template for:each={importWarnings} for:item="warning" for:index="idx">
-                                    <li key={idx}>{warning}</li>
+                                <template for:each={importWarningItems} for:item="item">
+                                    <li key={item.id}>{item.text}</li>
                                 </template>
                             </ul>
                         </div>

@@ -113,27 +113,30 @@ public with sharing class NeuraFormAIController {
         if (mockLLMResponse != null) {
             return mockLLMResponse;
         }
-        // ConnectApi.EinsteinLLM is the supported Apex entry point for the
-        // Einstein Models API. The class names have shifted across releases;
-        // if a deploy fails to compile here, adjust to the input/output
-        // representation classes available in the target org's API version.
-        // (Targeting Salesforce v62+; surface is documented as stable from
-        // Spring '25.)
-        ConnectApi.EinsteinPromptTextGenerationsInput input =
-            new ConnectApi.EinsteinPromptTextGenerationsInput();
-        input.text = systemPrompt + '\n\n---\n\n' + userPrompt;
-
-        ConnectApi.EinsteinLlmGenerationsInput body =
-            new ConnectApi.EinsteinLlmGenerationsInput();
-        body.promptTextGenerationsInput = input;
-
-        ConnectApi.EinsteinLlmGenerationsResponseRepresentation response =
-            ConnectApi.EinsteinLLM.generateMessages(body, DEFAULT_MODEL);
-
-        if (response == null || response.generations == null || response.generations.isEmpty()) {
-            throw new AuraHandledException('Einstein returned no generations.');
-        }
-        return response.generations[0].text;
+        // The exact ConnectApi.EinsteinLLM class names vary across Salesforce
+        // releases. To keep the package deployable on any org, this method
+        // is intentionally a stub: it throws a clear error unless wired up
+        // for the target org's Einstein API. Tests cover the parsing /
+        // transform / import path via the mockLLMResponse hook above.
+        //
+        // To enable AI form generation in your org:
+        //   1. Confirm Einstein Generative AI is provisioned.
+        //   2. Replace this method body with the ConnectApi.EinsteinLLM call
+        //      shape that compiles against your org's Salesforce release.
+        //      As of recent releases the input/output classes are roughly
+        //      EinsteinPromptTextGenerationsInput / EinsteinLlmGenerationsInput /
+        //      EinsteinLlmGenerationsResponseRepresentation - confirm in the
+        //      Apex Developer Guide for your org's API version.
+        //   3. Toggle FieldForms_Configuration__c.Enable_AI_Features__c on.
+        //
+        // Until then, the AI Generate button stays hidden (gated by the
+        // Enable_AI_Features__c flag) and this method is only reachable via
+        // tests that supply mockLLMResponse.
+        AuraHandledException notWired = new AuraHandledException(
+            'AI generation is not wired for this org. See NeuraFormAIController.invokeLLM() docstring.'
+        );
+        notWired.setMessage('AI generation is not wired for this org. See NeuraFormAIController.invokeLLM() docstring.');
+        throw notWired;
     }
 
     // ------------------------------------------------------------------------
