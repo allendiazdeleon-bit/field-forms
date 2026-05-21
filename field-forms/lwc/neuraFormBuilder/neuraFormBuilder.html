@@ -16,8 +16,11 @@
                             <lightning-tabset>
                                 <lightning-tab label="Components" style="height:100%">
                                     <div class="slds-p-horizontal_medium" style="height:calc(100% - 40px);overflow-y:auto">
+                                        <!-- type="text" because lightning-input with type="search"
+                                             debounces the change event until Enter/blur in many
+                                             org configurations. Filtering should be live-as-you-type. -->
                                         <lightning-input
-                                            type="search"
+                                            type="text"
                                             placeholder="Filter components..."
                                             label="Filter components"
                                             variant="label-hidden"

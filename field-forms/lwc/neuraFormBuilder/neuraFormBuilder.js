@@ -81,8 +81,18 @@ export default class NeuraFormBuilder extends LightningElement {
 
     paletteMatches(item) {
         if (!this.paletteSearch) return true;
-        const label = (item?.[FIELDS.Form_Setting__mdt.DisplayLabel.fieldApiName] || '').toLowerCase();
-        return label.includes(this.paletteSearch);
+        if (!item) return false;
+        // Some Form_Setting metadata records don't populate Display_Label__c
+        // and rely on MasterLabel / Label. Match against any of the three so
+        // a search like "text" reliably finds the right tile.
+        const displayLabel = item[FIELDS.Form_Setting__mdt.DisplayLabel.fieldApiName];
+        const masterLabel = item[FIELDS.Form_Setting__mdt.MasterLabel.fieldApiName];
+        const label = item[FIELDS.Form_Setting__mdt.Label.fieldApiName];
+        const haystack = [displayLabel, masterLabel, label]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+        return haystack.includes(this.paletteSearch);
     }
 
     get filteredLayoutItems() {
@@ -617,6 +627,17 @@ export default class NeuraFormBuilder extends LightningElement {
                 newSections.forEach(section => {
                     section[FIELDS.Form_Section__c.FormPage.fieldApiName] = oldPageIdsToNew[section[FIELDS.Form_Section__c.FormPage.fieldApiName]];
                 });
+                // Same remap for questions - they carry Form_Page__c directly
+                // since Wave 13. Without this the question insert fails with
+                // an "invalid foreign key" / unknown-error toast.
+                const remapPageRef = (rec) => {
+                    const existing = rec[FIELDS.Form_Question__c.FormPage.fieldApiName];
+                    if (existing && oldPageIdsToNew[existing]) {
+                        rec[FIELDS.Form_Question__c.FormPage.fieldApiName] = oldPageIdsToNew[existing];
+                    }
+                };
+                newQuestions.forEach(remapPageRef);
+                updatedQuestions.forEach(remapPageRef);
 
                 newPages.forEach(page => {
                     page.Id = oldPageIdsToNew[page.Id];
@@ -724,6 +745,18 @@ export default class NeuraFormBuilder extends LightningElement {
                 newSections.forEach(section => {
                     section[FIELDS.Form_Section__c.FormPage.fieldApiName] = oldPageIdsToNew[section[FIELDS.Form_Section__c.FormPage.fieldApiName]];
                 });
+                // Wave 21 fix: questions also reference Form_Page__c directly
+                // (introduced in Wave 13). Without this remap, questions try to
+                // insert with a UUID where a real Page Id is required and the
+                // DML fails with a confusing "Unknown error".
+                const remapPageRef = (rec) => {
+                    const existing = rec[FIELDS.Form_Question__c.FormPage.fieldApiName];
+                    if (existing && oldPageIdsToNew[existing]) {
+                        rec[FIELDS.Form_Question__c.FormPage.fieldApiName] = oldPageIdsToNew[existing];
+                    }
+                };
+                newQuestions.forEach(remapPageRef);
+                updatedQuestions.forEach(remapPageRef);
                 newPages.forEach(page => {
                     page.Id = oldPageIdsToNew[page.Id];
                 });

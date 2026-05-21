@@ -100,33 +100,68 @@ public with sharing class neuraFormBuilderController {
 
     @AuraEnabled(cacheable=false)
     public static List<SObject> processFormUpdate(List<SObject> toCreate, List<SObject> toUpdate, List<Id> toDelete){
-        
-        // check if toDelete is not empty and not null
-        if(toDelete != null && toDelete.size() > 0){
-            deleteRecordsFromList(toDelete);
+        // Wrap every DML so the actual error message reaches the LWC. Raw
+        // DmlException propagates as a generic "Script-thrown exception" /
+        // "Unknown error" - useless when an admin is trying to find the bad
+        // record. We rethrow as AuraHandledException with .setMessage() so
+        // the LWC's catch block sees the real cause.
+        try {
+            if (toDelete != null && toDelete.size() > 0) {
+                deleteRecordsFromList(toDelete);
+            }
+            if (toCreate != null && toCreate.size() > 0) {
+                insert toCreate;
+            }
+            if (toUpdate != null && toUpdate.size() > 0) {
+                update toUpdate;
+            }
+            return toCreate;
+        } catch (DmlException e) {
+            String msg = e.getMessage();
+            // For each failed row, append the field-level detail. DmlException
+            // exposes per-row errors via getDmlMessage / getDmlFields.
+            List<String> rowDetails = new List<String>();
+            for (Integer i = 0; i < e.getNumDml(); i++) {
+                String fields = e.getDmlFields(i) != null
+                    ? String.join(e.getDmlFieldNames(i), ', ')
+                    : '';
+                rowDetails.add(
+                    'Row ' + i + ': ' + e.getDmlMessage(i)
+                    + (String.isNotBlank(fields) ? ' (fields: ' + fields + ')' : '')
+                );
+            }
+            String full = String.isNotBlank(msg) ? msg : 'DML error';
+            if (!rowDetails.isEmpty()) {
+                full += ' - ' + String.join(rowDetails, '; ');
+            }
+            AuraHandledException ahe = new AuraHandledException(full);
+            ahe.setMessage(full);
+            throw ahe;
+        } catch (Exception e) {
+            AuraHandledException ahe = new AuraHandledException(e.getMessage());
+            ahe.setMessage(e.getMessage());
+            throw ahe;
         }
-
-        // check if toCreate is not empty and not null
-        if(toCreate != null && toCreate.size() > 0){
-            insert toCreate;
-        }
-        // check if toUpdate is not empty and not null
-        if(toUpdate != null && toUpdate.size() > 0){
-            update toUpdate;
-        }
-        return toCreate;
     }
     @AuraEnabled(cacheable=false)
     public static Form_Template__c processFormRecord(Form_Template__c toCreate, Form_Template__c toUpdate){
-        if (toCreate != null) {
-            insert toCreate;
-            return toCreate;
+        try {
+            if (toCreate != null) {
+                insert toCreate;
+                return toCreate;
+            }
+            if (toUpdate != null) {
+                update toUpdate;
+                return toUpdate;
+            }
+            return null;
+        } catch (Exception e) {
+            // Same pattern as processFormUpdate - rethrow as AuraHandledException
+            // with setMessage so the LWC sees the real error.
+            AuraHandledException ahe = new AuraHandledException(e.getMessage());
+            ahe.setMessage(e.getMessage());
+            throw ahe;
         }
-        if (toUpdate != null) {
-            update toUpdate;
-            return toUpdate;
-        }
-        return null; // In case both inputs are null
     }
     
     @AuraEnabled(cacheable=false)
