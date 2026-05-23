@@ -1,0 +1,41 @@
+<template>
+    <div class="repeat-group" role="group" aria-label="Repeatable input">
+        <ul class="repeat-rows">
+            <template for:each={rows} for:item="row" for:index="idx">
+                <li key={row.id} class="repeat-row">
+                    <lightning-input
+                        data-id={row.id}
+                        type="text"
+                        value={row.value}
+                        variant="label-hidden"
+                        placeholder={placeholder}
+                        onchange={handleRowInput}
+                        class="repeat-row__input"
+                    ></lightning-input>
+                    <button
+                        type="button"
+                        class="repeat-row__remove"
+                        data-id={row.id}
+                        onclick={handleRemove}
+                        disabled={removeDisabled}
+                        aria-label="Remove row"
+                    >
+                        <lightning-icon class="repeat-icon" icon-name="utility:dash" size="x-small" alternative-text=""></lightning-icon>
+                    </button>
+                </li>
+            </template>
+        </ul>
+        <div class="repeat-group__footer">
+            <button
+                type="button"
+                class="repeat-group__add"
+                onclick={handleAdd}
+                disabled={addDisabled}
+            >
+                <lightning-icon class="repeat-icon" icon-name="utility:add" size="x-small" alternative-text=""></lightning-icon>
+                <span>{addLabel}</span>
+            </button>
+            <span class="repeat-group__count">{rowCountLabel}</span>
+        </div>
+    </div>
+</template>

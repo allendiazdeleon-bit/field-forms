@@ -1,15 +1,23 @@
+/* Toast surface. Important note: lightning/platformShowToastEvent does
+   NOT display on FSL Mobile. This component is the in-page substitute —
+   keep it lightweight and in-the-document so it actually renders on
+   mobile devices. */
 .toast-message-container {
-  top: 0;
-  width: 100%;
-  padding: 10px;
-  z-index: 9900;
+    top: 0;
+    width: 100%;
+    padding: var(--neura-space-sm);
+    z-index: var(--neura-z-toast, 9900);
 }
 
 .toast-message {
-  border-radius: 10px;
-  width: 100%;
+    border-radius: var(--neura-radius-md);
+    width: 100%;
+    box-shadow: var(--neura-shadow-raised);
+    font-family: var(--neura-font-family);
 }
 
 .toast-message h2 {
-  margin-right: 1.25rem;
+    margin-right: var(--neura-space-xl);
+    font-weight: var(--neura-font-weight-semibold);
+    color: var(--neura-color-text-inverse);
 }

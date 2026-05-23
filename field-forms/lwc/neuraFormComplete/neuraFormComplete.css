@@ -1,14 +1,18 @@
+/* Form completion screen — animated checkmark + PDF download CTA.
+   Colors driven by tokens so brand changes update everywhere. */
+
 .wrapper-mobile {
-    color: #45c65a;
+    color: var(--neura-color-success-strong);
     position: fixed;
     top: 0;
     bottom: 0;
     right: 0;
     left: 0;
+    padding-bottom: var(--neura-safe-bottom);
 }
 
 .wrapper-desktop {
-    color: #45c65a;
+    color: var(--neura-color-success-strong);
     position: relative;
     height: 300px;
     width: 100%;
@@ -24,9 +28,9 @@
     stroke-dashoffset: 166;
     stroke-width: 2;
     stroke-miterlimit: 10;
-    stroke: #45c65a;
+    stroke: var(--neura-color-success-strong);
     fill: none;
-    animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards
+    animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
 }
 
 .checkmark {
@@ -35,60 +39,73 @@
     border-radius: 50%;
     display: block;
     stroke-width: 2;
-    stroke: #fff;
+    stroke: var(--neura-color-primary-contrast);
     stroke-miterlimit: 10;
-    box-shadow: inset 0px 0px 0px #45c65a;
-    animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both
+    box-shadow: inset 0px 0px 0px var(--neura-color-success-strong);
+    animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
 }
 
 .checkmark__check {
     transform-origin: 50% 50%;
     stroke-dasharray: 48;
     stroke-dashoffset: 48;
-    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards
+    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
 }
 
 @keyframes stroke {
-    100% {
-        stroke-dashoffset: 0
-    }
+    100% { stroke-dashoffset: 0; }
 }
 
 @keyframes scale {
-
-    0%,
-    100% {
-        transform: none
-    }
-
-    50% {
-        transform: scale3d(1.1, 1.1, 1)
-    }
+    0%, 100% { transform: none; }
+    50%      { transform: scale3d(1.1, 1.1, 1); }
 }
 
 @keyframes fill {
-    100% {
-        box-shadow: inset 0px 0px 0px 30px #45c65a
-    }
+    100% { box-shadow: inset 0px 0px 0px 30px var(--neura-color-success-strong); }
 }
+
 .pdf-status {
     display: inline-flex;
     align-items: center;
-    color: #706e6b;
-    font-size: 0.875rem;
+    gap: var(--neura-space-xs);
+    color: var(--neura-color-text-muted);
+    font-size: var(--neura-text-md);
 }
+
 .pdf-download-link {
     display: inline-flex;
     align-items: center;
-    padding: 0.5rem 1rem;
-    background: #0070d2;
-    color: #fff;
+    gap: var(--neura-space-xs);
+    padding: var(--neura-space-sm) var(--neura-space-lg);
+    background: var(--neura-color-primary);
+    color: var(--neura-color-primary-contrast);
     text-decoration: none;
-    border-radius: 0.25rem;
-    font-weight: 600;
-    font-size: 0.875rem;
+    border-radius: var(--neura-radius-sm);
+    font-weight: var(--neura-font-weight-semibold);
+    font-size: var(--neura-text-md);
+    min-height: var(--neura-touch-min);
+    box-shadow: var(--neura-shadow-primary);
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                box-shadow var(--neura-motion-fast) var(--neura-motion-ease),
+                transform var(--neura-motion-fast) var(--neura-motion-ease);
 }
-.pdf-download-link:active { background: #005fb2; }
+
+.pdf-download-link:hover {
+    background: var(--neura-color-primary-hover);
+}
+
+.pdf-download-link:active {
+    background: var(--neura-color-primary-active);
+    transform: scale(0.98);
+    box-shadow: var(--neura-shadow-primary-pressed);
+}
+
+.pdf-download-link:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
 .pdf-download-link lightning-icon {
-    --slds-c-icon-color-foreground-default: #fff;
+    --slds-c-icon-color-foreground-default: var(--neura-color-primary-contrast);
 }

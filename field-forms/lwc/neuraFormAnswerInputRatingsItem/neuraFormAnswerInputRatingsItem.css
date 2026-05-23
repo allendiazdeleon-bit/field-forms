@@ -1,35 +1,51 @@
-.number-ratings {
-    cursor: pointer;
-    font-size: 1rem; 
-}
-
-
-
-.color2 {
-    color: var(--color2);
-}
-
-.color1 {
-    color: var(--color1);
-}
-
-input[type="radio"]{
-    display: none;
-}
-
-/*! CSS Used from: https://ravimasi.github.io/rate-us/css/global.css */
-/*! @import https://ravimasi.github.io/rate-us/css/components.css */
-
-label{display:flex;place-content:center;z-index:1;}
-label::after{content:'';background-color:var(--color4);padding:1.375rem;border-radius:50%;position:absolute;z-index:-1;bottom:-10px;}
-label:hover::after,label:hover{background-color:var(--color2);color:var(--color1);}
-
-:host{
-    --color1: hsl(0, 0%, 100%);
-    --color2: hsl(217, 12%, 63%);
+/* Numeric-rating tile (NPS-style picker). Local --color* tokens are
+   preserved to keep the rating-tile contract stable but now resolve
+   to design-system tokens where it makes sense. */
+:host {
+    --color1: var(--neura-color-primary-contrast, hsl(0, 0%, 100%));
+    --color2: var(--neura-color-text-muted, hsl(217, 12%, 63%));
     --color3: hsl(216, 12%, 54%);
-    --color4: hsl(213, 19%, 18%);
+    --color4: var(--neura-color-text-primary, hsl(213, 19%, 18%));
     --color5: hsl(216, 12%, 8%);
     --color6: hsl(25, 97%, 53%);
     --txt1: 0.9375rem;
+}
+
+.number-ratings {
+    cursor: pointer;
+    font-size: var(--neura-text-lg, 1rem);
+}
+
+.color2 { color: var(--color2); }
+.color1 { color: var(--color1); }
+
+input[type="radio"] {
+    display: none;
+}
+
+label {
+    display: flex;
+    place-content: center;
+    z-index: 1;
+    min-width: var(--neura-touch-min, 44px);
+    min-height: var(--neura-touch-min, 44px);
+    align-items: center;
+}
+label::after {
+    content: '';
+    background-color: var(--color4);
+    padding: 1.375rem;
+    border-radius: var(--neura-radius-pill, 50%);
+    position: absolute;
+    z-index: -1;
+    bottom: -10px;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease);
+}
+label:hover::after,
+label:hover {
+    background-color: var(--color2);
+    color: var(--color1);
+}
+label:focus-within::after {
+    box-shadow: 0 0 0 var(--neura-focus-ring-width, 2px) var(--neura-focus-ring-color, var(--neura-color-primary));
 }

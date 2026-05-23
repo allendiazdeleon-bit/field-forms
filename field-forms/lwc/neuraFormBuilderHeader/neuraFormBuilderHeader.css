@@ -1,8 +1,18 @@
-.slds-builder-header__item-action{
+.slds-builder-header__item-action {
     cursor: pointer;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease);
 }
 
-.middle-actions{
-    position:absolute;
-    left:300px;
+.slds-builder-header__item-action:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.slds-builder-header__item-action:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: calc(-1 * var(--neura-focus-ring-width));
+}
+
+.middle-actions {
+    position: absolute;
+    left: var(--lwc-widthLeftSidebar, 300px);
 }

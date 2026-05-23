@@ -1,41 +1,60 @@
 /* Ensure the size of the image fit the container perfectly */
 img {
-  display: block;
+    display: block;
+    /* This rule is very important, please don't ignore this */
+    max-width: 100%;
+}
 
-  /* This rule is very important, please don't ignore this */
-  max-width: 100%;
+.rotate-button {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: var(--neura-color-primary);
+    transition: color var(--neura-motion-fast) var(--neura-motion-ease);
 }
 
 .rotate-button:focus,
 .rotate-button:hover,
 .rotate-button:active {
-  box-shadow: none;
-  -webkit-box-shadow: none;
-  border-color: transparent;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+    border-color: transparent;
+}
+.rotate-button:hover  { color: var(--neura-color-primary-hover); }
+.rotate-button:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
+    border-radius: var(--neura-radius-sm);
 }
 
 .footer-content {
-  width: 100%;
-  padding-top: 0;
-  padding-bottom: 0;
+    width: 100%;
+    padding-top: 0;
+    padding-bottom: var(--neura-safe-bottom, 0px);
 }
 
 .page {
-  display: flex;
-  flex-flow: column;
-  height: 100%;
+    display: flex;
+    flex-flow: column;
+    height: 100%;
 }
 
 .page .section.content {
-  display: flex;
-  flex-flow: column;
-  flex: 1 1 auto;
-  position: relative;
+    display: flex;
+    flex-flow: column;
+    flex: 1 1 auto;
+    position: relative;
 }
 
 .page .section.footer {
-  flex: 0 1 auto;
+    flex: 0 1 auto;
 }
+
+/* ----------------------------------------------------------------------
+   Below this line: vendored Cropper.js v1.5.12 CSS — DO NOT modify selectors.
+   Static resources aren't available offline on FSL Mobile, so the library
+   styles are inlined here. Treat as opaque dependency.
+   ---------------------------------------------------------------------- */
 
 /* Static Resources are not supported yet on mobile, pasting the entire CSS of CropperJS */
 /*!

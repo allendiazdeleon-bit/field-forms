@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Lookup_Related_List__c</fullName>
+    <description>For Lookup-type questions: the API name of the related list to query on the host record (e.g. WorkOrderLineItems on a WorkOrder host).</description>
+    <externalId>false</externalId>
+    <inlineHelpText>The relationship API name on the host record. Example: WorkOrderLineItems</inlineHelpText>
+    <label>Lookup Related List</label>
+    <length>120</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

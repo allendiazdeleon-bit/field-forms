@@ -1,6 +1,28 @@
 <template>
-    <div if:true={isLoading}>
-        <c-loading-spinner message="loading..."></c-loading-spinner>
+    <!-- Mobile shell utility bar: theme toggle on the left, draft-queue
+         sync indicator on the right. Visible regardless of which screen
+         (selector / renderer / complete) is currently shown. Surfaces
+         draft-queue state rather than online/offline (no online/offline
+         signal is exposed by FSL Mobile by design). -->
+    <div class="slds-p-around_x-small slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+        <c-neura-theme-toggle
+            compact
+            onthemechange={handleThemeChange}
+        ></c-neura-theme-toggle>
+        <c-neura-draft-queue-badge
+            pending-count={draftBadgePendingCount}
+            has-error={draftBadgeHasError}
+            last-synced-at={draftBadgeLastSyncedAt}
+        ></c-neura-draft-queue-badge>
+    </div>
+
+    <!-- Skeleton placeholder instead of a full-page spinner so the user
+         sees the shape of the form-picker emerging while data primes.
+         Falls back to the spinner pattern only when explicitly requested
+         by callers via the legacy isLoading flag — keeps the existing
+         behavior contract intact. -->
+    <div if:true={isLoading} class="slds-m-vertical_medium">
+        <c-neura-skeleton variant="list" count="4"></c-neura-skeleton>
     </div>
 
     <div if:true={loadAnswerFiles}>
@@ -36,13 +58,11 @@
                  hasn't fired), let the field tech start one from any
                  Default_Form mapped to the host's WorkType. -->
             <template if:true={shouldOfferDraftFallback}>
-                <div class="slds-box slds-m-horizontal_small slds-m-bottom_medium">
-                    <p class="slds-text-title slds-m-bottom_x-small">
-                        No forms found for this record yet.
-                    </p>
-                    <p class="slds-text-body_small slds-m-bottom_small">
-                        Start one offline; it will sync when this record syncs.
-                    </p>
+                <c-neura-empty-state
+                    icon-name="utility:new"
+                    heading="No forms found for this record yet"
+                    body="Start one offline; it will sync when this record syncs."
+                >
                     <template for:each={availableDefaultForms} for:item="def">
                         <lightning-button
                             key={def.formTemplateId}
@@ -53,7 +73,7 @@
                             onclick={handleCreateDraftForm}
                         ></lightning-button>
                     </template>
-                </div>
+                </c-neura-empty-state>
             </template>
         </template>
 
@@ -69,6 +89,7 @@
                 oncapturelocation={handleCaptureGeolocation}
                 onupdatelinkedformdetails={handleUpdateLinkedFormDetails}
                 onupdateformdata={handleUpdateFormData}
+                ondraftstate={handleDraftState}
                 is-desktop={isDesktop}
                 onerror={handleFormRendererError}
                 onmessage={handleFormRendererMessage}

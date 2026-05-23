@@ -1,0 +1,34 @@
+/* Lookup input. Renders a combobox once data resolves; falls back to
+   a polite empty-state when no related records exist or when the
+   question's lookup metadata isn't configured yet. */
+
+.lookup-empty,
+.lookup-error {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--neura-space-xs);
+    padding: var(--neura-space-sm) var(--neura-space-md);
+    border-radius: var(--neura-radius-sm);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-base);
+    line-height: var(--neura-line-height-base);
+}
+
+.lookup-empty {
+    background: var(--neura-color-surface-muted);
+    color: var(--neura-color-text-muted);
+    border: 1px dashed var(--neura-color-border-strong);
+}
+
+.lookup-error {
+    background: var(--neura-color-error-bg);
+    color: var(--neura-color-error-strong);
+    border: 1px solid var(--neura-color-error);
+}
+
+.lookup-empty lightning-icon,
+.lookup-error lightning-icon {
+    --slds-c-icon-color-foreground: currentColor;
+    --slds-c-icon-color-foreground-default: currentColor;
+    flex: 0 0 auto;
+}

@@ -22,9 +22,25 @@ canvas {
 }
 
 canvas {
-    width: 100%; /* Make the canvas fill its container */
+    width: 100%;
     max-width: 100%;
-    height: auto; /* Allow the canvas to scale proportionally */
-    border: 2px solid rgb(136, 135, 135);
+    height: auto;
+    min-height: 200px;
+    border: 2px solid var(--neura-color-border-strong, rgb(136, 135, 135));
     background: transparent;
+    border-radius: var(--neura-radius-sm);
+    touch-action: none; /* prevent scroll while drawing on touch */
+}
+
+.header-text {
+    margin: var(--neura-space-xs) 0 var(--neura-space-sm);
+    font-size: var(--neura-text-md);
+    color: var(--neura-color-text-muted);
+}
+
+.action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--neura-space-xs);
+    padding-top: var(--neura-space-sm);
 }

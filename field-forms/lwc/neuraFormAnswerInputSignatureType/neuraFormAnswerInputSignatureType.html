@@ -1,21 +1,49 @@
 <template>
-    <lightning-card title="Signature Panel">
-        <div class="c-container">
-            <div>
-                <template if:true={signaturetype}>
-                    <lightning-input label="Enter text" type="text" value={name} onchange={signIt}></lightning-input>
-                </template>
-                <p>{headerText}</p>
-                <p class="slds-m-bottom_small">
-                    <canvas name="canvasItem" height="200" style="border:2px solid rgb(136, 135, 135); background: transparent;"></canvas>
-                </p>
-                <p class="slds-m-bottom_small">
-                    <lightning-button variant="brand" label="Done" title="Done" onclick={handleDoneClick} class="slds-m-left_x-small"></lightning-button>
-                    <lightning-button variant="neutral" label="Clear" title="Clear" onclick={handleClearClick} class="slds-m-left_x-small"></lightning-button>
-                    <lightning-button variant="neutral" label="Change Type" title="Change Type" onclick={handleChangeTypeClick} class="slds-m-left_x-small"></lightning-button>
-                    <lightning-button variant="neutral" label="Cancel" title="Cancel" onclick={handleCancelClick} class="slds-m-left_x-small"></lightning-button>
-                </p>
-            </div>
+    <div class="c-container">
+        <template if:true={signaturetype}>
+            <lightning-input
+                label="Enter text"
+                type="text"
+                value={name}
+                onchange={signIt}
+                class="slds-m-bottom_x-small"
+            ></lightning-input>
+        </template>
+
+        <p class="header-text">{headerText}</p>
+
+        <p class="slds-m-bottom_small">
+            <canvas name="canvasItem" height="200"></canvas>
+        </p>
+
+        <div class="action-row">
+            <lightning-button
+                variant="brand"
+                label="Done"
+                title="Done"
+                onclick={handleDoneClick}
+                class="slds-m-right_x-small"
+            ></lightning-button>
+            <lightning-button
+                variant="neutral"
+                label="Clear"
+                title="Clear"
+                onclick={handleClearClick}
+                class="slds-m-right_x-small"
+            ></lightning-button>
+            <lightning-button
+                variant="neutral"
+                label="Change Type"
+                title="Change Type"
+                onclick={handleChangeTypeClick}
+                class="slds-m-right_x-small"
+            ></lightning-button>
+            <lightning-button
+                variant="neutral"
+                label="Cancel"
+                title="Cancel"
+                onclick={handleCancelClick}
+            ></lightning-button>
         </div>
-    </lightning-card>
+    </div>
 </template>

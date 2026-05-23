@@ -1,0 +1,37 @@
+<template>
+    <div class="pfn-group" role="radiogroup" aria-label="Pass, Fail, or Not Applicable">
+        <button
+            type="button"
+            class={passButtonClass}
+            role="radio"
+            aria-checked={isPass}
+            data-value="pass"
+            onclick={handleSelect}
+        >
+            <lightning-icon class="pfn-icon" icon-name="utility:check" size="small" alternative-text=""></lightning-icon>
+            <span class="pfn-label">Pass</span>
+        </button>
+        <button
+            type="button"
+            class={failButtonClass}
+            role="radio"
+            aria-checked={isFail}
+            data-value="fail"
+            onclick={handleSelect}
+        >
+            <lightning-icon class="pfn-icon" icon-name="utility:close" size="small" alternative-text=""></lightning-icon>
+            <span class="pfn-label">Fail</span>
+        </button>
+        <button
+            type="button"
+            class={naButtonClass}
+            role="radio"
+            aria-checked={isNa}
+            data-value="na"
+            onclick={handleSelect}
+        >
+            <lightning-icon class="pfn-icon" icon-name="utility:dash" size="small" alternative-text=""></lightning-icon>
+            <span class="pfn-label">N/A</span>
+        </button>
+    </div>
+</template>

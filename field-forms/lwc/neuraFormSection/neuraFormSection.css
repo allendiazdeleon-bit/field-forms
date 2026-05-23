@@ -1,3 +1,55 @@
+/* Form section — clean, list-style. No card chrome; sections are
+   separated by spacing + a thin top divider, not nested boxes.
+   Title is rendered as an uppercase eyebrow in muted small caps,
+   matching the reference design (Stripe / Linear / native iOS forms). */
+
+.form-section {
+    display: block;
+    background: transparent;
+    padding: var(--neura-space-xl) var(--neura-space-lg) var(--neura-space-lg);
+    /* Thin top divider between sections — first section is bare. */
+    border-top: 1px solid var(--neura-color-border-subtle);
+}
+
+.form-section:first-of-type {
+    border-top: none;
+}
+
+.form-section__title {
+    margin: 0 0 var(--neura-space-md);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-xs);
+    font-weight: var(--neura-font-weight-bold);
+    color: var(--neura-color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    line-height: var(--neura-line-height-base);
+}
+
+.form-section__questions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--neura-space-md) var(--neura-space-md);
+}
+
+.form-section__error {
+    margin: var(--neura-space-lg);
+    padding: var(--neura-space-md) var(--neura-space-lg);
+    background: var(--neura-color-error-bg);
+    color: var(--neura-color-error-strong);
+    border: 1px solid var(--neura-color-error);
+    border-radius: var(--neura-radius-md);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-md);
+}
+
+/* Legacy class kept for back-compat — older flexipages might still
+   reference .my-card. No longer applied by the new template. */
 .my-card {
     display: block;
+    background: var(--neura-color-surface);
+    border-radius: var(--neura-radius-md);
+    padding: var(--neura-space-md) var(--neura-space-lg);
+    margin-bottom: var(--neura-space-md);
+    box-shadow: var(--neura-shadow-subtle);
 }

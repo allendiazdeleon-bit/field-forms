@@ -1,0 +1,97 @@
+/* CSS-only loading skeleton. No JS heartbeat, no static-resource deps —
+   safe to render on FSL Mobile WebViews. */
+
+.skeleton {
+    display: block;
+    width: 100%;
+}
+
+.skeleton-block {
+    display: block;
+    background: linear-gradient(
+        90deg,
+        var(--neura-color-surface-muted, #f3f3f3) 0%,
+        var(--neura-color-border-subtle, #e9e9e9) 50%,
+        var(--neura-color-surface-muted, #f3f3f3) 100%
+    );
+    background-size: 200% 100%;
+    border-radius: var(--neura-radius-sm, 0.25rem);
+    animation: neura-skeleton-shimmer 1400ms ease-in-out infinite;
+}
+
+.skeleton-block_avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--neura-radius-pill, 9999px);
+    flex: 0 0 auto;
+}
+
+.skeleton-block_title {
+    height: 14px;
+    width: 60%;
+    margin-bottom: var(--neura-space-sm, 0.5rem);
+}
+
+.skeleton-block_meta {
+    height: 11px;
+    width: 40%;
+}
+
+.skeleton-block_line {
+    height: 12px;
+    width: 100%;
+    margin-bottom: var(--neura-space-sm, 0.5rem);
+}
+.skeleton-block_line:last-child { margin-bottom: 0; }
+
+.skeleton-block_short {
+    width: 40%;
+}
+
+.skeleton-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--neura-color-surface, #fff);
+    border-radius: var(--neura-radius-md, 0.5rem);
+    overflow: hidden;
+    box-shadow: var(--neura-shadow-subtle);
+}
+
+.skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: var(--neura-space-md, 0.75rem);
+    padding: var(--neura-space-md, 0.75rem) var(--neura-space-lg, 1rem);
+    border-bottom: 1px solid var(--neura-color-border, #e5e5e5);
+    min-height: var(--neura-touch-mobile, 64px);
+}
+.skeleton-row:last-child { border-bottom: none; }
+
+.skeleton-row__body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.skeleton-card {
+    background: var(--neura-color-surface, #fff);
+    border-radius: var(--neura-radius-md, 0.5rem);
+    padding: var(--neura-space-lg, 1rem);
+    box-shadow: var(--neura-shadow-subtle);
+}
+
+.skeleton-text {
+    padding: var(--neura-space-sm, 0.5rem) 0;
+}
+
+@keyframes neura-skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Respect reduced motion preferences (a11y). */
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-block {
+        animation-duration: 3000ms;
+    }
+}

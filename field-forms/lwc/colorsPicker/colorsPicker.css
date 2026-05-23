@@ -1,57 +1,66 @@
+/* Image-annotation color picker. The .red/.green/.white/.black classes
+   are SWATCH options the user picks from — those hex values are data,
+   not theme, so they stay literal. Only the chrome (selection ring,
+   focus ring) is themed via tokens. */
+
 .button-group-item-dot {
-  align-items: center;
-  justify-items: center;
-  display: grid;
+    align-items: center;
+    justify-items: center;
+    display: grid;
 }
 
 .dot-button {
-  display: grid;
+    display: grid;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    padding: var(--neura-space-2xs, 2px);
 }
 
 .dot-button:focus,
 .dot-button:active {
-  box-shadow: none;
-  -webkit-box-shadow: none;
-  border-color: transparent;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+    border-color: transparent;
+}
+
+.dot-button:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
+    border-radius: 50%;
 }
 
 .dot {
-  grid-column: 1;
-  grid-row: 1;
-  height: 1.5rem;
-  margin: auto;
-  aspect-ratio: 1 / 1;
-  border: 1px #9faab5 solid;
-  border-radius: 50%;
-  display: inline-block;
+    grid-column: 1;
+    grid-row: 1;
+    height: 1.5rem;
+    margin: auto;
+    aspect-ratio: 1 / 1;
+    border: 1px solid var(--neura-color-border-strong, #9faab5);
+    border-radius: 50%;
+    display: inline-block;
+    transition: transform var(--neura-motion-fast, 120ms) var(--neura-motion-ease, ease);
 }
 
+.dot-button:hover .dot { transform: scale(1.05); }
+
 .dot-selection-ring {
-  grid-column: 1;
-  grid-row: 1;
-  height: 2.25rem;
-  aspect-ratio: 1 / 1;
-  margin: auto;
-  border: 3px transparent solid;
+    grid-column: 1;
+    grid-row: 1;
+    height: 2.25rem;
+    aspect-ratio: 1 / 1;
+    margin: auto;
+    border: 3px solid transparent;
+    transition: border-color var(--neura-motion-fast, 120ms) var(--neura-motion-ease, ease);
 }
 
 .dot-selection-ring.is-selected {
-  border: 3px #1b96ff solid;
-  border-radius: 50%;
+    border-color: var(--neura-color-primary, #1b96ff);
+    border-radius: 50%;
 }
 
-.red {
-  background-color: #ea001e;
-}
-
-.green {
-  background-color: #2e844a;
-}
-
-.white {
-  background-color: #ffffff;
-}
-
-.black {
-  background-color: #000000;
-}
+/* Color swatches — these are literal data, do not theme. */
+.red   { background-color: #ea001e; }
+.green { background-color: #2e844a; }
+.white { background-color: #ffffff; }
+.black { background-color: #000000; }

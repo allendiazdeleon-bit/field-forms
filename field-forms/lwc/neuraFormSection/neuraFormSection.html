@@ -1,23 +1,22 @@
 <template>
     <template if:true={formSection}>
-        <lightning-card class="my-card slds-box">
-            <template lwc:if={showTitle}> 
-                <h3 slot="title">
-                    {sectionTitle}
-                </h3>
+        <!-- Clean section pattern — uppercase eyebrow title, thin divider
+             between sections, no heavy card chrome. Inspired by Stripe /
+             Linear / native iOS form aesthetics. -->
+        <section class="form-section">
+            <template lwc:if={showTitle}>
+                <h2 class="form-section__title">{sectionTitle}</h2>
             </template>
-            <div class="slds-grid slds-wrap">
+            <div class="form-section__questions slds-grid slds-wrap">
                 <template for:each={formSection.questions} for:item="formQuestion">
                     <div if:true={formQuestion.shouldRender} key={formQuestion.Id} class={questionClass} style={sectionStyle}>
                         <c-neura-form-question record-id={recordId} form-question={formQuestion} answer-map={answerMap} skipped-ids={skippedIds}></c-neura-form-question>
-                       <!-- <c-neura-form-question record-id={recordId} form-question={formQuestion}></c-neura-form-question>-->
                     </div>
                 </template>
             </div>
-        </lightning-card>
+        </section>
     </template>
     <template if:false={formSection}>
-        <!-- Handle error state -->
-        <p>Error loading form page.</p>
+        <p class="form-section__error">Error loading form page.</p>
     </template>
 </template>

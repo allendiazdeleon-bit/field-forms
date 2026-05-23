@@ -1,151 +1,155 @@
+/* Image annotation surface. Dark chrome (black canvas + dark footer) so
+   the user's drawing reads against a neutral background. The toolbar
+   accent (#1b96ff → primary blue) signals system controls vs. drawing
+   colors. */
 :host {
-  --slds-c-button-outline-brand-color-background: transparent;
-  --slds-c-button-outline-brand-color-background-active: transparent;
-  --slds-c-button-outline-brand-color-background-hover: transparent;
-  --slds-c-button-outline-brand-color-border: #1b96ff;
-  --slds-c-button-outline-brand-color-border-hover: #1b96ff;
-  --slds-c-button-stateful-color-background-selected: #1b96ff;
-  --slds-c-button-stateful-color-background-selected-active: #1b96ff;
-  --slds-c-button-stateful-color-background-selected-hover: #1b96ff;
-  --slds-c-button-stateful-color-border-selected: #1b96ff;
-  --slds-c-button-stateful-color-border-selected-hover: #1b96ff;
-  --slds-c-button-text-color: #1b96ff;
-  --slds-c-button-text-color-active: #1b96ff;
-  --slds-c-button-text-color-hover: #1b96ff;
-  --slds-c-button-radius-border: 0.75rem;
-  --slds-c-button-sizing-border: 2px;
+    --slds-c-button-outline-brand-color-background: transparent;
+    --slds-c-button-outline-brand-color-background-active: transparent;
+    --slds-c-button-outline-brand-color-background-hover: transparent;
+    --slds-c-button-outline-brand-color-border: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-outline-brand-color-border-hover: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-stateful-color-background-selected: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-stateful-color-background-selected-active: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-stateful-color-background-selected-hover: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-stateful-color-border-selected: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-stateful-color-border-selected-hover: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-text-color: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-text-color-active: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-text-color-hover: var(--neura-color-primary, #1b96ff);
+    --slds-c-button-radius-border: var(--neura-radius-lg, 0.75rem);
+    --slds-c-button-sizing-border: 2px;
 }
 
 button[disabled="true"] {
-  color: #f4f4f4;
+    color: var(--neura-color-surface-muted, #f4f4f4);
 }
 
 .selected-button {
-  color: #ffffff;
-  background-color: #1b96ff;
+    color: var(--neura-color-primary-contrast, #ffffff);
+    background-color: var(--neura-color-primary, #1b96ff);
 }
 
 .icon-button {
-  color: #1b96ff;
-  border-color: #1b96ff;
-  border-width: var(--slds-c-button-sizing-border, 2px);
-  border-radius: var(--slds-c-button-radius-border, 0.75rem);
+    color: var(--neura-color-primary, #1b96ff);
+    border-color: var(--neura-color-primary, #1b96ff);
+    border-width: var(--slds-c-button-sizing-border, 2px);
+    border-radius: var(--slds-c-button-radius-border, var(--neura-radius-lg, 0.75rem));
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease);
+}
+.icon-button:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
 }
 
 .dark-dropdown {
-  background-color: #1e1e1e;
-  border-width: 0;
-  border-radius: var(--slds-c-button-radius-border, 0.75rem);
-  margin-bottom: 8px;
+    background-color: #1e1e1e;
+    border-width: 0;
+    border-radius: var(--slds-c-button-radius-border, var(--neura-radius-lg, 0.75rem));
+    margin-bottom: var(--neura-space-sm, 8px);
 }
 
 .dark-dropdown > ul > li {
-  padding-right: 2rem;
+    padding-right: var(--neura-space-xl, 2rem);
 }
 
 .dark-dropdown > ul > li > a:hover,
 .dark-dropdown > ul > li > a:focus {
-  background-color: transparent;
+    background-color: transparent;
 }
 
 .white-dropdown-item {
-  color: #ffffff;
-  display: inline-flex;
+    color: var(--neura-color-primary-contrast, #ffffff);
+    display: inline-flex;
 }
 
 .white-dropdown-item > svg {
-  --slds-c-icon-color-foreground: #ffffff;
+    --slds-c-icon-color-foreground: var(--neura-color-primary-contrast, #ffffff);
 }
 
 .red-dropdown-item {
-  color: #ff3b30;
-  display: inline-flex;
+    color: #ff3b30;
+    display: inline-flex;
 }
 
 .red-dropdown-item > svg {
-  --slds-c-icon-color-foreground: #ff3b30;
+    --slds-c-icon-color-foreground: #ff3b30;
 }
 
 .selected-dropdown-item {
-  opacity: 50%;
+    opacity: 50%;
 }
 
 .remove-dropdown-item {
-  border-top: 1px #9faab580 solid;
+    border-top: 1px solid #9faab580;
 }
 
 img {
-  max-height: 100%;
-  max-width: 100%;
-  width: auto;
-  height: auto;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: auto;
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
 }
 
 a.disabled {
-  pointer-events: none;
-  color: #ccc;
+    pointer-events: none;
+    color: var(--neura-color-text-disabled, #ccc);
 }
 
 .transparent-entire-page {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-  opacity: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    opacity: 0;
 }
 
-.all-height {
-  height: 100%;
-}
-
-.all-width {
-  width: 100%;
-}
+.all-height { height: 100%; }
+.all-width  { width: 100%; }
 
 .page {
-  display: flex;
-  flex-flow: column;
-  height: 100%;
-  background-color: black;
+    display: flex;
+    flex-flow: column;
+    height: 100%;
+    background-color: black;
 }
 
 .page .section.content {
-  display: flex;
-  flex-flow: column;
-  flex: 1 1 auto;
-  position: relative;
+    display: flex;
+    flex-flow: column;
+    flex: 1 1 auto;
+    position: relative;
 }
 
 .page .section.footer {
-  flex: 0 1 auto;
-  background-color: #444444;
+    flex: 0 1 auto;
+    background-color: #444444;
 }
 
-.fixed-section{
-  margin-bottom:84px;
+.fixed-section {
+    margin-bottom: 84px;
 }
 
 .fixed-footer {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  background-color: #444444;
-  z-index: 10;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #444444;
+    padding-bottom: var(--neura-safe-bottom, 0px);
+    z-index: var(--neura-z-sticky, 10);
 }
 
-
-.fixed-page{
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  position: fixed;
-  z-index: 2000;
+.fixed-page {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    position: fixed;
+    z-index: var(--neura-z-modal, 2000);
 }

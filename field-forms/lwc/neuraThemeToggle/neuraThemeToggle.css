@@ -1,0 +1,61 @@
+/* Three-state theme toggle. Pill-shaped with icon + label by default,
+   icon-only in compact mode (e.g. cramped mobile shell header). */
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--neura-space-xs);
+    padding: var(--neura-space-xs) var(--neura-space-md);
+    background: transparent;
+    border: 1px solid var(--neura-color-border);
+    border-radius: var(--neura-radius-pill);
+    color: var(--neura-color-text-secondary);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-sm);
+    font-weight: var(--neura-font-weight-medium);
+    cursor: pointer;
+    min-height: var(--neura-touch-min);
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                border-color var(--neura-motion-fast) var(--neura-motion-ease),
+                color var(--neura-motion-fast) var(--neura-motion-ease);
+}
+
+.theme-toggle:hover {
+    background: var(--neura-color-surface-muted);
+    border-color: var(--neura-color-border-strong);
+    color: var(--neura-color-text-primary);
+}
+
+.theme-toggle:active {
+    transform: scale(0.98);
+}
+
+.theme-toggle:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
+.theme-toggle_compact {
+    padding: var(--neura-space-xs);
+    min-width: var(--neura-touch-min);
+    justify-content: center;
+}
+
+.theme-toggle__icon {
+    --slds-c-icon-color-foreground: currentColor;
+    --slds-c-icon-color-foreground-default: currentColor;
+}
+
+.theme-toggle__label {
+    line-height: 1;
+}
+
+/* Suppress hover styles on phone-class touch devices where they're
+   misleading (no hover state actually exists). */
+@media (hover: none) {
+    .theme-toggle:hover {
+        background: transparent;
+        border-color: var(--neura-color-border);
+        color: var(--neura-color-text-secondary);
+    }
+}

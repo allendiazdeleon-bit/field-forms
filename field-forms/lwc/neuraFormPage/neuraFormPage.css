@@ -1,4 +1,29 @@
-.mobile-hide-page{
-    height: 0px;
+/* Form page wrapper. The mobile-hide-page class lets the renderer keep
+   inactive pages in the DOM (so input state survives navigation) while
+   visually hiding them. Active pages cross-fade in via the
+   .page-enter / .page-active animation pair below — animations bounded
+   under prefers-reduced-motion for accessibility. */
+.mobile-hide-page {
+    height: 0;
     overflow: hidden;
+    visibility: hidden;
+}
+
+.page-active {
+    animation: neura-page-enter var(--neura-motion-base) var(--neura-motion-ease-out) both;
+}
+
+@keyframes neura-page-enter {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-active { animation: none; }
 }

@@ -1,9 +1,17 @@
 .actionButtons {
-    --lwc-buttonColorBorderPrimary : transparent;
+    --lwc-buttonColorBorderPrimary: transparent;
     --slds-c-button-color-border-active: transparent;
     --lwc-borderWidthThin: 0px;
 }
 
 .move-item {
     cursor: grab;
+}
+.move-item:active {
+    cursor: grabbing;
+}
+.move-item:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
+    border-radius: var(--neura-radius-sm, 0.25rem);
 }

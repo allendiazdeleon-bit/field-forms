@@ -1,0 +1,97 @@
+/* Pass / Fail / N-A three-state input. Big tap targets, semantic color
+   on the active state so the answer is recognizable at a glance even
+   when the screen is being scanned quickly. All colors flow from the
+   design system, so dark mode just works. */
+
+.pfn-group {
+    display: flex;
+    gap: var(--neura-space-sm);
+    flex-wrap: wrap;
+}
+
+.pfn-button {
+    flex: 1 1 0;
+    min-width: 96px;
+    min-height: var(--neura-touch-mobile);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--neura-space-xs);
+    padding: var(--neura-space-md) var(--neura-space-lg);
+    background: var(--neura-color-surface);
+    border: 2px solid var(--neura-color-border);
+    border-radius: var(--neura-radius-md);
+    color: var(--neura-color-text-primary);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-md);
+    font-weight: var(--neura-font-weight-semibold);
+    cursor: pointer;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                border-color var(--neura-motion-fast) var(--neura-motion-ease),
+                color var(--neura-motion-fast) var(--neura-motion-ease),
+                transform var(--neura-motion-fast) var(--neura-motion-ease);
+}
+
+.pfn-button:active { transform: scale(0.98); }
+
+.pfn-button:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
+/* Pass — semantic green */
+.pfn-button_pass:hover {
+    background: var(--neura-color-success-bg);
+    border-color: var(--neura-color-success-strong);
+    color: var(--neura-color-success);
+}
+.pfn-button_pass.pfn-button_active {
+    background: var(--neura-color-success-strong);
+    border-color: var(--neura-color-success-strong);
+    color: var(--neura-color-primary-contrast);
+}
+
+/* Fail — semantic red */
+.pfn-button_fail:hover {
+    background: var(--neura-color-error-bg);
+    border-color: var(--neura-color-error-strong);
+    color: var(--neura-color-error-strong);
+}
+.pfn-button_fail.pfn-button_active {
+    background: var(--neura-color-error-strong);
+    border-color: var(--neura-color-error-strong);
+    color: var(--neura-color-primary-contrast);
+}
+
+/* N/A — neutral, deliberately less prominent than pass/fail */
+.pfn-button_na:hover {
+    background: var(--neura-color-surface-muted);
+    border-color: var(--neura-color-border-strong);
+    color: var(--neura-color-text-secondary);
+}
+.pfn-button_na.pfn-button_active {
+    background: var(--neura-color-surface-muted);
+    border-color: var(--neura-color-border-strong);
+    color: var(--neura-color-text-secondary);
+}
+
+.pfn-icon {
+    --slds-c-icon-color-foreground: currentColor;
+    --slds-c-icon-color-foreground-default: currentColor;
+}
+
+.pfn-label {
+    line-height: 1.2;
+}
+
+/* Touch devices don't actually have hover — suppress the hover styling
+   so the button doesn't flash a "wrong" color mid-tap. */
+@media (hover: none) {
+    .pfn-button_pass:hover,
+    .pfn-button_fail:hover,
+    .pfn-button_na:hover {
+        background: var(--neura-color-surface);
+        border-color: var(--neura-color-border);
+        color: var(--neura-color-text-primary);
+    }
+}

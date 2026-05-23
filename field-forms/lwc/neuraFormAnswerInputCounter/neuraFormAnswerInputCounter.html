@@ -1,0 +1,33 @@
+<template>
+    <div class="counter" role="group" aria-label="Counter">
+        <button
+            type="button"
+            class="counter-btn counter-btn_decrement"
+            onclick={handleDecrement}
+            disabled={decrementDisabled}
+            aria-label="Decrease"
+        >
+            <lightning-icon class="counter-icon" icon-name="utility:dash" size="x-small" alternative-text=""></lightning-icon>
+        </button>
+        <input
+            class="counter-value"
+            type="number"
+            value={displayValue}
+            min={min}
+            max={max}
+            step={parsedStep}
+            inputmode="numeric"
+            aria-label="Current count"
+            onchange={handleManualInput}
+        />
+        <button
+            type="button"
+            class="counter-btn counter-btn_increment"
+            onclick={handleIncrement}
+            disabled={incrementDisabled}
+            aria-label="Increase"
+        >
+            <lightning-icon class="counter-icon" icon-name="utility:add" size="x-small" alternative-text=""></lightning-icon>
+        </button>
+    </div>
+</template>

@@ -12,6 +12,14 @@ import uploadFilesForAnswerRecords from '@salesforce/apex/NeuraFormLogic.uploadF
 
 import { FIELDS, OBJECTS } from 'c/neuraFormSchemaUtils';
 
+// Why this branches on formFactor:
+//   On Lightning Experience desktop (formFactor === 'Large'), bulk delete
+//   via Apex is faster and gives us a single transaction. On every other
+//   form factor — phone, tablet, AND FSL Mobile (LWC Offline) where
+//   formFactor *always* returns 'Small' regardless of device — we route
+//   through deleteRecord() from uiRecordApi because it is Drafts-Enabled
+//   (Apex cannot enqueue drafts; writes through Apex would silently fail
+//   when offline). See the FSL Mobile LWC skill for the constraint.
 async function deleteAnswers(answersToDelete, formFactorPropertyName) {
     try {
         if(formFactorPropertyName === 'Large') {
@@ -26,6 +34,11 @@ async function deleteAnswers(answersToDelete, formFactorPropertyName) {
     }
 }
 
+// Same branching rationale as deleteAnswers above — desktop uses Apex
+// bulk-save; everything else (including FSL Mobile offline) uses
+// createRecord/updateRecord from uiRecordApi to land changes in the
+// device's draft queue when offline. Don't "simplify" this to always
+// use Apex; it will break offline saves on FSL Mobile.
 async function saveAnswers(questionAnswerMap, linkedFormId, formFactorPropertyName) {
     let formAnswers = [];
 

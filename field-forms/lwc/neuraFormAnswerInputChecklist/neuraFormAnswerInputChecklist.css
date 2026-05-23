@@ -1,0 +1,170 @@
+/* Checklist — admin-defined rows, each scored Pass / Fail / N-A. Compact
+   icon-only buttons per row so a 10-item checklist fits on a phone
+   screen without scrolling. Semantic green/red/neutral matches the
+   stand-alone Pass/Fail/N-A input. */
+
+.checklist {
+    display: flex;
+    flex-direction: column;
+    gap: var(--neura-space-sm);
+    font-family: var(--neura-font-family);
+}
+
+.checklist__rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--neura-color-border);
+    border-radius: var(--neura-radius-md);
+    background: var(--neura-color-surface);
+    overflow: hidden;
+}
+
+.checklist-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--neura-space-md);
+    padding: var(--neura-space-md) var(--neura-space-lg);
+    border-bottom: 1px solid var(--neura-color-border-subtle);
+    min-height: var(--neura-touch-mobile);
+}
+.checklist-row:last-child { border-bottom: none; }
+
+.checklist-row__label {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--neura-color-text-primary);
+    font-size: var(--neura-text-md);
+    line-height: var(--neura-line-height-base);
+    word-break: break-word;
+}
+
+.checklist-row__actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: var(--neura-space-xs);
+}
+
+/* Per-row state buttons. Icon-only by default for compactness;
+   color-coded on active state so scanning down the checklist is
+   trivial. */
+.chk-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--neura-touch-min);
+    height: var(--neura-touch-min);
+    background: var(--neura-color-surface);
+    border: 1.5px solid var(--neura-color-border);
+    border-radius: var(--neura-radius-pill);
+    color: var(--neura-color-text-muted);
+    cursor: pointer;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                border-color var(--neura-motion-fast) var(--neura-motion-ease),
+                color var(--neura-motion-fast) var(--neura-motion-ease),
+                transform var(--neura-motion-fast) var(--neura-motion-ease);
+}
+
+.chk-btn:active { transform: scale(0.95); }
+
+.chk-btn:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
+/* Pass — semantic green */
+.chk-btn_pass:hover {
+    background: var(--neura-color-success-bg);
+    border-color: var(--neura-color-success-strong);
+    color: var(--neura-color-success);
+}
+.chk-btn_pass.chk-btn_active {
+    background: var(--neura-color-success-strong);
+    border-color: var(--neura-color-success-strong);
+    color: var(--neura-color-primary-contrast);
+}
+
+/* Fail — semantic red */
+.chk-btn_fail:hover {
+    background: var(--neura-color-error-bg);
+    border-color: var(--neura-color-error-strong);
+    color: var(--neura-color-error-strong);
+}
+.chk-btn_fail.chk-btn_active {
+    background: var(--neura-color-error-strong);
+    border-color: var(--neura-color-error-strong);
+    color: var(--neura-color-primary-contrast);
+}
+
+/* N/A — neutral */
+.chk-btn_na:hover {
+    background: var(--neura-color-surface-muted);
+    border-color: var(--neura-color-border-strong);
+    color: var(--neura-color-text-secondary);
+}
+.chk-btn_na.chk-btn_active {
+    background: var(--neura-color-surface-muted);
+    border-color: var(--neura-color-border-strong);
+    color: var(--neura-color-text-secondary);
+}
+
+.chk-icon {
+    --slds-c-icon-color-foreground: currentColor;
+    --slds-c-icon-color-foreground-default: currentColor;
+}
+
+/* Footer with progress indicator. */
+.checklist__footer {
+    display: flex;
+    align-items: center;
+    gap: var(--neura-space-md);
+}
+
+.checklist__count {
+    font-size: var(--neura-text-sm);
+    color: var(--neura-color-text-muted);
+    white-space: nowrap;
+}
+
+.checklist__progress {
+    flex: 1 1 auto;
+    height: 4px;
+    background: var(--neura-color-border);
+    border-radius: var(--neura-radius-pill);
+    overflow: hidden;
+}
+
+.checklist__progress-fill {
+    height: 100%;
+    background: var(--neura-color-primary);
+    transition: width var(--neura-motion-base) var(--neura-motion-ease);
+}
+
+/* Missing-config fallback */
+.checklist-empty {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--neura-space-xs);
+    padding: var(--neura-space-sm) var(--neura-space-md);
+    background: var(--neura-color-surface-muted);
+    color: var(--neura-color-text-muted);
+    border: 1px dashed var(--neura-color-border-strong);
+    border-radius: var(--neura-radius-sm);
+    font-size: var(--neura-text-base);
+}
+.checklist-empty lightning-icon {
+    --slds-c-icon-color-foreground: currentColor;
+    --slds-c-icon-color-foreground-default: currentColor;
+    flex: 0 0 auto;
+}
+
+@media (hover: none) {
+    .chk-btn_pass:hover,
+    .chk-btn_fail:hover,
+    .chk-btn_na:hover {
+        background: var(--neura-color-surface);
+        border-color: var(--neura-color-border);
+        color: var(--neura-color-text-muted);
+    }
+}

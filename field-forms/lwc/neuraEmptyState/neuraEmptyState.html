@@ -1,0 +1,22 @@
+<template>
+    <div class="empty-state" role="status">
+        <template if:true={iconName}>
+            <div class="empty-state__icon">
+                <lightning-icon
+                    icon-name={iconName}
+                    variant={iconVariant}
+                    size="medium"
+                ></lightning-icon>
+            </div>
+        </template>
+        <template if:true={heading}>
+            <h2 class="empty-state__heading">{heading}</h2>
+        </template>
+        <template if:true={body}>
+            <p class="empty-state__body">{body}</p>
+        </template>
+        <div class="empty-state__action">
+            <slot></slot>
+        </div>
+    </div>
+</template>

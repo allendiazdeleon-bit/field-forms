@@ -25,6 +25,16 @@ export default class NeuraFormAnswerInputCalculation extends LightningElement {
     displayValue = '';
     errorMessage = '';
 
+    // True when the question has no formula configured. Used by the
+    // template to swap the em-dash for an admin-facing "Set Calculation
+    // Formula on this question" hint so the design-time preview reads
+    // as actionable rather than "broken." Returns false once the admin
+    // populates the formula and the runtime behavior takes over.
+    get noFormula() {
+        const f = this.formula;
+        return f === undefined || f === null || String(f).trim() === '';
+    }
+
     @api
     get answerMap() {
         return this._answerMap;

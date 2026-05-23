@@ -1,0 +1,68 @@
+<template>
+    <template if:true={hasRows}>
+        <div class="checklist" role="group" aria-label="Checklist">
+            <ul class="checklist__rows">
+                <template for:each={rows} for:item="row">
+                    <li key={row.id} class="checklist-row">
+                        <span class="checklist-row__label">{row.label}</span>
+                        <div class="checklist-row__actions" role="radiogroup">
+                            <button
+                                type="button"
+                                class={row.passClass}
+                                role="radio"
+                                aria-checked={row.isPass}
+                                aria-label="Pass"
+                                data-id={row.id}
+                                data-state="pass"
+                                onclick={handleStateClick}
+                            >
+                                <lightning-icon class="chk-icon" icon-name="utility:check" size="x-small" alternative-text=""></lightning-icon>
+                            </button>
+                            <button
+                                type="button"
+                                class={row.failClass}
+                                role="radio"
+                                aria-checked={row.isFail}
+                                aria-label="Fail"
+                                data-id={row.id}
+                                data-state="fail"
+                                onclick={handleStateClick}
+                            >
+                                <lightning-icon class="chk-icon" icon-name="utility:close" size="x-small" alternative-text=""></lightning-icon>
+                            </button>
+                            <button
+                                type="button"
+                                class={row.naClass}
+                                role="radio"
+                                aria-checked={row.isNa}
+                                aria-label="Not applicable"
+                                data-id={row.id}
+                                data-state="na"
+                                onclick={handleStateClick}
+                            >
+                                <lightning-icon class="chk-icon" icon-name="utility:dash" size="x-small" alternative-text=""></lightning-icon>
+                            </button>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+
+            <!-- Footer: completion indicator + thin progress bar so the
+                 tech sees how far through the checklist they are without
+                 having to count rows themselves. -->
+            <div class="checklist__footer">
+                <span class="checklist__count">{completionLabel}</span>
+                <div class="checklist__progress" aria-hidden="true">
+                    <div class="checklist__progress-fill" style={progressStyle}></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template if:false={hasRows}>
+        <div class="checklist-empty" role="status">
+            <lightning-icon icon-name="utility:settings" size="x-small" alternative-text=""></lightning-icon>
+            <span>Checklist has no rows. Set Value Set on the question (one item per row).</span>
+        </div>
+    </template>
+</template>

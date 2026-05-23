@@ -1,40 +1,304 @@
-:host {
-    --header-size: 4rem;
-    --header-fg: #1d96fe;
-    --header-bg: #dddad9;
-    --header-backdrop-color: #F5F9FF;
-}
-/* Auto-save status badge. Small text, color-coded by state.
-   Sits above the page content; quiet enough not to distract but
-   visible enough that techs feel reassured their work is persisting. */
-.autosave-badge {
-    margin: 0.25rem 1rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #706e6b;
-    display: inline-flex;
-    align-items: center;
-}
-.autosave-badge_pending { color: #8a6d00; }
-.autosave-badge_saving  { color: #0070d2; }
-.autosave-badge_saved   { color: #194e2b; }
-.autosave-badge_error   { color: #a8341c; }
+/* ============================================================
+   NEURA DESIGN SYSTEM — v1 (FSL-Mobile safe)
+   ============================================================
+   This :host block is the canonical token source for any UI rendered
+   inside the form renderer (which is what FSL Mobile loads). Tokens
+   cascade via CSS custom property inheritance into every child LWC.
 
-/* Skip-and-return queue badge. Sits between the form questions and the
-   footer so the count is visible even when the tech is mid-page. */
-.skip-queue-badge {
-    margin: 0.5rem 1rem 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: #fff5d6;
-    color: #8a6d00;
-    border: 1px solid #d4a017;
-    border-radius: 0.5rem;
-    font-size: 0.8125rem;
-    font-weight: 600;
+   No static-resource dependencies (no custom fonts, no resourceUrl,
+   no platformResourceLoader) so this works offline on FSL Mobile.
+
+   When editing tokens, update the matching :host blocks in
+   neuraFormBuilder.css and neuraFormMobile.css. Reference:
+   field-forms/lwc/neuraFormRenderer/design-system.md
+   ============================================================ */
+:host {
+    /* legacy aliases retained for back-compat with existing CSS */
+    --header-size: 4rem;
+    --header-fg: var(--neura-color-primary);
+    --header-bg: #dddad9;
+    --header-backdrop-color: var(--neura-color-info-bg);
+
+    /* -- Color: brand -------------------------------------- */
+    --neura-color-primary: #0070d2;
+    --neura-color-primary-hover: #005fb2;
+    --neura-color-primary-active: #00396b;
+    --neura-color-primary-subtle: #e6f0fb;
+    --neura-color-primary-contrast: #ffffff;
+    --neura-color-primary-gradient: linear-gradient(135deg, #0070d2 0%, #1589ee 100%);
+
+    /* -- Color: semantic ----------------------------------- */
+    --neura-color-success: #194e2b;
+    --neura-color-success-bg: #ddf3e4;
+    --neura-color-success-strong: #45c65a;
+    --neura-color-warning: #8a6d00;
+    --neura-color-warning-bg: #fff5d6;
+    --neura-color-warning-border: #d4a017;
+    --neura-color-error: #c23934;
+    --neura-color-error-strong: #a8341c;
+    --neura-color-error-bg: #fdecea;
+    --neura-color-info: #0070d2;
+    --neura-color-info-bg: #f5f9ff;
+    --neura-color-info-border: #c9def7;
+
+    /* -- Color: neutral ------------------------------------ */
+    --neura-color-text-primary: #181818;
+    --neura-color-text-secondary: #444444;
+    --neura-color-text-muted: #706e6b;
+    --neura-color-text-disabled: #a8a8a8;
+    --neura-color-text-inverse: #ffffff;
+    --neura-color-surface: #ffffff;
+    --neura-color-surface-subtle: #f7f7f7;
+    --neura-color-surface-muted: #f3f3f3;
+    --neura-color-background: #f7f7f8;
+    --neura-color-border: #e5e5e5;
+    --neura-color-border-strong: #c9c7c5;
+    --neura-color-border-subtle: #f3f3f3;
+    --neura-color-overlay: rgba(0, 0, 0, 0.5);
+
+    /* -- Typography: FSL-safe system stack ----------------- */
+    --neura-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --neura-font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    /* -- Type scale --------------------------------------- */
+    --neura-text-xs: 0.6875rem;
+    --neura-text-sm: 0.75rem;
+    --neura-text-base: 0.8125rem;
+    --neura-text-md: 0.875rem;
+    --neura-text-lg: 1rem;
+    --neura-text-xl: 1.125rem;
+    --neura-text-2xl: 1.375rem;
+    --neura-text-3xl: 1.75rem;
+
+    --neura-font-weight-regular: 400;
+    --neura-font-weight-medium: 500;
+    --neura-font-weight-semibold: 600;
+    --neura-font-weight-bold: 700;
+
+    --neura-line-height-tight: 1.2;
+    --neura-line-height-base: 1.4;
+    --neura-line-height-relaxed: 1.6;
+
+    /* -- Spacing: 4px base --------------------------------- */
+    --neura-space-2xs: 0.125rem;
+    --neura-space-xs: 0.25rem;
+    --neura-space-sm: 0.5rem;
+    --neura-space-md: 0.75rem;
+    --neura-space-lg: 1rem;
+    --neura-space-xl: 1.5rem;
+    --neura-space-2xl: 2rem;
+    --neura-space-3xl: 3rem;
+
+    /* -- Radius -------------------------------------------- */
+    --neura-radius-sm: 0.25rem;
+    --neura-radius-md: 0.5rem;
+    --neura-radius-lg: 0.75rem;
+    --neura-radius-pill: 9999px;
+
+    /* -- Elevation: four-step scale ------------------------ */
+    --neura-shadow-subtle:   0 1px 0 rgba(0, 0, 0, 0.06);
+    --neura-shadow-base:     0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --neura-shadow-raised:   0 4px 12px rgba(0, 0, 0, 0.10), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --neura-shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.16), 0 4px 8px rgba(0, 0, 0, 0.08);
+    --neura-shadow-primary:  0 4px 12px rgba(0, 112, 210, 0.25);
+    --neura-shadow-primary-pressed: 0 2px 6px rgba(0, 112, 210, 0.25);
+
+    /* -- Motion ------------------------------------------- */
+    --neura-motion-fast: 120ms;
+    --neura-motion-base: 200ms;
+    --neura-motion-slow: 320ms;
+    --neura-motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --neura-motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+    /* -- Touch targets ----------------------------------- */
+    --neura-touch-min: 44px;
+    --neura-touch-mobile: 64px;
+
+    /* -- Z-index scale ----------------------------------- */
+    --neura-z-base: 1;
+    --neura-z-sticky: 10;
+    --neura-z-overlay: 100;
+    --neura-z-modal: 1000;
+
+    /* -- Focus ring ---------------------------------------- */
+    --neura-focus-ring-color: var(--neura-color-primary);
+    --neura-focus-ring-width: 2px;
+    --neura-focus-ring-offset: 2px;
+
+    /* -- Safe area (iOS notch / home indicator) ----------- */
+    --neura-safe-top: env(safe-area-inset-top, 0px);
+    --neura-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --neura-safe-left: env(safe-area-inset-left, 0px);
+    --neura-safe-right: env(safe-area-inset-right, 0px);
+
+    font-family: var(--neura-font-family);
+    color: var(--neura-color-text-primary);
+}
+
+/* ============================================================
+   Dark mode — same token names, dark values. Activates via either:
+   (1) OS preference (@media prefers-color-scheme: dark)
+   (2) Manual override (host attribute data-theme="dark")
+
+   When the host wants to FORCE light mode regardless of OS, set
+   data-theme="light" — the selector list is structured so that
+   the light value remains the default in that case.
+   ============================================================ */
+:host([data-theme="dark"]),
+:host(:not([data-theme="light"])) {
+    /* placeholder — concrete dark values applied below via @media + attribute selectors */
+}
+
+@media (prefers-color-scheme: dark) {
+    :host(:not([data-theme="light"])) {
+        --neura-color-primary: #4ba3e8;
+        --neura-color-primary-hover: #5fb4f5;
+        --neura-color-primary-active: #2f8ed1;
+        --neura-color-primary-subtle: rgba(75, 163, 232, 0.15);
+        --neura-color-primary-contrast: #0b0f14;
+        --neura-color-primary-gradient: linear-gradient(135deg, #2f8ed1 0%, #4ba3e8 100%);
+
+        --neura-color-success: #6fdb84;
+        --neura-color-success-bg: rgba(111, 219, 132, 0.15);
+        --neura-color-success-strong: #6fdb84;
+        --neura-color-warning: #f0c14b;
+        --neura-color-warning-bg: rgba(240, 193, 75, 0.15);
+        --neura-color-warning-border: #d4a017;
+        --neura-color-error: #ff8a8a;
+        --neura-color-error-strong: #ff6b6b;
+        --neura-color-error-bg: rgba(255, 107, 107, 0.15);
+        --neura-color-info: #4ba3e8;
+        --neura-color-info-bg: rgba(75, 163, 232, 0.12);
+        --neura-color-info-border: rgba(75, 163, 232, 0.4);
+
+        --neura-color-text-primary: #f5f6f8;
+        --neura-color-text-secondary: #d0d2d6;
+        --neura-color-text-muted: #9aa0a8;
+        --neura-color-text-disabled: #5a5e66;
+        --neura-color-text-inverse: #0b0f14;
+        --neura-color-surface: #1a1d22;
+        --neura-color-surface-subtle: #15181c;
+        --neura-color-surface-muted: #23272d;
+        --neura-color-background: #0f1216;
+        --neura-color-border: #2d3138;
+        --neura-color-border-strong: #3d4148;
+        --neura-color-border-subtle: #23272d;
+        --neura-color-overlay: rgba(0, 0, 0, 0.7);
+
+        --neura-shadow-subtle:   0 1px 0 rgba(0, 0, 0, 0.4);
+        --neura-shadow-base:     0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+        --neura-shadow-raised:   0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.35);
+        --neura-shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.4);
+        --neura-shadow-primary:  0 4px 12px rgba(75, 163, 232, 0.35);
+        --neura-shadow-primary-pressed: 0 2px 6px rgba(75, 163, 232, 0.35);
+    }
+}
+
+/* Manual override — forces dark regardless of OS preference. Same token
+   values as the @media block. */
+:host([data-theme="dark"]) {
+    --neura-color-primary: #4ba3e8;
+    --neura-color-primary-hover: #5fb4f5;
+    --neura-color-primary-active: #2f8ed1;
+    --neura-color-primary-subtle: rgba(75, 163, 232, 0.15);
+    --neura-color-primary-contrast: #0b0f14;
+    --neura-color-primary-gradient: linear-gradient(135deg, #2f8ed1 0%, #4ba3e8 100%);
+
+    --neura-color-success: #6fdb84;
+    --neura-color-success-bg: rgba(111, 219, 132, 0.15);
+    --neura-color-success-strong: #6fdb84;
+    --neura-color-warning: #f0c14b;
+    --neura-color-warning-bg: rgba(240, 193, 75, 0.15);
+    --neura-color-warning-border: #d4a017;
+    --neura-color-error: #ff8a8a;
+    --neura-color-error-strong: #ff6b6b;
+    --neura-color-error-bg: rgba(255, 107, 107, 0.15);
+    --neura-color-info: #4ba3e8;
+    --neura-color-info-bg: rgba(75, 163, 232, 0.12);
+    --neura-color-info-border: rgba(75, 163, 232, 0.4);
+
+    --neura-color-text-primary: #f5f6f8;
+    --neura-color-text-secondary: #d0d2d6;
+    --neura-color-text-muted: #9aa0a8;
+    --neura-color-text-disabled: #5a5e66;
+    --neura-color-text-inverse: #0b0f14;
+    --neura-color-surface: #1a1d22;
+    --neura-color-surface-subtle: #15181c;
+    --neura-color-surface-muted: #23272d;
+    --neura-color-background: #0f1216;
+    --neura-color-border: #2d3138;
+    --neura-color-border-strong: #3d4148;
+    --neura-color-border-subtle: #23272d;
+    --neura-color-overlay: rgba(0, 0, 0, 0.7);
+
+    --neura-shadow-subtle:   0 1px 0 rgba(0, 0, 0, 0.4);
+    --neura-shadow-base:     0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --neura-shadow-raised:   0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.35);
+    --neura-shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.4);
+    --neura-shadow-primary:  0 4px 12px rgba(75, 163, 232, 0.35);
+    --neura-shadow-primary-pressed: 0 2px 6px rgba(75, 163, 232, 0.35);
+}
+
+/* Auto-save status badge. Quiet but reassuring — color-coded by state.
+   Sits above the page content as in-page status (toasts don't render on
+   FSL Mobile per platform constraint). */
+.autosave-badge {
+    margin: var(--neura-space-xs) var(--neura-space-lg) var(--neura-space-sm);
+    font-size: var(--neura-text-sm);
+    font-weight: var(--neura-font-weight-medium);
+    color: var(--neura-color-text-muted);
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: var(--neura-space-xs);
+    transition: color var(--neura-motion-fast) var(--neura-motion-ease);
+}
+.autosave-badge_pending { color: var(--neura-color-warning); }
+.autosave-badge_saving  { color: var(--neura-color-primary); }
+.autosave-badge_saved   { color: var(--neura-color-success); }
+.autosave-badge_error   { color: var(--neura-color-error-strong); }
+
+/* Skip-and-return queue badge. */
+.skip-queue-badge {
+    margin: var(--neura-space-sm) var(--neura-space-lg);
+    padding: var(--neura-space-sm) var(--neura-space-md);
+    background: var(--neura-color-warning-bg);
+    color: var(--neura-color-warning);
+    border: 1px solid var(--neura-color-warning-border);
+    border-radius: var(--neura-radius-md);
+    font-size: var(--neura-text-base);
+    font-weight: var(--neura-font-weight-semibold);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--neura-space-xs);
 }
 .skip-queue-badge__icon {
     --slds-c-icon-color-foreground: currentColor;
+}
+
+/* Page wrapper — clears the sticky footer and animates the page enter.
+   The _a / _b suffix is toggled on every page change so the browser
+   sees a new animation-name and re-runs the enter. */
+.page-wrapper {
+    margin-bottom: calc(56px + var(--neura-safe-bottom, 0px));
+    animation-duration: var(--neura-motion-base);
+    animation-timing-function: var(--neura-motion-ease-out);
+    animation-fill-mode: both;
+    will-change: opacity, transform;
+}
+.page-wrapper_a { animation-name: neura-page-enter-a; }
+.page-wrapper_b { animation-name: neura-page-enter-b; }
+
+@keyframes neura-page-enter-a {
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes neura-page-enter-b {
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-wrapper {
+        animation: none;
+    }
 }

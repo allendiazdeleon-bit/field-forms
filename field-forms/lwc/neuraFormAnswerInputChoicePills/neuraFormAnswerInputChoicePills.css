@@ -1,0 +1,99 @@
+/* Choice-Pills — single tap, all options visible, wraps on narrow screens.
+   The mobile-friendly default for choice questions with ≤6 options.
+   Tokens drive every color so dark mode + brand swap "just work." */
+
+.choice-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--neura-space-sm);
+    align-items: center;
+    font-family: var(--neura-font-family);
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--neura-touch-min);
+    padding: var(--neura-space-xs) var(--neura-space-lg);
+    background: var(--neura-color-surface);
+    border: 1.5px solid var(--neura-color-border);
+    border-radius: var(--neura-radius-pill);
+    color: var(--neura-color-text-primary);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-md);
+    font-weight: var(--neura-font-weight-semibold);
+    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                border-color var(--neura-motion-fast) var(--neura-motion-ease),
+                color var(--neura-motion-fast) var(--neura-motion-ease),
+                transform var(--neura-motion-fast) var(--neura-motion-ease);
+}
+
+.pill:hover {
+    background: var(--neura-color-primary-subtle);
+    border-color: var(--neura-color-primary);
+    color: var(--neura-color-primary);
+}
+
+.pill:active {
+    transform: scale(0.97);
+}
+
+.pill:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
+/* Active state — primary brand fill. Same visual language as Pass/Fail
+   active states so the system reads as one consistent vocabulary. */
+.pill_active {
+    background: var(--neura-color-primary);
+    border-color: var(--neura-color-primary);
+    color: var(--neura-color-primary-contrast);
+    box-shadow: var(--neura-shadow-primary);
+}
+.pill_active:hover {
+    background: var(--neura-color-primary-hover);
+    border-color: var(--neura-color-primary-hover);
+    color: var(--neura-color-primary-contrast);
+}
+
+/* "Other" pill — visually distinct so the tech knows tapping it opens
+   a free-text input. Italic-styled label is the convention used by
+   Stripe / Linear / Notion for "type your own" affordances. */
+.pill_other .pill__label {
+    font-style: italic;
+}
+
+/* Free-text input revealed beneath the pill row when Other is selected. */
+.other-input-wrap {
+    margin-top: var(--neura-space-sm);
+    max-width: 480px;
+    animation: pillsOtherReveal var(--neura-motion-base) var(--neura-motion-ease-out);
+}
+
+@keyframes pillsOtherReveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Touch devices shouldn't see hover affordances mid-tap. */
+@media (hover: none) {
+    .pill:hover {
+        background: var(--neura-color-surface);
+        border-color: var(--neura-color-border);
+        color: var(--neura-color-text-primary);
+    }
+    .pill_active:hover {
+        background: var(--neura-color-primary);
+        border-color: var(--neura-color-primary);
+        color: var(--neura-color-primary-contrast);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .other-input-wrap { animation: none; }
+}

@@ -1,0 +1,34 @@
+<template>
+    <div class="skeleton" role="status" aria-busy="true" aria-label="Loading content">
+        <template if:true={isList}>
+            <ul class="skeleton-list">
+                <template for:each={rows} for:item="row">
+                    <li key={row.key} class="skeleton-row">
+                        <div class="skeleton-block skeleton-block_avatar"></div>
+                        <div class="skeleton-row__body">
+                            <div class="skeleton-block skeleton-block_title"></div>
+                            <div class="skeleton-block skeleton-block_meta"></div>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+        </template>
+
+        <template if:true={isCard}>
+            <div class="skeleton-card">
+                <div class="skeleton-block skeleton-block_title"></div>
+                <div class="skeleton-block skeleton-block_line"></div>
+                <div class="skeleton-block skeleton-block_line"></div>
+                <div class="skeleton-block skeleton-block_line skeleton-block_short"></div>
+            </div>
+        </template>
+
+        <template if:true={isText}>
+            <div class="skeleton-text">
+                <template for:each={rows} for:item="row">
+                    <div key={row.key} class="skeleton-block skeleton-block_line"></div>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

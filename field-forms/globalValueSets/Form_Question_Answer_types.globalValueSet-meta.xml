@@ -105,6 +105,41 @@
         <default>false</default>
         <label>Calculation</label>
     </customValue>
+    <customValue>
+        <fullName>Pass Fail NA</fullName>
+        <default>false</default>
+        <label>Pass / Fail / N-A</label>
+    </customValue>
+    <customValue>
+        <fullName>Counter</fullName>
+        <default>false</default>
+        <label>Counter</label>
+    </customValue>
+    <customValue>
+        <fullName>Date Time</fullName>
+        <default>false</default>
+        <label>Date + Time</label>
+    </customValue>
+    <customValue>
+        <fullName>Currency</fullName>
+        <default>false</default>
+        <label>Currency</label>
+    </customValue>
+    <customValue>
+        <fullName>Lookup</fullName>
+        <default>false</default>
+        <label>Lookup (Salesforce record)</label>
+    </customValue>
+    <customValue>
+        <fullName>Repeatable</fullName>
+        <default>false</default>
+        <label>Repeatable (add another row)</label>
+    </customValue>
+    <customValue>
+        <fullName>Checklist</fullName>
+        <default>false</default>
+        <label>Checklist (Pass / Fail / N-A per row)</label>
+    </customValue>
     <description>Used for form question and answer types</description>
     <masterLabel>Form Question/Answer types</masterLabel>
     <sorted>false</sorted>

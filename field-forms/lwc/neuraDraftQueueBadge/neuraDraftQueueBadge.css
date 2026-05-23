@@ -1,0 +1,64 @@
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--neura-space-xs);
+    padding: var(--neura-space-2xs) var(--neura-space-sm);
+    border-radius: var(--neura-radius-pill);
+    font-size: var(--neura-text-sm);
+    font-weight: var(--neura-font-weight-semibold);
+    line-height: 1.2;
+    border: 1px solid transparent;
+    transition: background-color var(--neura-motion-base) var(--neura-motion-ease),
+                color var(--neura-motion-base) var(--neura-motion-ease);
+}
+
+.badge__icon {
+    --slds-c-icon-color-foreground: currentColor;
+    --slds-c-icon-color-foreground-default: currentColor;
+    flex: 0 0 auto;
+}
+
+.badge__label {
+    flex: 0 1 auto;
+    white-space: nowrap;
+}
+
+.badge__secondary {
+    color: var(--neura-color-text-muted);
+    font-weight: var(--neura-font-weight-regular);
+    font-size: var(--neura-text-xs);
+    margin-left: var(--neura-space-xs);
+}
+
+.badge_clean {
+    background: var(--neura-color-success-bg);
+    color: var(--neura-color-success);
+    border-color: transparent;
+}
+
+.badge_pending {
+    background: var(--neura-color-warning-bg);
+    color: var(--neura-color-warning);
+    border-color: var(--neura-color-warning-border);
+}
+
+/* Gentle pulse on the pending state — signals "active sync intent"
+   without being distracting. Respects reduced-motion preferences. */
+.badge_pending .badge__icon {
+    animation: neura-badge-pulse 1800ms ease-in-out infinite;
+}
+
+.badge_error {
+    background: var(--neura-color-error-bg);
+    color: var(--neura-color-error-strong);
+    border-color: var(--neura-color-error);
+}
+
+@keyframes neura-badge-pulse {
+    0%, 100% { opacity: 0.6; }
+    50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .badge_pending .badge__icon { animation: none; opacity: 1; }
+}

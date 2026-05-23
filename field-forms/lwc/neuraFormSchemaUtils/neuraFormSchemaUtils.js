@@ -115,6 +115,9 @@ import DefaultValueSource from '@salesforce/schema/Form_Question__c.Default_Valu
 import DefaultValueStatic from '@salesforce/schema/Form_Question__c.Default_Value_Static__c';
 import CalculationFormula from '@salesforce/schema/Form_Question__c.Calculation_Formula__c';
 import CalculationResultFormat from '@salesforce/schema/Form_Question__c.Calculation_Result_Format__c';
+import LookupRelatedList from '@salesforce/schema/Form_Question__c.Lookup_Related_List__c';
+import LookupChildObject from '@salesforce/schema/Form_Question__c.Lookup_Child_Object__c';
+import LookupDisplayField from '@salesforce/schema/Form_Question__c.Lookup_Display_Field__c';
 
 import QuestionObjectConditions from '@salesforce/schema/Form_Question__c.Conditions__c';
 import ExternalReferenceQuestion from '@salesforce/schema/Form_Question__c.External_Reference__c';
@@ -296,6 +299,9 @@ export const FIELDS = {
         DefaultValueStatic,
         CalculationFormula,
         CalculationResultFormat,
+        LookupRelatedList,
+        LookupChildObject,
+        LookupDisplayField,
         ExternalReference: ExternalReferenceQuestion,
         Conditions : QuestionObjectConditions
     }

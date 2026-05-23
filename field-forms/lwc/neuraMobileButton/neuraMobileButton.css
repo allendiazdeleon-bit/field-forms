@@ -1,45 +1,76 @@
+/* Pill-shaped mobile-primary button. Sized for gloved-hand use,
+   colors driven by Neura Design System tokens (cascaded from the
+   form renderer/mobile shell) so the brand stays consistent and
+   theme overrides only need to change one place. */
+
 .neura-mobile-button {
-    padding-left: 27px; 
-    padding-right: 27px; 
-    padding-top: 13px; 
-    padding-bottom: 13px; 
-    border-radius: 100px; 
-    text-align: center; 
-    font-size: 14px; 
-    font-weight: 600; 
-    line-height: 20px; 
+    padding: var(--neura-space-md) var(--neura-space-xl);
+    border-radius: var(--neura-radius-pill);
+    text-align: center;
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-md);
+    font-weight: var(--neura-font-weight-semibold);
+    line-height: 1.25;
     word-wrap: break-word;
     cursor: pointer;
+    min-height: var(--neura-touch-min);
+    transition: transform var(--neura-motion-fast) var(--neura-motion-ease),
+                box-shadow var(--neura-motion-fast) var(--neura-motion-ease),
+                background-color var(--neura-motion-fast) var(--neura-motion-ease);
+}
+
+.neura-mobile-button:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
+.neura-mobile-button:active {
+    transform: scale(0.98);
+}
+
+.neura-mobile-button:disabled,
+.neura-mobile-button[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .neura-mobile-button-small {
-    justify-content: space-between; 
+    justify-content: space-between;
     display: flex;
-    flex: 1 1 0; 
+    flex: 1 1 0;
 }
 
 .neura-mobile-button-stretch {
-    align-self: stretch; 
-    overflow: hidden; 
-    justify-content: center; 
-    gap: 10px; 
+    align-self: stretch;
+    overflow: hidden;
+    justify-content: center;
+    gap: var(--neura-space-sm);
     display: inline-flex;
 }
 
 .neura-mobile-button-neutral {
-    background: white;
-    border: 1px #2A7AB0 solid;
-    color: #2A7AB0;
+    background: var(--neura-color-surface);
+    border: 1px solid var(--neura-color-primary);
+    color: var(--neura-color-primary);
+}
+.neura-mobile-button-neutral:active {
+    background: var(--neura-color-primary-subtle);
 }
 
 .neura-mobile-button-brand {
-    background: #2A7AB0;
-    color: white;
-    border: 1px #2A7AB0 solid;
+    background: var(--neura-color-primary);
+    color: var(--neura-color-primary-contrast);
+    border: 1px solid var(--neura-color-primary);
+    box-shadow: var(--neura-shadow-primary);
+}
+.neura-mobile-button-brand:active {
+    background: var(--neura-color-primary-hover);
+    box-shadow: var(--neura-shadow-primary-pressed);
 }
 
-.neura-mobile-button-success{
-    background: #45c65a;
-    color: white;
-    border: 1px #45c65a solid;
+.neura-mobile-button-success {
+    background: var(--neura-color-success-strong);
+    color: var(--neura-color-primary-contrast);
+    border: 1px solid var(--neura-color-success-strong);
 }

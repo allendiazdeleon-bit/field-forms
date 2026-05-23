@@ -1,3 +1,87 @@
+/* Form header — sticky at the top of the form scroll, clean title pattern
+   replacing the conic progress ring. Eyebrow with page count + next-step
+   hint, large confident title, thin progress bar at the bottom. */
+
+.form-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--neura-z-sticky, 10);
+    background: var(--neura-color-surface);
+    border-bottom: 1px solid var(--neura-color-border-subtle);
+    padding-top: var(--neura-safe-top, 0);
+    /* Saturated blur so the form content below shows through subtly when
+       the user is mid-scroll — modern mobile chrome cue. */
+    backdrop-filter: saturate(180%) blur(8px);
+    -webkit-backdrop-filter: saturate(180%) blur(8px);
+}
+
+.form-header__inner {
+    padding: var(--neura-space-md) var(--neura-space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--neura-space-xs);
+}
+
+.form-header__eyebrow {
+    margin: 0;
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-xs);
+    font-weight: var(--neura-font-weight-semibold);
+    color: var(--neura-color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--neura-space-xs);
+}
+
+.form-header__eyebrow-sep {
+    opacity: 0.6;
+}
+
+.form-header__eyebrow-next {
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--neura-color-text-secondary);
+    font-weight: var(--neura-font-weight-medium);
+}
+
+.form-header__title {
+    margin: 0;
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-2xl);
+    font-weight: var(--neura-font-weight-bold);
+    line-height: var(--neura-line-height-tight);
+    color: var(--neura-color-text-primary);
+    /* Allow long titles to wrap gracefully on narrow phones rather than
+       triggering a horizontal scroll. */
+    word-wrap: break-word;
+}
+
+.form-header__progress {
+    margin-top: var(--neura-space-xs);
+    height: 3px;
+    background: var(--neura-color-border-subtle);
+    border-radius: var(--neura-radius-pill);
+    overflow: hidden;
+}
+
+.form-header__progress-fill {
+    height: 100%;
+    background: var(--neura-color-primary);
+    transition: width var(--neura-motion-base) var(--neura-motion-ease);
+}
+
+/* Legacy class — preserved for back-compat with any flexipages that
+   target it. The new header doesn't apply this rule itself. */
 .header-background {
-    background-color: var(--header-backdrop-color, rgb(216, 216, 216));
+    background-color: var(--header-backdrop-color, var(--neura-color-info-bg, #f5f9ff));
+    color: var(--neura-color-text-primary, #181818);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .form-header__progress-fill {
+        transition: none;
+    }
 }

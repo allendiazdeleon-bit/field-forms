@@ -1,0 +1,156 @@
+/* Bottom-sheet modal. FSL-Mobile-safe: pure CSS animations, no static-
+   resource deps, drag-to-dismiss + scrim-tap dismiss + escape-key dismiss
+   wired in JS. */
+
+:host {
+    /* Default sizing variables — callers can override per-instance via
+       style="--neura-sheet-max-height: 60vh" etc. */
+    --neura-sheet-max-height: 95vh;
+    --neura-sheet-half-height: 50vh;
+    --neura-sheet-full-height: 95vh;
+}
+
+/* Scrim. Stacks above the rest of the app and below the sheet. */
+.scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--neura-color-overlay, rgba(0, 0, 0, 0.5));
+    z-index: var(--neura-z-modal, 1000);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--neura-motion-base, 200ms) var(--neura-motion-ease, ease);
+}
+.scrim_open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Sheet panel. Slides up from the bottom edge. */
+.sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--neura-color-surface, #ffffff);
+    color: var(--neura-color-text-primary, #181818);
+    font-family: var(--neura-font-family);
+    border-top-left-radius: var(--neura-radius-lg, 0.75rem);
+    border-top-right-radius: var(--neura-radius-lg, 0.75rem);
+    box-shadow: var(--neura-shadow-floating);
+    z-index: calc(var(--neura-z-modal, 1000) + 1);
+    transform: translateY(100%);
+    transition: transform var(--neura-motion-slow, 320ms) var(--neura-motion-ease-out, cubic-bezier(0, 0, 0.2, 1));
+    padding-bottom: var(--neura-safe-bottom, 0px);
+    display: flex;
+    flex-direction: column;
+    max-height: var(--neura-sheet-max-height);
+    outline: none;
+    /* Prevent jankiness on iOS rubber-band scrolling reaching the body. */
+    overscroll-behavior: contain;
+}
+
+.sheet_open {
+    transform: translateY(0);
+}
+
+.sheet_auto {
+    /* height fits content; max-height capped above */
+}
+
+.sheet_half {
+    height: var(--neura-sheet-half-height);
+}
+
+.sheet_full {
+    height: var(--neura-sheet-full-height);
+}
+
+/* Drag handle. The wrapper provides a generous tap target; the visible
+   pill is just a visual affordance. touch-action: none so the gesture
+   handler in JS owns the drag and the browser doesn't try to scroll. */
+.sheet__handle-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--neura-space-sm, 0.5rem) 0 var(--neura-space-2xs, 0.125rem);
+    cursor: grab;
+    touch-action: none;
+    min-height: 28px;
+}
+.sheet__handle-wrapper:active {
+    cursor: grabbing;
+}
+.sheet__handle {
+    width: 36px;
+    height: 4px;
+    background: var(--neura-color-border-strong, #c9c7c5);
+    border-radius: var(--neura-radius-pill, 9999px);
+}
+
+/* Header. */
+.sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--neura-space-sm, 0.5rem) var(--neura-space-lg, 1rem) var(--neura-space-md, 0.75rem);
+    gap: var(--neura-space-sm, 0.5rem);
+    border-bottom: 1px solid var(--neura-color-border-subtle, #f3f3f3);
+}
+.sheet__title {
+    margin: 0;
+    font-size: var(--neura-text-xl, 1.125rem);
+    font-weight: var(--neura-font-weight-semibold, 600);
+    color: var(--neura-color-text-primary);
+}
+.sheet__close {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    padding: var(--neura-space-xs, 0.25rem);
+    min-width: var(--neura-touch-min, 44px);
+    min-height: var(--neura-touch-min, 44px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--neura-color-text-muted, #706e6b);
+    border-radius: var(--neura-radius-pill, 9999px);
+    transition: background-color var(--neura-motion-fast, 120ms) var(--neura-motion-ease, ease);
+}
+.sheet__close:hover {
+    background: var(--neura-color-surface-muted, #f3f3f3);
+}
+.sheet__close:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, var(--neura-color-primary));
+    outline-offset: var(--neura-focus-ring-offset, 2px);
+}
+
+/* Body scrolls if content overflows. */
+.sheet__body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: var(--neura-space-md, 0.75rem) var(--neura-space-lg, 1rem);
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Footer pinned to the bottom of the sheet, above the safe-area-inset
+   padding on the host. */
+.sheet__footer:not(:empty) {
+    flex: 0 0 auto;
+    padding: var(--neura-space-md, 0.75rem) var(--neura-space-lg, 1rem);
+    border-top: 1px solid var(--neura-color-border-subtle, #f3f3f3);
+    background: var(--neura-color-surface, #ffffff);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scrim,
+    .sheet {
+        transition: none;
+    }
+}
+
+/* Hint that hover affordances aren't useful on phone-class touch devices. */
+@media (hover: none) {
+    .sheet__close:hover {
+        background: transparent;
+    }
+}

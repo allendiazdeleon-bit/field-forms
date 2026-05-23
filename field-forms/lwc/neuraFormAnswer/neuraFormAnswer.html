@@ -36,11 +36,18 @@
 				</div>
 			</template>
 
-			<template
-				if:true={isMultipleChoice}
-			>
-				<!-- Assuming options are passed in as an array of { label, value } -->
-				<!--<lightning-combobox data-id="multipleChoice" label="Multiple Choice" options={options} value={value} variant="label-hidden" onchange={handleChange}></lightning-combobox>-->
+			<!-- Multiple Choice — pills for ≤6 options, multi-select combobox above.
+			     The threshold is enforced in the JS via useChoicePills getter. -->
+			<template if:true={useMultipleChoicePills}>
+				<c-neura-form-answer-input-choice-pills
+					data-id="multipleChoice"
+					options={options}
+					val={value}
+					is-multi
+					onchange={handleChange}
+				></c-neura-form-answer-input-choice-pills>
+			</template>
+			<template if:true={useMultipleChoiceCombobox}>
 				<c-neura-form-answer-input-multi-select
 					data-id="multipleChoice"
 					options={options}
@@ -97,10 +104,16 @@
 				></lightning-slider>
 			</template>
 
-			<!-- Dropdown Menu -->
-			<template
-				if:true={isDropDown}
-			>
+			<!-- Dropdown — pills for ≤6 options, combobox above. -->
+			<template if:true={useDropDownPills}>
+				<c-neura-form-answer-input-choice-pills
+					data-id="dropDown"
+					options={options}
+					val={value}
+					onchange={handleChange}
+				></c-neura-form-answer-input-choice-pills>
+			</template>
+			<template if:true={useDropDownCombobox}>
 				<lightning-combobox
 					data-id="dropDown"
 					name={uniqueName}
@@ -112,17 +125,18 @@
 				></lightning-combobox>
 			</template>
 
-			<!-- Radio Buttons -->
-			<template
-				if:true={isRadioButtons}
-			>
-				<c-neura-form-answer-input-radio-buttons
+			<!-- Radio Buttons — always pills now. The legacy segmented
+			     slider control (c-neura-form-answer-input-radio-buttons)
+			     is preserved in the codebase for any direct callers but
+			     no longer the default rendering. Pills wrap on narrow
+			     screens which handles bigger option counts naturally. -->
+			<template if:true={useRadioButtonsPills}>
+				<c-neura-form-answer-input-choice-pills
 					data-id="radioButtons"
-					radio-options={radioOptions}
+					options={options}
 					val={value}
 					onchange={handleChange}
-				></c-neura-form-answer-input-radio-buttons>
-				<!--<lightning-radio-group name={uniqueName} label="Radio Buttons" options={options} value={value} variant="label-hidden" type="radio"></lightning-radio-group>-->
+				></c-neura-form-answer-input-choice-pills>
 			</template>
 
 			<!-- Date Picker -->
@@ -262,6 +276,94 @@
 					answer-map={answerMap}
 					onchange={handleChange}
 				></c-neura-form-answer-input-calculation>
+			</template>
+
+			<!-- Pass / Fail / N-A -->
+			<template if:true={isPassFailNa}>
+				<c-neura-form-answer-input-pass-fail-na
+					data-id="passFailNa"
+					val={value}
+					onchange={handleChange}
+				></c-neura-form-answer-input-pass-fail-na>
+			</template>
+
+			<!-- Counter (−/value/+) -->
+			<template if:true={isCounter}>
+				<c-neura-form-answer-input-counter
+					data-id="counter"
+					val={value}
+					min={min}
+					max={max}
+					step={numberStep}
+					onchange={handleChange}
+				></c-neura-form-answer-input-counter>
+			</template>
+
+			<!-- Date + Time combined -->
+			<template if:true={isDateTime}>
+				<lightning-input
+					data-id="dateTimeInput"
+					type="datetime"
+					label="Date Time"
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<!-- Currency (formatted Number) — placeholder shows the locale's
+			     currency formatting at empty state so the intent is obvious
+			     at design time (lightning-input only renders the formatter
+			     on blur with a value). -->
+			<template if:true={isCurrency}>
+				<lightning-input
+					data-id="currencyInput"
+					type="number"
+					formatter="currency"
+					step="0.01"
+					label="Currency"
+					placeholder="$0.00"
+					value={value}
+					variant="label-hidden"
+					onchange={handleChange}
+				></lightning-input>
+			</template>
+
+			<!-- Lookup — pick a Salesforce record from the host's related list -->
+			<template if:true={isLookup}>
+				<c-neura-form-answer-input-lookup
+					data-id="lookup"
+					parent-record-id={recordId}
+					related-list-api-name={lookupRelatedList}
+					child-object-api-name={lookupChildObject}
+					display-field={lookupDisplayField}
+					val={value}
+					onchange={handleChange}
+				></c-neura-form-answer-input-lookup>
+			</template>
+
+			<!-- Repeatable — variable-length list of text rows
+			     (stored as a JSON-stringified array in Answer__c) -->
+			<template if:true={isRepeatable}>
+				<c-neura-form-answer-input-repeatable
+					data-id="repeatable"
+					val={value}
+					min={min}
+					max={max}
+					onchange={handleChange}
+				></c-neura-form-answer-input-repeatable>
+			</template>
+
+			<!-- Checklist — admin-defined rows scored Pass / Fail / N-A.
+			     Rows come from Value_Set__c via the existing `options`
+			     getter; answer stores as JSON [{label, state}, ...]. -->
+			<template if:true={isChecklist}>
+				<c-neura-form-answer-input-checklist
+					data-id="checklist"
+					val={value}
+					options={options}
+					onchange={handleChange}
+				></c-neura-form-answer-input-checklist>
 			</template>
 
 			<div

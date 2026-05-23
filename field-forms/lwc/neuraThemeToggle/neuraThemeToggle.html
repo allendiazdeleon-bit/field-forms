@@ -1,0 +1,19 @@
+<template>
+    <button
+        type="button"
+        class={buttonClass}
+        onclick={handleClick}
+        aria-label={nextLabel}
+        title={nextLabel}
+    >
+        <lightning-icon
+            class="theme-toggle__icon"
+            icon-name={iconName}
+            size="x-small"
+            alternative-text=""
+        ></lightning-icon>
+        <template if:false={compact}>
+            <span class="theme-toggle__label">{label}</span>
+        </template>
+    </button>
+</template>

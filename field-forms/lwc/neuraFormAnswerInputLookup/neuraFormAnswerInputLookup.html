@@ -1,0 +1,47 @@
+<template>
+    <!-- Configuration missing — admin hasn't set the lookup metadata.
+         Shown only in dev / preview; production forms should have all
+         three fields populated. -->
+    <template if:false={isConfigured}>
+        <div class="lookup-empty" role="status">
+            <lightning-icon icon-name="utility:settings" size="x-small" alternative-text=""></lightning-icon>
+            <span>Lookup question not configured. Set Lookup Related List, Lookup Child Object, and Lookup Display Field on this question.</span>
+        </div>
+    </template>
+
+    <template if:true={isConfigured}>
+        <template if:true={isLoading}>
+            <c-neura-skeleton variant="text" count="1"></c-neura-skeleton>
+        </template>
+
+        <template if:true={hasError}>
+            <div class="lookup-error" role="alert">
+                <lightning-icon icon-name="utility:warning" size="x-small" alternative-text=""></lightning-icon>
+                <span>{errorMessage}</span>
+            </div>
+        </template>
+
+        <template if:false={isLoading}>
+            <template if:false={hasError}>
+                <template if:true={hasOptions}>
+                    <lightning-combobox
+                        data-id="lookupCombobox"
+                        label="Lookup"
+                        placeholder={placeholder}
+                        options={options}
+                        value={val}
+                        variant="label-hidden"
+                        onchange={handleChange}
+                    ></lightning-combobox>
+                </template>
+
+                <template if:false={hasOptions}>
+                    <div class="lookup-empty" role="status">
+                        <lightning-icon icon-name="utility:info" size="x-small" alternative-text=""></lightning-icon>
+                        <span>No related records found on this host.</span>
+                    </div>
+                </template>
+            </template>
+        </template>
+    </template>
+</template>

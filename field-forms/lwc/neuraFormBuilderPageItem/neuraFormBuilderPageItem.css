@@ -1,61 +1,62 @@
-li{
-    margin-left: calc(0rem - var(--lwc-spacingMedium,1rem) - var(--lwc-spacingXxxSmall,0.125rem));
-    width: calc(100% + var(--lwc-spacingXxxSmall,0.125rem) + (2 * var(--lwc-spacingMedium,1rem)));
+/* Page-item row in the builder's left palette. SLDS variables are kept
+   as the source of truth here (since this is a desktop-only builder
+   surface, no FSL constraints apply), with Neura tokens as fallback. */
+
+li {
+    margin-left: calc(0rem - var(--lwc-spacingMedium, 1rem) - var(--lwc-spacingXxxSmall, 0.125rem));
+    width: calc(100% + var(--lwc-spacingXxxSmall, 0.125rem) + (2 * var(--lwc-spacingMedium, 1rem)));
 }
 
-.paletteItemAnchor{
-    margin: 0 var(--lwc-spacingXxxSmall,0.125rem);
-    padding: calc(var(--lwc-spacingXSmall,0.5rem)/2) var(--lwc-spacingXSmall,0.5rem);
+.paletteItemAnchor {
+    margin: 0 var(--lwc-spacingXxxSmall, 0.125rem);
+    padding: calc(var(--lwc-spacingXSmall, 0.5rem) / 2) var(--lwc-spacingXSmall, 0.5rem);
     padding-right: 0;
-    border-radius: var(--lwc-borderRadiusMedium,0.25rem);
+    border-radius: var(--lwc-borderRadiusMedium, var(--neura-radius-sm, 0.25rem));
     display: flex;
     vertical-align: middle;
-    width: calc(0.85 * var(--lwc-widthLeftSidebar,300px));
+    width: calc(0.85 * var(--lwc-widthLeftSidebar, 300px));
+    transition: background-color var(--neura-motion-fast, 120ms) var(--neura-motion-ease, ease);
+}
+
+.paletteItemAnchor:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
+}
+
+.visualEditorPaletteItem {
+    padding-left: var(--lwc-spacingMedium, 1rem);
+    cursor: pointer;
 }
 
 .visualEditorPaletteItem:hover {
-    color: var(--lwc-colorTextLinkHover,rgb(1, 68, 134));
-    background-color: var(--lwc-colorBackgroundRowActive,rgb(243, 243, 243));
+    color: var(--lwc-colorTextLinkHover, var(--neura-color-primary-hover, rgb(1, 68, 134)));
+    background-color: var(--lwc-colorBackgroundRowActive, var(--neura-color-surface-muted, rgb(243, 243, 243)));
 }
 
 .paletteItemImage {
     border-radius: var(--lwc-borderRadiusSmall, 0.125rem);
-}
-
-.paletteItemText:hover,
-.paletteItemAnchor:focus .paletteItemText {
-    color: var(--lwc-colorTextLinkHover, rgb(1, 68, 134));
-}
-
-
-
-.visualEditorPaletteItem {
-    padding-left: var(--lwc-spacingMedium, 1rem);
-    cursor : pointer;
-}
-
-.visualEditorPaletteItem:hover {
-    background-color: var(--lwc-colorBackgroundRowActive, rgb(243, 243, 243));
+    max-height: 100%;
+    max-width: 100%;
 }
 
 .paletteItemText {
     display: inline-block;
-    margin-left: var(--lwc-spacingXSmall, 0.5rem);
-    color: var(--lwc-colorTextActionLabel, rgb(116, 116, 116));
-    border-radius: var(--lwc-borderRadiusMedium, 0.25rem);
-    font-size: 0.8125rem;
+    margin-left: var(--lwc-spacingXSmall, var(--neura-space-sm, 0.5rem));
+    color: var(--lwc-colorTextActionLabel, var(--neura-color-text-muted, rgb(116, 116, 116)));
+    border-radius: var(--lwc-borderRadiusMedium, var(--neura-radius-sm, 0.25rem));
+    font-size: var(--neura-text-base, 0.8125rem);
     vertical-align: middle;
     overflow: hidden;
     width: 85%;
     text-overflow: ellipsis;
     white-space: nowrap;
     height: 20px;
-    line-height: 20px
+    line-height: 20px;
 }
 
-.paletteItemImage {
-    max-height: 100%;
-    max-width: 100%;
+.paletteItemText:hover,
+.paletteItemAnchor:focus .paletteItemText {
+    color: var(--lwc-colorTextLinkHover, var(--neura-color-primary-hover, rgb(1, 68, 134)));
 }
 
 .uiImage {

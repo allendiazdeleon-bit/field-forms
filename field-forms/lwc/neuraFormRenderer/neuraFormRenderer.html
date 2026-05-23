@@ -54,7 +54,9 @@
 			></c-neura-page-dictation>
 
 			<div
-				style="margin-bottom: 56px"
+				class={pageWrapperClass}
+				ontouchstart={handlePageSwipeStart}
+				ontouchend={handlePageSwipeEnd}
 			>
 				<c-neura-form-page
 					lwc:ref="formPage"

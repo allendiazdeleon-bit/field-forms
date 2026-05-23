@@ -1,0 +1,130 @@
+/* Repeatable group — vertical stack of text inputs with per-row remove
+   button and a footer Add Row + count indicator. Pure design-system
+   tokens so dark mode and density swap automatically. */
+
+.repeat-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--neura-space-sm);
+}
+
+.repeat-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--neura-space-xs);
+}
+
+.repeat-row {
+    display: flex;
+    align-items: center;
+    gap: var(--neura-space-sm);
+}
+
+.repeat-row__input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.repeat-row__remove {
+    flex: 0 0 auto;
+    width: var(--neura-touch-min);
+    height: var(--neura-touch-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--neura-color-border);
+    border-radius: var(--neura-radius-pill);
+    color: var(--neura-color-text-muted);
+    cursor: pointer;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                border-color var(--neura-motion-fast) var(--neura-motion-ease),
+                color var(--neura-motion-fast) var(--neura-motion-ease),
+                transform var(--neura-motion-fast) var(--neura-motion-ease);
+}
+.repeat-row__remove:hover {
+    background: var(--neura-color-error-bg);
+    border-color: var(--neura-color-error);
+    color: var(--neura-color-error-strong);
+}
+.repeat-row__remove:active { transform: scale(0.95); }
+.repeat-row__remove:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: transparent;
+    border-color: var(--neura-color-border);
+    color: var(--neura-color-text-disabled);
+}
+.repeat-row__remove:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
+.repeat-group__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--neura-space-sm);
+    margin-top: var(--neura-space-xs);
+}
+
+.repeat-group__add {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--neura-space-xs);
+    padding: var(--neura-space-xs) var(--neura-space-md);
+    min-height: var(--neura-touch-min);
+    background: transparent;
+    border: 1px dashed var(--neura-color-primary);
+    border-radius: var(--neura-radius-md);
+    color: var(--neura-color-primary);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-md);
+    font-weight: var(--neura-font-weight-semibold);
+    cursor: pointer;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                border-color var(--neura-motion-fast) var(--neura-motion-ease),
+                color var(--neura-motion-fast) var(--neura-motion-ease),
+                transform var(--neura-motion-fast) var(--neura-motion-ease);
+}
+.repeat-group__add:hover {
+    background: var(--neura-color-primary-subtle);
+    border-style: solid;
+}
+.repeat-group__add:active { transform: scale(0.98); }
+.repeat-group__add:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: transparent;
+    border-style: dashed;
+}
+.repeat-group__add:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
+.repeat-group__count {
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-sm);
+    color: var(--neura-color-text-muted);
+}
+
+.repeat-icon {
+    --slds-c-icon-color-foreground: currentColor;
+    --slds-c-icon-color-foreground-default: currentColor;
+}
+
+@media (hover: none) {
+    .repeat-row__remove:hover {
+        background: transparent;
+        border-color: var(--neura-color-border);
+        color: var(--neura-color-text-muted);
+    }
+    .repeat-group__add:hover {
+        background: transparent;
+        border-style: dashed;
+    }
+}

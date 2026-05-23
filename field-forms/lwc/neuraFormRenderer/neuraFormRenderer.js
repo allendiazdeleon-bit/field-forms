@@ -1182,9 +1182,95 @@ export default class NeuraFormRenderer extends LightningElement {
 		return `${base} ${base}_${this.autoSaveStatus}`;
 	}
 
+	// Page-transition class. Toggles between two animation-name buckets
+	// so the browser re-runs the enter animation on every page change.
+	// (CSS animations don't re-fire unless the animation-name changes.)
+	get pageWrapperClass() {
+		const idx = Number(this.currentPageIndex) || 0;
+		return `page-wrapper page-wrapper_${idx % 2 === 0 ? 'a' : 'b'}`;
+	}
+
+	// --- Swipe-between-pages gesture ----------------------------------------
+	//
+	// Horizontal swipe on inert page chrome navigates prev/next, matching the
+	// "carousel" gesture mobile users already expect. Carefully avoids
+	// stealing the gesture from signature canvases, scrollable lists, and
+	// form inputs (those keep their native touch behavior).
+	_swipeStartX = 0;
+	_swipeStartY = 0;
+	_swipeStartTime = 0;
+	_swipeBailed = false;
+
+	handlePageSwipeStart(event) {
+		const touch = event.touches && event.touches[0];
+		if (!touch) return;
+		this._swipeStartX = touch.clientX;
+		this._swipeStartY = touch.clientY;
+		this._swipeStartTime = Date.now();
+		// Bail if the gesture starts inside an interactive element. The
+		// closest() check walks up through Light DOM ancestors; LWC Shadow
+		// DOM boundaries are opaque here, which is fine — we just need to
+		// know we're on inert chrome vs. a real input.
+		const target = event.target;
+		this._swipeBailed = !!(
+			target && typeof target.closest === 'function' &&
+			target.closest(
+				'canvas, input, textarea, select, button, ' +
+				'lightning-input, lightning-textarea, lightning-combobox, ' +
+				'lightning-input-rich-text, lightning-radio-group, ' +
+				'lightning-checkbox-group, lightning-file-upload, ' +
+				'lightning-button, [contenteditable="true"]'
+			)
+		);
+	}
+
+	handlePageSwipeEnd(event) {
+		if (this._swipeBailed) { this._swipeBailed = false; return; }
+		const touch = event.changedTouches && event.changedTouches[0];
+		if (!touch) return;
+		const dx = touch.clientX - this._swipeStartX;
+		const dy = touch.clientY - this._swipeStartY;
+		const dt = Date.now() - this._swipeStartTime;
+		const absX = Math.abs(dx);
+		const absY = Math.abs(dy);
+		// Tunable thresholds — chosen to feel responsive without firing
+		// on incidental drags or vertical scroll attempts.
+		const HORIZONTAL_PX = 60;
+		const MAX_VERT_PX = 30;
+		const MAX_DURATION_MS = 500;
+		if (absX < HORIZONTAL_PX) return;
+		if (absY > MAX_VERT_PX) return;
+		if (absX < 2 * absY) return;
+		if (dt > MAX_DURATION_MS) return;
+		// Right-swipe = previous page; left-swipe = next page. Reuse the
+		// existing footer-click path so validation, save, and the page
+		// animation all run identically to the button-driven flow.
+		const actionType = dx > 0 ? 'previous' : 'next';
+		this.handleFooterButtonClick({ detail: { actionType } });
+	}
+	// --- /Swipe-between-pages -----------------------------------------------
+
+	_lastSavedAt = null;
+
+	// Translate the form-local autoSaveStatus into the shape consumed by
+	// the device-level c-neura-draft-queue-badge mounted by the mobile shell.
+	// The mobile shell aggregates these signals; on FSL Mobile this is the
+	// closest approximation we have to a device draft-queue inspector
+	// (the platform doesn't expose one directly).
+	_emitDraftState() {
+		const pendingStatuses = ['pending', 'saving'];
+		const detail = {
+			pendingCount: pendingStatuses.includes(this.autoSaveStatus) ? 1 : 0,
+			hasError: this.autoSaveStatus === 'error',
+			lastSyncedAt: this._lastSavedAt
+		};
+		this.dispatchEvent(new CustomEvent('draftstate', { detail, bubbles: true, composed: true }));
+	}
+
 	scheduleAutoSave() {
 		this.autoSaveStatus = 'pending';
 		this.autoSaveLabel = 'Unsaved changes';
+		this._emitDraftState();
 		if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
 		this._autoSaveTimer = setTimeout(() => {
 			this._runAutoSave();
@@ -1202,11 +1288,13 @@ export default class NeuraFormRenderer extends LightningElement {
 		if (!hasDirty) {
 			this.autoSaveStatus = 'idle';
 			this.autoSaveLabel = '';
+			this._emitDraftState();
 			return;
 		}
 
 		this.autoSaveStatus = 'saving';
 		this.autoSaveLabel = 'Saving…';
+		this._emitDraftState();
 		try {
 			await saveAnswers(
 				this.questionAnswerMap,
@@ -1215,13 +1303,16 @@ export default class NeuraFormRenderer extends LightningElement {
 			);
 			this.autoSaveStatus = 'saved';
 			const now = new Date();
+			this._lastSavedAt = now.toISOString();
 			const hh = String(now.getHours() % 12 || 12);
 			const mm = String(now.getMinutes()).padStart(2, '0');
 			const ampm = now.getHours() >= 12 ? 'pm' : 'am';
 			this.autoSaveLabel = `Saved ${hh}:${mm} ${ampm}`;
+			this._emitDraftState();
 		} catch (e) {
 			this.autoSaveStatus = 'error';
 			this.autoSaveLabel = 'Save failed (will retry on Next)';
+			this._emitDraftState();
 		}
 	}
 	// --- /Auto-save ----------------------------------------------------------

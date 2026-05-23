@@ -1,13 +1,19 @@
+/* Full-page loading overlay. Reserve this for long blocking operations
+   (PDF generation, multi-record sync) — for surface-level loading,
+   prefer c-neura-skeleton which gives a sense of structure. */
 .spinner-bg {
-  background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--neura-color-overlay, rgba(0, 0, 0, 0.5));
 }
 
 .spinner-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 9051;
-  transform: translate(-50%, -50%);
-  margin-top: 3rem;
-  color: white;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: var(--neura-z-overlay, 9051);
+    transform: translate(-50%, -50%);
+    margin-top: var(--neura-space-2xl, 3rem);
+    color: var(--neura-color-text-inverse, #ffffff);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-md);
+    font-weight: var(--neura-font-weight-medium);
 }

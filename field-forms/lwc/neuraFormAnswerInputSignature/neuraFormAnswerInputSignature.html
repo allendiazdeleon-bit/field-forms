@@ -1,35 +1,63 @@
 <template>
     <div class="container">
+        <!-- Existing signature is shown inline (the captured image is part of
+             the form content, not an interaction surface). -->
         <div lwc:if={existingSignature}>
             <image src={existingSignature}></image>
         </div>
+
+        <!-- No signature yet: the technician sees a single capture entry point.
+             Tapping it opens the bottom sheet, which holds either the
+             Type-vs-Draw options or the active signature canvas. -->
         <div lwc:else>
-            <template if:false={showSignature}>
-                <template if:false={showOption}>
-                    <lightning-icon class="kanban-icon" icon-name="utility:signature" size="large"  alternative-text="Kanban Icon" onclick={handleshowOption}></lightning-icon>
-                    <div class="option-label">Signature</div>
-                </template>
-                <template if:true={showOption}>
-                <div class="options-container">
-                    <div class="option" onclick={handleTypeSignature}>
-                        <lightning-icon class="option-icon" icon-name="utility:type" size="small"></lightning-icon>
-                        <div class="option-label">Type Signature</div>
+            <lightning-icon
+                class="kanban-icon"
+                icon-name="utility:signature"
+                size="large"
+                alternative-text="Capture signature"
+                onclick={handleshowOption}
+            ></lightning-icon>
+            <div class="option-label">Signature</div>
+
+            <c-neura-bottom-sheet
+                open={isSheetOpen}
+                heading={sheetHeading}
+                size="auto"
+                hide-close-button
+                onclose={handleSheetClose}
+            >
+                <!-- Step 1: pick Type or Draw -->
+                <template if:false={showSignature}>
+                    <div class="options-container">
+                        <button
+                            type="button"
+                            class="option"
+                            onclick={handleTypeSignature}
+                        >
+                            <lightning-icon class="option-icon" icon-name="utility:type" size="small"></lightning-icon>
+                            <div class="option-label">Type Signature</div>
+                        </button>
+                        <button
+                            type="button"
+                            class="option"
+                            onclick={handleDrawSignature}
+                        >
+                            <lightning-icon class="option-icon" icon-name="utility:brush" size="small"></lightning-icon>
+                            <div class="option-label">Draw Signature</div>
+                        </button>
                     </div>
-                    <div class="option" onclick={handleDrawSignature}>
-                        <lightning-icon class="option-icon" icon-name="utility:brush" size="small"></lightning-icon>
-                        <div class="option-label">Draw Signature</div>
-                    </div>
-                </div>
                 </template>
-            </template>
-            <template if:true={showSignature}>
-                <c-neura-form-answer-input-signature-type 
-                    signaturetype={showTypeSignature} 
-                    ondonesignature={handleDoneSignature}
-                    oncancel={handleCancel}
-                    onchangetype={handleChangeType}
-                ></c-neura-form-answer-input-signature-type>
-            </template>
+
+                <!-- Step 2: capture (type or draw) -->
+                <template if:true={showSignature}>
+                    <c-neura-form-answer-input-signature-type
+                        signaturetype={showTypeSignature}
+                        ondonesignature={handleDoneSignature}
+                        oncancel={handleCancel}
+                        onchangetype={handleChangeType}
+                    ></c-neura-form-answer-input-signature-type>
+                </template>
+            </c-neura-bottom-sheet>
         </div>
     </div>
 </template>

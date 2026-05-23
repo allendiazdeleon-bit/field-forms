@@ -1,3 +1,7 @@
-.is-in-droppable-state{
+.is-in-droppable-state {
     background: rgba(75, 202, 129, 0.20);
+    transition: background-color var(--neura-motion-fast, 120ms) var(--neura-motion-ease, ease);
+    outline: 2px dashed var(--neura-color-success-strong, #45c65a);
+    outline-offset: -2px;
+    border-radius: var(--neura-radius-sm, 0.25rem);
 }

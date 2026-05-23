@@ -1,0 +1,92 @@
+/* Counter — −/value/+ control sized for gloved-hand mobile use. The
+   manual input is still exposed (for "set to 47" cases where tapping
+   would be tedious) but the buttons are the primary affordance. */
+
+.counter {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0;
+    border: 1px solid var(--neura-color-border-strong);
+    border-radius: var(--neura-radius-md);
+    background: var(--neura-color-surface);
+    overflow: hidden;
+    font-family: var(--neura-font-family);
+}
+
+.counter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--neura-touch-mobile);
+    min-height: var(--neura-touch-mobile);
+    background: var(--neura-color-surface);
+    border: 0;
+    color: var(--neura-color-primary);
+    cursor: pointer;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                color var(--neura-motion-fast) var(--neura-motion-ease);
+}
+
+.counter-btn:hover {
+    background: var(--neura-color-primary-subtle);
+}
+
+.counter-btn:active {
+    background: var(--neura-color-primary-subtle);
+    transform: scale(0.96);
+}
+
+.counter-btn:disabled {
+    color: var(--neura-color-text-disabled);
+    cursor: not-allowed;
+    background: var(--neura-color-surface-muted);
+}
+
+.counter-btn:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: calc(-1 * var(--neura-focus-ring-width));
+    z-index: 1; /* lift focus ring above neighboring buttons */
+}
+
+.counter-btn_decrement {
+    border-right: 1px solid var(--neura-color-border);
+}
+
+.counter-btn_increment {
+    border-left: 1px solid var(--neura-color-border);
+}
+
+.counter-icon {
+    --slds-c-icon-color-foreground: currentColor;
+    --slds-c-icon-color-foreground-default: currentColor;
+}
+
+.counter-value {
+    width: 64px;
+    border: 0;
+    background: transparent;
+    color: var(--neura-color-text-primary);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-lg);
+    font-weight: var(--neura-font-weight-semibold);
+    text-align: center;
+    outline: none;
+    /* Suppress Safari/Chrome native number spinners — buttons are the
+       affordance, the numeric input is just for typing exact values. */
+    -moz-appearance: textfield;
+}
+.counter-value::-webkit-outer-spin-button,
+.counter-value::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.counter-value:focus-visible {
+    background: var(--neura-color-primary-subtle);
+}
+
+@media (hover: none) {
+    .counter-btn:hover {
+        background: var(--neura-color-surface);
+    }
+}

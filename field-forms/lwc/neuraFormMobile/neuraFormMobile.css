@@ -1,0 +1,210 @@
+/* ============================================================
+   Neura Design System tokens — applied at the FSL Mobile shell
+   so child components have tokens even when the renderer hasn't
+   mounted yet (selector screen, loading, empty-state, etc.).
+
+   Canonical token reference:
+   field-forms/lwc/neuraFormRenderer/design-system.md
+   ============================================================ */
+:host {
+    /* legacy aliases */
+    --header-size: 4rem;
+    --header-fg: var(--neura-color-primary);
+    --header-bg: #dddad9;
+    --header-backdrop-color: var(--neura-color-info-bg);
+
+    --neura-color-primary: #0070d2;
+    --neura-color-primary-hover: #005fb2;
+    --neura-color-primary-active: #00396b;
+    --neura-color-primary-subtle: #e6f0fb;
+    --neura-color-primary-contrast: #ffffff;
+    --neura-color-primary-gradient: linear-gradient(135deg, #0070d2 0%, #1589ee 100%);
+
+    --neura-color-success: #194e2b;
+    --neura-color-success-bg: #ddf3e4;
+    --neura-color-success-strong: #45c65a;
+    --neura-color-warning: #8a6d00;
+    --neura-color-warning-bg: #fff5d6;
+    --neura-color-warning-border: #d4a017;
+    --neura-color-error: #c23934;
+    --neura-color-error-strong: #a8341c;
+    --neura-color-error-bg: #fdecea;
+    --neura-color-info: #0070d2;
+    --neura-color-info-bg: #f5f9ff;
+    --neura-color-info-border: #c9def7;
+
+    --neura-color-text-primary: #181818;
+    --neura-color-text-secondary: #444444;
+    --neura-color-text-muted: #706e6b;
+    --neura-color-text-disabled: #a8a8a8;
+    --neura-color-text-inverse: #ffffff;
+    --neura-color-surface: #ffffff;
+    --neura-color-surface-subtle: #f7f7f7;
+    --neura-color-surface-muted: #f3f3f3;
+    --neura-color-background: #f7f7f8;
+    --neura-color-border: #e5e5e5;
+    --neura-color-border-strong: #c9c7c5;
+    --neura-color-border-subtle: #f3f3f3;
+    --neura-color-overlay: rgba(0, 0, 0, 0.5);
+
+    --neura-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --neura-font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    --neura-text-xs: 0.6875rem;
+    --neura-text-sm: 0.75rem;
+    --neura-text-base: 0.8125rem;
+    --neura-text-md: 0.875rem;
+    --neura-text-lg: 1rem;
+    --neura-text-xl: 1.125rem;
+    --neura-text-2xl: 1.375rem;
+    --neura-text-3xl: 1.75rem;
+
+    --neura-font-weight-regular: 400;
+    --neura-font-weight-medium: 500;
+    --neura-font-weight-semibold: 600;
+    --neura-font-weight-bold: 700;
+
+    --neura-line-height-tight: 1.2;
+    --neura-line-height-base: 1.4;
+    --neura-line-height-relaxed: 1.6;
+
+    --neura-space-2xs: 0.125rem;
+    --neura-space-xs: 0.25rem;
+    --neura-space-sm: 0.5rem;
+    --neura-space-md: 0.75rem;
+    --neura-space-lg: 1rem;
+    --neura-space-xl: 1.5rem;
+    --neura-space-2xl: 2rem;
+    --neura-space-3xl: 3rem;
+
+    --neura-radius-sm: 0.25rem;
+    --neura-radius-md: 0.5rem;
+    --neura-radius-lg: 0.75rem;
+    --neura-radius-pill: 9999px;
+
+    --neura-shadow-subtle:   0 1px 0 rgba(0, 0, 0, 0.06);
+    --neura-shadow-base:     0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --neura-shadow-raised:   0 4px 12px rgba(0, 0, 0, 0.10), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --neura-shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.16), 0 4px 8px rgba(0, 0, 0, 0.08);
+    --neura-shadow-primary:  0 4px 12px rgba(0, 112, 210, 0.25);
+    --neura-shadow-primary-pressed: 0 2px 6px rgba(0, 112, 210, 0.25);
+
+    --neura-motion-fast: 120ms;
+    --neura-motion-base: 200ms;
+    --neura-motion-slow: 320ms;
+    --neura-motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --neura-motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+    --neura-touch-min: 44px;
+    --neura-touch-mobile: 64px;
+
+    --neura-z-base: 1;
+    --neura-z-sticky: 10;
+    --neura-z-overlay: 100;
+    --neura-z-modal: 1000;
+
+    --neura-focus-ring-color: var(--neura-color-primary);
+    --neura-focus-ring-width: 2px;
+    --neura-focus-ring-offset: 2px;
+
+    --neura-safe-top: env(safe-area-inset-top, 0px);
+    --neura-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --neura-safe-left: env(safe-area-inset-left, 0px);
+    --neura-safe-right: env(safe-area-inset-right, 0px);
+
+    font-family: var(--neura-font-family);
+    color: var(--neura-color-text-primary);
+    background: var(--neura-color-background);
+}
+
+/* Dark mode — see neuraFormRenderer/design-system.md "Dark mode" section.
+   Activates via OS preference (@media prefers-color-scheme: dark) unless
+   the host explicitly opts out via data-theme="light", or via manual
+   override with data-theme="dark". */
+@media (prefers-color-scheme: dark) {
+    :host(:not([data-theme="light"])) {
+        --neura-color-primary: #4ba3e8;
+        --neura-color-primary-hover: #5fb4f5;
+        --neura-color-primary-active: #2f8ed1;
+        --neura-color-primary-subtle: rgba(75, 163, 232, 0.15);
+        --neura-color-primary-contrast: #0b0f14;
+        --neura-color-primary-gradient: linear-gradient(135deg, #2f8ed1 0%, #4ba3e8 100%);
+
+        --neura-color-success: #6fdb84;
+        --neura-color-success-bg: rgba(111, 219, 132, 0.15);
+        --neura-color-success-strong: #6fdb84;
+        --neura-color-warning: #f0c14b;
+        --neura-color-warning-bg: rgba(240, 193, 75, 0.15);
+        --neura-color-warning-border: #d4a017;
+        --neura-color-error: #ff8a8a;
+        --neura-color-error-strong: #ff6b6b;
+        --neura-color-error-bg: rgba(255, 107, 107, 0.15);
+        --neura-color-info: #4ba3e8;
+        --neura-color-info-bg: rgba(75, 163, 232, 0.12);
+        --neura-color-info-border: rgba(75, 163, 232, 0.4);
+
+        --neura-color-text-primary: #f5f6f8;
+        --neura-color-text-secondary: #d0d2d6;
+        --neura-color-text-muted: #9aa0a8;
+        --neura-color-text-disabled: #5a5e66;
+        --neura-color-text-inverse: #0b0f14;
+        --neura-color-surface: #1a1d22;
+        --neura-color-surface-subtle: #15181c;
+        --neura-color-surface-muted: #23272d;
+        --neura-color-background: #0f1216;
+        --neura-color-border: #2d3138;
+        --neura-color-border-strong: #3d4148;
+        --neura-color-border-subtle: #23272d;
+        --neura-color-overlay: rgba(0, 0, 0, 0.7);
+
+        --neura-shadow-subtle:   0 1px 0 rgba(0, 0, 0, 0.4);
+        --neura-shadow-base:     0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+        --neura-shadow-raised:   0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.35);
+        --neura-shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.4);
+        --neura-shadow-primary:  0 4px 12px rgba(75, 163, 232, 0.35);
+        --neura-shadow-primary-pressed: 0 2px 6px rgba(75, 163, 232, 0.35);
+    }
+}
+
+:host([data-theme="dark"]) {
+    --neura-color-primary: #4ba3e8;
+    --neura-color-primary-hover: #5fb4f5;
+    --neura-color-primary-active: #2f8ed1;
+    --neura-color-primary-subtle: rgba(75, 163, 232, 0.15);
+    --neura-color-primary-contrast: #0b0f14;
+    --neura-color-primary-gradient: linear-gradient(135deg, #2f8ed1 0%, #4ba3e8 100%);
+
+    --neura-color-success: #6fdb84;
+    --neura-color-success-bg: rgba(111, 219, 132, 0.15);
+    --neura-color-success-strong: #6fdb84;
+    --neura-color-warning: #f0c14b;
+    --neura-color-warning-bg: rgba(240, 193, 75, 0.15);
+    --neura-color-warning-border: #d4a017;
+    --neura-color-error: #ff8a8a;
+    --neura-color-error-strong: #ff6b6b;
+    --neura-color-error-bg: rgba(255, 107, 107, 0.15);
+    --neura-color-info: #4ba3e8;
+    --neura-color-info-bg: rgba(75, 163, 232, 0.12);
+    --neura-color-info-border: rgba(75, 163, 232, 0.4);
+
+    --neura-color-text-primary: #f5f6f8;
+    --neura-color-text-secondary: #d0d2d6;
+    --neura-color-text-muted: #9aa0a8;
+    --neura-color-text-disabled: #5a5e66;
+    --neura-color-text-inverse: #0b0f14;
+    --neura-color-surface: #1a1d22;
+    --neura-color-surface-subtle: #15181c;
+    --neura-color-surface-muted: #23272d;
+    --neura-color-background: #0f1216;
+    --neura-color-border: #2d3138;
+    --neura-color-border-strong: #3d4148;
+    --neura-color-border-subtle: #23272d;
+    --neura-color-overlay: rgba(0, 0, 0, 0.7);
+
+    --neura-shadow-subtle:   0 1px 0 rgba(0, 0, 0, 0.4);
+    --neura-shadow-base:     0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --neura-shadow-raised:   0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.35);
+    --neura-shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.4);
+    --neura-shadow-primary:  0 4px 12px rgba(75, 163, 232, 0.35);
+    --neura-shadow-primary-pressed: 0 2px 6px rgba(75, 163, 232, 0.35);
+}

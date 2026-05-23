@@ -1,5 +1,10 @@
+/* Segmented radio control with a sliding highlight pill behind the
+   active option. The slider translation is set inline via the
+   --slider-translate-x custom property from the component JS so the
+   indicator follows the user's selection with a smooth transition. */
+
 :host {
-    margin: 10px;
+    margin: var(--neura-space-sm);
 }
 
 .hidden {
@@ -8,33 +13,32 @@
 
 .radio-group-container {
     width: calc(100% - 16px);
-    margin-left: 8px;
+    margin-left: var(--neura-space-sm);
     box-sizing: border-box;
-    background-color: white;
-    color: var(--lwc-brandAccessibleActive, #1E1E3F);
-    box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.4);
+    background-color: var(--neura-color-surface);
+    color: var(--lwc-brandAccessibleActive, var(--neura-color-text-primary));
+    box-shadow: var(--neura-shadow-base);
     text-align: center;
     position: relative;
-    border-radius: 2px;
-    --sds-c-icon-color-foreground-default:  var(--lwc-brandAccessibleActive, #1E1E3F);
+    border-radius: var(--neura-radius-sm);
+    --sds-c-icon-color-foreground-default: var(--lwc-brandAccessibleActive, var(--neura-color-text-primary));
 }
 
 .radio-group-container > .slider {
-    color: white;
-    padding-top: 24px;
+    color: var(--neura-color-primary-contrast);
+    padding-top: var(--neura-space-xl);
     display: block;
     position: absolute;
     top: -4px;
     left: -4px;
     bottom: -4px;
-    /*width: calc(33.33% + 8px);*/
-    background-color: rgba(50, 150, 255, 1);
-    border-radius: 2px;
-    box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.4);
+    background-color: var(--neura-color-primary);
+    border-radius: var(--neura-radius-sm);
+    box-shadow: var(--neura-shadow-primary);
     z-index: 1;
     pointer-events: none;
     transform: translateX(var(--slider-translate-x, 0%));
-    transition: transform 0.3s;
+    transition: transform var(--neura-motion-slow) var(--neura-motion-ease);
 }
 
 .radio-group-container::after {
@@ -45,14 +49,14 @@
 
 .radio-group-container label {
     float: left;
-    /*width: calc(33.333% - 1px);*/
     position: relative;
-    padding: 20px 0px 40px;
+    padding: var(--neura-space-lg) 0 var(--neura-space-2xl);
     overflow: hidden;
-    border-left: solid 1px rgba(0, 0, 0, 0.2);
-    transition: color 0.3s;
+    border-left: solid 1px var(--neura-color-border);
+    transition: color var(--neura-motion-slow) var(--neura-motion-ease);
     cursor: pointer;
-    -webkit-tap-highlight-color: var(--lwc-brandAccessibleActive, #1E1E3F);
+    min-height: var(--neura-touch-min);
+    -webkit-tap-highlight-color: var(--lwc-brandAccessibleActive, var(--neura-color-primary));
 }
 
 .radio-group-container label:first-child {
@@ -71,6 +75,16 @@
 }
 
 .radio-group-container label.selected {
-    --sds-c-icon-color-foreground-default:  var(--brand-inverted-color, white);
-    color: white;
+    --sds-c-icon-color-foreground-default: var(--brand-inverted-color, var(--neura-color-primary-contrast));
+    color: var(--neura-color-primary-contrast);
+}
+
+.radio-group-container label input:focus-visible ~ div {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .radio-group-container > .slider { transition: none; }
+    .radio-group-container label { transition: none; }
 }

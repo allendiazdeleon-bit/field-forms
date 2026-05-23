@@ -3,11 +3,22 @@
         <span class="slds-form-element__label">Calculated</span>
         <div class="slds-form-element__control">
             <output class="slds-form-element__static" aria-live="polite">
+                <!-- Three display states:
+                     1. Formula configured + value computed → show the result
+                     2. Formula configured + dependencies missing → em-dash
+                     3. No formula configured → admin hint (design-time clarity) -->
                 <template if:true={displayValue}>
                     <span class="slds-text-heading_small">{displayValue}</span>
                 </template>
                 <template if:false={displayValue}>
-                    <span class="slds-text-color_weak">&mdash;</span>
+                    <template if:true={noFormula}>
+                        <span class="slds-text-color_weak slds-text-body_small">
+                            Set Calculation Formula on this question
+                        </span>
+                    </template>
+                    <template if:false={noFormula}>
+                        <span class="slds-text-color_weak">&mdash;</span>
+                    </template>
                 </template>
             </output>
             <template if:true={errorMessage}>

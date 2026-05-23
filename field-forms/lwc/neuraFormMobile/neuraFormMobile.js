@@ -56,6 +56,72 @@ export default class NeuraFormMobile extends LightningElement {
 
     listInitialised = false;
 
+    // Device-level sync indicator state. Currently aggregated from the
+    // active form renderer's auto-save events (see handleDraftState). A
+    // future iteration could populate this from a Nimbus-plugin-backed
+    // draft-queue inspector to reflect ALL pending drafts on device, not
+    // just the active form.
+    @track _draftBadgeState = { pendingCount: 0, hasError: false, lastSyncedAt: null };
+
+    handleDraftState(event) {
+        const detail = event && event.detail;
+        if (!detail) return;
+        this._draftBadgeState = {
+            pendingCount: Number(detail.pendingCount) || 0,
+            hasError: Boolean(detail.hasError),
+            lastSyncedAt: detail.lastSyncedAt || null
+        };
+    }
+
+    // Theme toggle integration. The toggle component fires 'themechange'
+    // events; we mirror the choice as a data-theme attribute on:
+    //   1. this host element (covers the selector / complete screen)
+    //   2. the c-neura-form-renderer child when present (the renderer's
+    //      :host token block sets its OWN token defaults which override
+    //      anything inherited from this shell, so we have to forward
+    //      data-theme onto the renderer's host too)
+    // 'auto' removes the attribute so the @media (prefers-color-scheme:
+    // dark) path inside each :host block runs unmodified.
+    _currentTheme = null;
+
+    handleThemeChange(event) {
+        const theme = event && event.detail && event.detail.theme;
+        this._currentTheme = (theme === 'dark' || theme === 'light') ? theme : null;
+        this._applyThemeToHost();
+        this._applyThemeToRenderer();
+    }
+
+    _applyThemeToHost() {
+        if (this._currentTheme) {
+            this.setAttribute('data-theme', this._currentTheme);
+        } else {
+            this.removeAttribute('data-theme');
+        }
+    }
+
+    _applyThemeToRenderer() {
+        const renderer = this.template.querySelector('c-neura-form-renderer');
+        if (!renderer) return;
+        if (this._currentTheme) {
+            renderer.setAttribute('data-theme', this._currentTheme);
+        } else {
+            renderer.removeAttribute('data-theme');
+        }
+    }
+
+    renderedCallback() {
+        // The renderer mounts inside a lwc:if block that only renders
+        // once the user picks a form, so the initial themechange event
+        // (fired by the toggle on its connectedCallback) may land before
+        // the renderer exists. Replay the current theme here so a
+        // newly-mounted renderer picks up the chosen theme.
+        this._applyThemeToRenderer();
+    }
+
+    get draftBadgePendingCount() { return this._draftBadgeState.pendingCount; }
+    get draftBadgeHasError()     { return this._draftBadgeState.hasError; }
+    get draftBadgeLastSyncedAt() { return this._draftBadgeState.lastSyncedAt; }
+
     selectedRecordId;
     formOptions;
     

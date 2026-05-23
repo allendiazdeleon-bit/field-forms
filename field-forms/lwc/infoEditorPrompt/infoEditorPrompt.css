@@ -1,23 +1,49 @@
 .save-button {
-  background-color: #1b96ff;
-  border-radius: 12px;
-  border: 0;
+    background-color: var(--neura-color-primary, #1b96ff);
+    color: var(--neura-color-primary-contrast, #ffffff);
+    border-radius: var(--neura-radius-lg, 12px);
+    border: 0;
+    min-height: var(--neura-touch-min, 44px);
+    transition: background-color var(--neura-motion-fast, 120ms) var(--neura-motion-ease, ease);
+}
+
+.save-button:hover {
+    background-color: var(--neura-color-primary-hover, #0070d2);
+}
+
+.save-button:active {
+    background-color: var(--neura-color-primary-active, #00396b);
+}
+
+.save-button:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
 }
 
 .save-button:disabled {
-  background-color: #444444;
-  color: #939393;
+    background-color: var(--neura-color-surface-muted, #444444);
+    color: var(--neura-color-text-disabled, #939393);
+    cursor: not-allowed;
 }
 
 .close-button {
-  position: absolute;
-  right: 20px;
-  bottom: 15px;
-  color: #1b96ff;
+    position: absolute;
+    right: var(--neura-space-lg, 20px);
+    bottom: var(--neura-space-md, 15px);
+    color: var(--neura-color-primary, #1b96ff);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    padding: var(--neura-space-xs);
+    border-radius: var(--neura-radius-sm);
+}
+.close-button:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
 }
 
 .close-button > svg {
-  width: 1rem;
-  height: 1rem;
-  display: block;
+    width: 1rem;
+    height: 1rem;
+    display: block;
 }

@@ -1,37 +1,42 @@
 .no-hover {
     pointer-events: none;
-    background-color:#FFFFFF;
+    background-color: var(--neura-color-surface);
 }
 
 .no-cursor {
-    cursor:default;
+    cursor: default;
 }
 
+/* Conic-gradient progress ring rendered in the form header. Falls back
+   to legacy --header-* variables (set in the renderer :host) so the
+   ring keeps its current appearance; can be retuned by overriding the
+   legacy aliases without touching this file. */
 div.progress-ring {
-  --size: 8rem;
-  --fg: #1d96fe;
-  --bg: #dddad9;
-  --pathProgress: var(--value);
-  width: var(--header-size);
-  height: var(--header-size);    
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: 
-    radial-gradient(closest-side, white 80%, transparent 0 99.9%, white 0),
-    conic-gradient(var(--header-fg) calc(var(--pathProgress) * 1%), var(--header-bg) 0)
-    ;
-  font-weight:bold;
-  font-size: calc(var(--header-size) / 5);
-  color: #000000;
+    --size: 8rem;
+    --fg: var(--header-fg, var(--neura-color-primary));
+    --bg: var(--header-bg, var(--neura-color-border));
+    --pathProgress: var(--value);
+    width: var(--header-size);
+    height: var(--header-size);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(closest-side, var(--neura-color-surface) 80%, transparent 0 99.9%, var(--neura-color-surface) 0),
+        conic-gradient(var(--header-fg) calc(var(--pathProgress) * 1%), var(--header-bg) 0);
+    font-weight: var(--neura-font-weight-bold);
+    font-size: calc(var(--header-size) / 5);
+    color: var(--neura-color-text-primary);
+    transition: background var(--neura-motion-base) var(--neura-motion-ease);
 }
 
 div.progress-ring::before {
-  counter-reset: percentage var(--value);
-  content: var(--progress-text);
+    counter-reset: percentage var(--value);
+    content: var(--progress-text);
 }
 
 span.progress-style {
-  --pathValue: var(--value);
-  width: calc(var(--pathValue) * 1%);
+    --pathValue: var(--value);
+    width: calc(var(--pathValue) * 1%);
+    transition: width var(--neura-motion-base) var(--neura-motion-ease);
 }

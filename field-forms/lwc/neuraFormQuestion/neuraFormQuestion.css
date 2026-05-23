@@ -1,10 +1,32 @@
 .slds-input-has-icon .slds-input__icon:not(button) {
     pointer-events: all;
 }
+
+/* Question label — confident, weight 600, slightly larger than the
+   default SLDS body text so it reads as the heading of its field. */
+.question-label {
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-md);
+    font-weight: var(--neura-font-weight-semibold);
+    line-height: var(--neura-line-height-base);
+    color: var(--neura-color-text-primary);
+}
+
+/* Required indicator — small inline asterisk in semantic red, with
+   tighter pixel-level placement than the SLDS default. Sits flush
+   against the label without floating into its own padding bubble. */
+abbr.slds-required {
+    color: var(--neura-color-error);
+    text-decoration: none;
+    margin-right: 2px;
+    font-weight: var(--neura-font-weight-bold);
+}
+
+/* Skip / revisit toggle (the bookmark pill). */
 .skip-btn {
     background: transparent;
-    border: 1px solid #c9c7c5;
-    border-radius: 999px;
+    border: 1px solid var(--neura-color-border-strong);
+    border-radius: var(--neura-radius-pill);
     width: 28px;
     height: 28px;
     display: inline-flex;
@@ -12,11 +34,22 @@
     justify-content: center;
     cursor: pointer;
     padding: 0;
-    color: #706e6b;
+    color: var(--neura-color-text-muted);
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                border-color var(--neura-motion-fast) var(--neura-motion-ease),
+                color var(--neura-motion-fast) var(--neura-motion-ease);
 }
-.skip-btn:active { background: #f3f3f3; }
+
+.skip-btn:hover { background: var(--neura-color-surface-muted); }
+.skip-btn:active { background: var(--neura-color-surface-muted); }
+
+.skip-btn:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
 .skip-btn_active {
-    border-color: #d4a017;
-    background: #fff5d6;
-    color: #8a6d00;
+    border-color: var(--neura-color-warning-border);
+    background: var(--neura-color-warning-bg);
+    color: var(--neura-color-warning);
 }

@@ -1,13 +1,20 @@
+/* Shared sidebar/panel primitive used in the builder. The
+   --neura-panel-width custom property lets parents override the width
+   without touching this file. */
+:host {
+    --neura-panel-width: var(--lwc-widthLeftSidebar, 300px);
+}
+
 .full-height {
     height: 100vh;
 }
+
 .overflow-override {
-    overflow:visible;
-}
-.custom-panel-width{
-    width: var(--neura-panel-width,300px);
+    overflow: visible;
 }
 
-:host{
-    --neura-panel-width: var(--lwc-widthLeftSidebar,300px);
+.custom-panel-width {
+    width: var(--neura-panel-width, 300px);
+    background: var(--neura-color-surface, #ffffff);
+    border-right: 1px solid var(--neura-color-border, #e5e5e5);
 }

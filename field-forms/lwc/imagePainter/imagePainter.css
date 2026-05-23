@@ -1,134 +1,136 @@
+/* Drawing canvas surface for the image annotation flow. Tool icons use
+   the primary brand color so they read as system controls; user-drawn
+   strokes use the colors selected in colorsPicker. */
+
 canvas {
-  max-width: 100%;
-  padding: 0;
-  margin: auto;
-  max-height: -webkit-fill-available;
+    max-width: 100%;
+    padding: 0;
+    margin: auto;
+    max-height: -webkit-fill-available;
 }
 
 .mid-vertical-align {
-  display: grid;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 100%;
+    display: grid;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
 }
 
 .canvas-container {
-  display: grid;
-  grid-column: 1;
-  grid-row: 1;
+    display: grid;
+    grid-column: 1;
+    grid-row: 1;
 }
 
 .text-editor {
-  position: fixed;
-  grid-column: 1;
-  grid-row: 1;
+    position: fixed;
+    grid-column: 1;
+    grid-row: 1;
 }
 
-.text-editor-hidden {
-  display: none;
-}
+.text-editor-hidden { display: none; }
 
-.overlay-canvas {
-  grid-column: 1;
-  grid-row: 1;
-}
+.overlay-canvas { grid-column: 1; grid-row: 1; }
+.img-canvas     { grid-column: 1; grid-row: 1; }
 
-.img-canvas {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.text-button-group > li {
-  margin: 0 0.4rem 0 0.4rem;
-}
-
+.text-button-group > li,
 .thickness-button-group > li {
-  margin: 0 0.4rem 0 0.4rem;
+    margin: 0 var(--neura-space-xs, 0.4rem);
 }
 
 .thickness-button > svg {
-  width: 1.25rem;
-  height: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
 }
 
 .thickness-button {
-  color: #1b96ff;
+    color: var(--neura-color-primary, #1b96ff);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
 }
 
 .thickness-button.half {
-  color: #1b96ff80;
+    color: color-mix(in srgb, var(--neura-color-primary, #1b96ff) 50%, transparent);
 }
 
 .thickness-button:disabled {
-  color: #555555;
+    color: var(--neura-color-text-disabled, #555555);
+    cursor: not-allowed;
 }
 
 .thickness-button:focus,
 .thickness-button:hover,
 .thickness-button:active {
-  box-shadow: none;
-  -webkit-box-shadow: none;
-  border-color: transparent;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+    border-color: transparent;
+}
+.thickness-button:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
+    border-radius: var(--neura-radius-sm);
 }
 
-.pencil-icon {
-  margin: auto;
-}
-
-.pencil-icon > svg {
-  width: 1.5rem;
-  height: 1.5rem;
-}
+.pencil-icon { margin: auto; }
+.pencil-icon > svg { width: 1.5rem; height: 1.5rem; }
 
 .bg-button {
-  display: grid;
+    display: grid;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
 }
 
 .bg-button .icon {
-  grid-column: 1;
-  grid-row: 1;
-  height: 1.5rem;
-  margin: auto;
-  aspect-ratio: 1 / 1;
-  color: #1b96ff;
+    grid-column: 1;
+    grid-row: 1;
+    height: 1.5rem;
+    margin: auto;
+    aspect-ratio: 1 / 1;
+    color: var(--neura-color-primary, #1b96ff);
 }
 
-.bg-button .icon:active {
-  border: 0;
-}
+.bg-button .icon:active { border: 0; }
 
 .bg-button.is-selected .icon {
-  color: white;
+    color: var(--neura-color-primary-contrast, white);
 }
 
 .bg-button .icon-selection-ring {
-  grid-column: 1;
-  grid-row: 1;
-  height: 2.25rem;
-  aspect-ratio: 1 / 1;
-  margin: auto;
-  border: 3px transparent solid;
+    grid-column: 1;
+    grid-row: 1;
+    height: 2.25rem;
+    aspect-ratio: 1 / 1;
+    margin: auto;
+    border: 3px solid transparent;
+    transition: border-color var(--neura-motion-fast) var(--neura-motion-ease);
 }
 
 .bg-button.is-selected .icon-selection-ring {
-  border: 3px #1b96ff solid;
-  border-radius: 50%;
+    border-color: var(--neura-color-primary, #1b96ff);
+    border-radius: 50%;
+}
+
+.bg-button:focus-visible .icon-selection-ring {
+    border-color: var(--neura-focus-ring-color, var(--neura-color-primary));
+    border-radius: 50%;
 }
 
 .page {
-  display: flex;
-  flex-flow: column;
-  height: 100%;
+    display: flex;
+    flex-flow: column;
+    height: 100%;
 }
 
 .page .section.content {
-  display: flex;
-  flex-flow: column;
-  flex: 1 1 auto;
-  position: relative;
+    display: flex;
+    flex-flow: column;
+    flex: 1 1 auto;
+    position: relative;
 }
 
 .page .section.footer {
-  flex: 0 1 auto;
+    flex: 0 1 auto;
 }

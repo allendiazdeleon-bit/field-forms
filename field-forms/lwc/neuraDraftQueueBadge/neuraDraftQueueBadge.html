@@ -1,0 +1,14 @@
+<template>
+    <div class={badgeClass} role="status" aria-live="polite">
+        <lightning-icon
+            class="badge__icon"
+            icon-name={iconName}
+            size="xx-small"
+            alternative-text=""
+        ></lightning-icon>
+        <span class="badge__label">{label}</span>
+        <template if:true={secondary}>
+            <span class="badge__secondary">{secondary}</span>
+        </template>
+    </div>
+</template>

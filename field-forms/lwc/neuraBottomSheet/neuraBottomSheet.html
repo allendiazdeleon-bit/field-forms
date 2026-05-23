@@ -1,0 +1,61 @@
+<template>
+    <template if:true={open}>
+        <!-- Scrim sits behind the sheet and catches taps to dismiss. -->
+        <div
+            class={scrimClass}
+            role="presentation"
+            onclick={handleScrimClick}
+        ></div>
+
+        <!-- Sheet itself. tabindex=-1 so renderedCallback can focus it
+             for screen-reader / keyboard handoff into the modal. -->
+        <div
+            class={sheetClass}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabindex="-1"
+            onclick={handleSheetClick}
+            onkeydown={handleKeydown}
+            lwc:ref="sheet"
+        >
+            <template if:false={hideHandle}>
+                <div
+                    class="sheet__handle-wrapper"
+                    ontouchstart={handleHandleTouchStart}
+                    ontouchmove={handleHandleTouchMove}
+                    ontouchend={handleHandleTouchEnd}
+                >
+                    <div class="sheet__handle" aria-hidden="true"></div>
+                </div>
+            </template>
+
+            <template if:true={heading}>
+                <header class="sheet__header">
+                    <h2 id={titleId} class="sheet__title">{heading}</h2>
+                    <template if:false={hideCloseButton}>
+                        <button
+                            type="button"
+                            class="sheet__close"
+                            onclick={handleCloseClick}
+                            aria-label="Close"
+                        >
+                            <lightning-icon
+                                icon-name="utility:close"
+                                size="x-small"
+                            ></lightning-icon>
+                        </button>
+                    </template>
+                </header>
+            </template>
+
+            <div class="sheet__body">
+                <slot></slot>
+            </div>
+
+            <div class="sheet__footer">
+                <slot name="footer"></slot>
+            </div>
+        </div>
+    </template>
+</template>

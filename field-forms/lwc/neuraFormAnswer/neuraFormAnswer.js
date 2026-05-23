@@ -564,6 +564,95 @@ export default class NeuraFormAnswer extends LightningElement {
 		return this.inputType === 'Calculation';
 	}
 
+	get isPassFailNa() {
+		return this.inputType === 'Pass Fail NA';
+	}
+
+	get isCounter() {
+		return this.inputType === 'Counter';
+	}
+
+	get isDateTime() {
+		return this.inputType === 'Date Time';
+	}
+
+	get isCurrency() {
+		return this.inputType === 'Currency';
+	}
+
+	get isLookup() {
+		return this.inputType === 'Lookup';
+	}
+
+	get isRepeatable() {
+		return this.inputType === 'Repeatable';
+	}
+
+	get isChecklist() {
+		return this.inputType === 'Checklist';
+	}
+
+	// --- Choice-pills routing -----------------------------------------------
+	//
+	// Multiple Choice / Dropdown / Radio Buttons render as pill-segmented
+	// buttons when option count is small enough that they fit comfortably,
+	// otherwise fall back to the legacy combobox. The threshold is the
+	// point past which pills start to feel cluttered on a phone-width
+	// viewport (~6 options wrap onto 2 rows; >6 should be a searchable
+	// combobox).
+	get _CHOICE_PILL_THRESHOLD() { return 6; }
+
+	get useChoicePills() {
+		const opts = this.options;
+		if (!Array.isArray(opts)) return false;
+		return opts.length > 0 && opts.length <= this._CHOICE_PILL_THRESHOLD;
+	}
+
+	get useMultipleChoicePills() {
+		return this.isMultipleChoice && this.useChoicePills;
+	}
+	get useMultipleChoiceCombobox() {
+		return this.isMultipleChoice && !this.useChoicePills;
+	}
+
+	get useDropDownPills() {
+		return this.isDropDown && this.useChoicePills;
+	}
+	get useDropDownCombobox() {
+		return this.isDropDown && !this.useChoicePills;
+	}
+
+	get useRadioButtonsPills() {
+		// Radio Buttons always uses pills (the legacy segmented control
+		// can't handle >6 options on a phone width cleanly anyway, and
+		// admins picking "Radio Buttons" specifically expect a row-style
+		// affordance). For >6 options the pills will wrap.
+		return this.isRadioButtons;
+	}
+
+	// --- Lookup config (read from Form_Question__c.Lookup_*__c fields) ------
+	get lookupRelatedList() {
+		return getValue(
+			this.question,
+			FIELDS.Form_Question__c.LookupRelatedList.fieldApiName,
+			''
+		);
+	}
+	get lookupChildObject() {
+		return getValue(
+			this.question,
+			FIELDS.Form_Question__c.LookupChildObject.fieldApiName,
+			''
+		);
+	}
+	get lookupDisplayField() {
+		return getValue(
+			this.question,
+			FIELDS.Form_Question__c.LookupDisplayField.fieldApiName,
+			''
+		);
+	}
+
 	get calculationFormula() {
 		return this.question?.[FIELDS.Form_Question__c.CalculationFormula.fieldApiName] || '';
 	}

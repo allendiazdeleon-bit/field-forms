@@ -1,86 +1,102 @@
 .main-container {
-  display: table-cell;
-  vertical-align: middle;
-  max-width: inherit;
+    display: table-cell;
+    vertical-align: middle;
+    max-width: inherit;
 }
 
 .image {
-  display: block;
-  margin: auto;
-  padding: 0 var(--lwc-varSpacingSmall, 0.75rem);
+    display: block;
+    margin: auto;
+    padding: 0 var(--lwc-varSpacingSmall, var(--neura-space-md, 0.75rem));
 }
 
 .info-container {
-  display: flex;
-  flex-flow: row;
-  max-width: inherit;
-  padding: 10px 15px 10px 15px;
-  overflow-y: auto;
+    display: flex;
+    flex-flow: row;
+    max-width: inherit;
+    padding: var(--neura-space-sm, 10px) var(--neura-space-md, 15px);
+    overflow-y: auto;
 }
 
 .info-text {
-  flex: 1 1 auto;
-  max-width: inherit;
+    flex: 1 1 auto;
+    max-width: inherit;
 }
 
 /* @sldsValidatorIgnore */
 .file-name {
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-  color: #aeaeae;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    color: var(--neura-color-text-muted, #aeaeae);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-base);
 }
 
 /* @sldsValidatorIgnore */
 .description {
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-  color: #e5e5e5;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    color: var(--neura-color-text-disabled, #e5e5e5);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-base);
 }
 
 .edit-button {
-  color: #1b96ff;
+    color: var(--neura-color-primary, #1b96ff);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: color var(--neura-motion-fast) var(--neura-motion-ease);
 }
 
 .edit-button:focus,
 .edit-button:hover,
 .edit-button:active {
-  box-shadow: none;
-  -webkit-box-shadow: none;
-  border-color: transparent;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+    border-color: transparent;
+}
+
+.edit-button:hover  { color: var(--neura-color-primary-hover); }
+.edit-button:active { color: var(--neura-color-primary-active); }
+.edit-button:focus-visible {
+    outline: var(--neura-focus-ring-width, 2px) solid var(--neura-focus-ring-color, #0070d2);
+    outline-offset: var(--neura-focus-ring-offset, 2px);
+    border-radius: var(--neura-radius-sm);
 }
 
 .big-edit-button {
-  font-weight: bold;
-  padding: 0 0 5px;
+    font-weight: var(--neura-font-weight-bold);
+    padding: 0 0 var(--neura-space-xs, 5px);
 }
 
 .small-edit-button {
-  flex: 0 1 auto;
-  padding-left: 10px;
+    flex: 0 1 auto;
+    padding-left: var(--neura-space-sm, 10px);
 }
 
 .small-edit-button > button > svg {
-  width: var(--lwc-squareIconUtilityMedium, 1.25rem);
-  height: var(--lwc-squareIconUtilityMedium, 1.25rem);
+    width: var(--lwc-squareIconUtilityMedium, 1.25rem);
+    height: var(--lwc-squareIconUtilityMedium, 1.25rem);
 }
 
 .page {
-  display: flex;
-  flex-flow: column;
-  height: 100%;
+    display: flex;
+    flex-flow: column;
+    height: 100%;
 }
 
 .page .section.content {
-  display: flex;
-  flex-flow: column;
-  flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: relative;
+    display: flex;
+    flex-flow: column;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
 }
 
 .page .section.footer {
-  flex: 0 1 auto;
+    flex: 0 1 auto;
 }

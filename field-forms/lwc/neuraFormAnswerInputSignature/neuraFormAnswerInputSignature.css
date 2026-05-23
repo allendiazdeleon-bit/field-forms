@@ -27,10 +27,53 @@
     cursor: pointer;
 }
 
+/* Type / Draw chooser inside the capture bottom sheet. Two roomy tap
+   targets stacked vertically on phones, side-by-side on wider sheets. */
+.options-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--neura-space-sm);
+    padding: var(--neura-space-sm) 0 var(--neura-space-md);
+}
+
+.option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--neura-space-sm);
+    width: 100%;
+    min-height: var(--neura-touch-mobile);
+    padding: var(--neura-space-md) var(--neura-space-lg);
+    background: var(--neura-color-surface);
+    border: 1px solid var(--neura-color-border);
+    border-radius: var(--neura-radius-md);
+    color: var(--neura-color-text-primary);
+    font-family: var(--neura-font-family);
+    font-size: var(--neura-text-md);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--neura-motion-fast) var(--neura-motion-ease),
+                border-color var(--neura-motion-fast) var(--neura-motion-ease),
+                transform var(--neura-motion-fast) var(--neura-motion-ease);
+}
+.option:hover {
+    border-color: var(--neura-color-primary);
+    background: var(--neura-color-primary-subtle);
+}
+.option:active {
+    transform: scale(0.99);
+}
+.option:focus-visible {
+    outline: var(--neura-focus-ring-width) solid var(--neura-focus-ring-color);
+    outline-offset: var(--neura-focus-ring-offset);
+}
+
 .option-icon {
-    margin-right: 5px;
+    margin-right: 0;
+    color: var(--neura-color-primary);
 }
 
 .option-label {
-    font-size: 14px;
+    font-size: var(--neura-text-md);
+    color: var(--neura-color-text-primary);
+    font-weight: var(--neura-font-weight-medium);
 }

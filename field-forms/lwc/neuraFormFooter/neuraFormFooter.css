@@ -1,15 +1,70 @@
+/* Form footer — sticky bottom bar with the primary CTA. Beefier
+   padding + a more confident primary "Next" button. SLDS variables
+   are nudged inside the button container so lightning-button picks
+   up the new visual without us having to rewrite the button itself. */
+
 .form-footer {
     position: var(--footer-position, fixed);
     left: 0;
     bottom: 0;
     width: 100%;
-    background-color: #f4f4f4;
+    background-color: var(--neura-color-surface, #ffffff);
+    border-top: 1px solid var(--neura-color-border, #e5e5e5);
+    box-shadow: var(--neura-shadow-base, 0 -1px 3px rgba(0, 0, 0, 0.06));
+    padding-bottom: var(--neura-safe-bottom, 0px);
     text-align: center;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
-    z-index:10;
+    z-index: var(--neura-z-sticky, 10);
 }
 
 .form-footer-buttons {
     display: flex;
-    justify-content: space-evenly;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: var(--neura-space-sm, 0.5rem);
+    padding: var(--neura-space-md, 0.75rem) var(--neura-space-lg, 1rem);
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.form-footer-buttons .footer-btn {
+    /* Each button stretches equally. The brand "Next" button reads as
+       the primary CTA via fill + shadow; secondary actions stay
+       neutral. */
+    flex: 1 1 auto;
+    min-height: var(--neura-touch-mobile, 48px);
+}
+
+/* Beef up the SLDS lightning-button rendering via its style-hook
+   custom properties — gives the primary CTA a more confident look
+   without rebuilding the button component. */
+.form-footer-buttons .footer-btn[data-action="next"],
+.form-footer-buttons .footer-btn[data-action="finish"] {
+    --slds-c-button-brand-color-background: var(--neura-color-primary);
+    --slds-c-button-brand-color-background-hover: var(--neura-color-primary-hover);
+    --slds-c-button-brand-color-background-active: var(--neura-color-primary-active);
+    --slds-c-button-brand-color-border: var(--neura-color-primary);
+    --slds-c-button-brand-color-border-hover: var(--neura-color-primary-hover);
+    --slds-c-button-brand-color-border-active: var(--neura-color-primary-active);
+    --slds-c-button-text-color: var(--neura-color-primary-contrast);
+    --slds-c-button-radius-border: var(--neura-radius-md);
+    --slds-c-button-spacing-block-start: var(--neura-space-sm);
+    --slds-c-button-spacing-block-end: var(--neura-space-sm);
+    --slds-c-button-spacing-inline-start: var(--neura-space-lg);
+    --slds-c-button-spacing-inline-end: var(--neura-space-lg);
+}
+
+.form-footer-buttons .footer-btn[data-action="finish"] {
+    /* Success variant for Finish keeps semantic green */
+    --slds-c-button-brand-color-background: var(--neura-color-success-strong);
+    --slds-c-button-brand-color-background-hover: var(--neura-color-success);
+    --slds-c-button-brand-color-border: var(--neura-color-success-strong);
+}
+
+.form-footer-buttons .footer-btn[data-action="previous"],
+.form-footer-buttons .footer-btn[data-action="backToForms"] {
+    --slds-c-button-neutral-color-background: transparent;
+    --slds-c-button-neutral-color-background-hover: var(--neura-color-surface-muted);
+    --slds-c-button-neutral-color-border: var(--neura-color-border);
+    --slds-c-button-text-color: var(--neura-color-text-secondary);
+    --slds-c-button-radius-border: var(--neura-radius-md);
 }

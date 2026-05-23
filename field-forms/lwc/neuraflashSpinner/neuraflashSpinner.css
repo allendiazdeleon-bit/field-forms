@@ -18,26 +18,24 @@
     visibility: visible;
     width: calc(60px * var(--size));
     height: calc(68px * var(--size));
-    color: #0070d2;
+    color: var(--neura-color-primary, #0070d2);
     animation: spin 3s linear infinite;
 }
 
 @keyframes spin {
-    from {
-        transform: rotate(0deg) translateX(calc(50px * var(--size))); 
-    }
-    to {
-    transform: rotate(360deg) translateX(calc(50px * var(--size)));
-    }  
+    from { transform: rotate(0deg) translateX(calc(50px * var(--size))); }
+    to   { transform: rotate(360deg) translateX(calc(50px * var(--size))); }
 }
 
 .loading-container {
     display: flex;
     align-items: center;
+    font-family: var(--neura-font-family);
+    color: var(--neura-color-text-muted, #706e6b);
 }
 
 .loading-text {
-    font-size: 0.8rem;
+    font-size: var(--neura-text-base, 0.8rem);
 }
 
 .ellipsis::before {
@@ -47,13 +45,12 @@
 }
 
 @keyframes ellipsis-animation {
-    0% {
-        content: ".";
-    }
-    33% {
-        content: "..";
-    }
-    66% {
-        content: "...";
-    }
+    0%   { content: "."; }
+    33%  { content: ".."; }
+    66%  { content: "..."; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .image { animation-duration: 6s; }
+    .ellipsis::before { animation: none; content: "..."; }
 }

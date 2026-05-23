@@ -1,0 +1,33 @@
+<template>
+    <div class="choice-pills" role={groupRole}>
+        <template for:each={pills} for:item="p">
+            <button
+                key={p.key}
+                type="button"
+                class={p.cssClass}
+                role={groupRole}
+                aria-pressed={p.isActive}
+                data-value={p.value}
+                onclick={handlePillClick}
+            >
+                <span class="pill__label">{p.label}</span>
+            </button>
+        </template>
+    </div>
+
+    <!-- Reveal-text-on-Other (single-select only). Stays inline below the
+         pill row; doesn't push other questions on the page until typed. -->
+    <template if:true={showOtherInput}>
+        <div class="other-input-wrap">
+            <lightning-input
+                data-id="otherInput"
+                type="text"
+                label="Other"
+                variant="label-hidden"
+                placeholder="Please specify…"
+                value={otherInputValue}
+                onchange={handleOtherInput}
+            ></lightning-input>
+        </div>
+    </template>
+</template>
