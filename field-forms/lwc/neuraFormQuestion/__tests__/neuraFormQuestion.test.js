@@ -13,15 +13,18 @@ describe('c-neura-form-question rich text sanitizer', () => {
         }
     });
 
+    // neuraFormQuestion reads fields via getValue(obj, fieldName) which is
+    // flat (obj[fieldName]) — NOT the LDS-style fields.X.value wrapper.
+    // The renderer pre-processes the LDS shape into flat objects before
+    // passing them down. Tests must mirror the post-processed shape.
     function mountWithDisplayText(richText) {
         const element = createElement('c-neura-form-question', {
             is: NeuraFormQuestion
         });
         element.formQuestion = {
-            fields: {
-                Type__c: { value: 'Display Text' },
-                Display_Rich_Text__c: { value: richText }
-            }
+            Id: 'q-test',
+            Type__c: 'Display Text',
+            Display_Rich_Text__c: richText
         };
         document.body.appendChild(element);
         return element;

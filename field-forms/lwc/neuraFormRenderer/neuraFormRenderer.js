@@ -24,6 +24,16 @@ import {
 import { saveAnswers, deleteAnswers } from './databaseLayer';
 import { createSwipeController } from './swipeController';
 import { createAutoSaveController } from './autoSaveController';
+import {
+	toggleSkipped,
+	formatSkippedBadgeLabel,
+	formatBlockedSubmitMessage
+} from './skipQueueController';
+import {
+	parentFieldForHost,
+	formatPrefillSuccessMessage,
+	PREFILL_MESSAGES
+} from './prefillController';
 
 import { reduceError } from 'c/nfCommonUtility';
 
@@ -474,7 +484,7 @@ export default class NeuraFormRenderer extends LightningElement {
 		if (actionType === 'finish' && this.hasSkipped) {
 			this.showToastMessage(
 				'Info',
-				`You still have ${this.skippedCount} field${this.skippedCount === 1 ? '' : 's'} flagged to revisit. Clear them before submitting.`,
+				formatBlockedSubmitMessage(this.skippedCount),
 				'warning'
 			);
 			this.dispatchEvent(new CustomEvent('footerclick', { detail: false }));
@@ -1108,35 +1118,24 @@ export default class NeuraFormRenderer extends LightningElement {
 	_lastSavedAt = null;
 
 	// --- Skip-and-return queue ---
-	// Set of question Ids the tech long-pressed to defer. Surfaced as a
-	// badge near the footer and blocks final submit until empty.
+	// Reactive @track array stays here so the template + the c-neura-form-page
+	// child see updates; toggle + label formatting live in
+	// ./skipQueueController.js.
 	@track _skippedIds = [];
 	get skippedCount() { return this._skippedIds.length; }
 	get hasSkipped() { return this._skippedIds.length > 0; }
-	get skippedBadgeLabel() {
-		const n = this._skippedIds.length;
-		return n === 1 ? '1 to revisit' : `${n} to revisit`;
-	}
+	get skippedBadgeLabel() { return formatSkippedBadgeLabel(this._skippedIds.length); }
 
 	// --- Same-as-last-visit prefill ---
-	get _prefillParentField() {
-		switch (this.hostObjectApiName) {
-			case 'WorkOrder':            return 'Work_Order__c';
-			case 'WorkOrderLineItem':    return 'Work_Order_Line_Item__c';
-			case 'ServiceAppointment':   return 'Service_Appointment__c';
-			default: return null;
-		}
-	}
+	// Pure helpers (host->parent-field map + message formatting) live in
+	// ./prefillController.js; the orchestration here owns the Apex call,
+	// the reactive answer-application, and the refs.formPage child poke.
 
 	async handlePrefillLastVisit() {
-		const parentField = this._prefillParentField;
+		const parentField = parentFieldForHost(this.hostObjectApiName);
 		const templateId = this._formObject?.Id;
 		if (!parentField || !this.hostRecordId || !templateId) {
-			this.showToastMessage(
-				'Info',
-				'Prefill requires the host record context to be available.',
-				'warning'
-			);
+			this.showToastMessage('Info', PREFILL_MESSAGES.MISSING_CONTEXT, 'warning');
 			return;
 		}
 		try {
@@ -1147,11 +1146,7 @@ export default class NeuraFormRenderer extends LightningElement {
 				parentField
 			});
 			if (!prior || !prior.length) {
-				this.showToastMessage(
-					'Info',
-					'No prior completed visit found for this asset to copy from.',
-					'info'
-				);
+				this.showToastMessage('Info', PREFILL_MESSAGES.NO_PRIOR_FOUND, 'info');
 				return;
 			}
 			const dictMap = {};
@@ -1162,7 +1157,7 @@ export default class NeuraFormRenderer extends LightningElement {
 			this.refs.formPage?.applyDictation?.(dictMap);
 			this.showToastMessage(
 				'Info',
-				`Copied ${prior.length} answer${prior.length === 1 ? '' : 's'} from the last visit. Review and adjust.`,
+				formatPrefillSuccessMessage(prior.length),
 				'info'
 			);
 		} catch (e) {
@@ -1172,13 +1167,7 @@ export default class NeuraFormRenderer extends LightningElement {
 
 	handleSkipToggle(event) {
 		const id = event?.detail?.questionId;
-		if (!id) return;
-		const idx = this._skippedIds.indexOf(id);
-		if (idx >= 0) {
-			this._skippedIds = this._skippedIds.filter((x) => x !== id);
-		} else {
-			this._skippedIds = [...this._skippedIds, id];
-		}
+		this._skippedIds = toggleSkipped(this._skippedIds, id);
 	}
 
 	get autoSaveBadgeClass() {
