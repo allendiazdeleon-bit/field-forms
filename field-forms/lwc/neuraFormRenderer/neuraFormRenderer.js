@@ -34,6 +34,11 @@ import {
 	formatPrefillSuccessMessage,
 	PREFILL_MESSAGES
 } from './prefillController';
+import {
+	buildKeyConditionMap,
+	isNumericValue as _isNumericValueImpl
+} from './conditionalRenderingEvaluator';
+import { filterBooleanQuestions } from './booleanQuestionUtils';
 
 import { reduceError } from 'c/nfCommonUtility';
 
@@ -1230,12 +1235,13 @@ export default class NeuraFormRenderer extends LightningElement {
 	// --- /Auto-save ----------------------------------------------------------
 
 	getBooleanQuestions(section) {
-		return section.questions.filter((item) => {
-			return (
-				item[FIELDS.Form_Question__c.Type.fieldApiName] === 'Toggle' ||
-				item[FIELDS.Form_Question__c.Type.fieldApiName] === 'Checkbox'
-			);
-		}); //Add the type accordingly in future when more boolean type fields are introduced
+		// Delegates to ./booleanQuestionUtils.js — the boolean-type
+		// registry lives there so adding a new boolean-flavored type is
+		// a one-line change, not a hunt through this class.
+		return filterBooleanQuestions(
+			section && section.questions,
+			FIELDS.Form_Question__c.Type.fieldApiName
+		);
 	}
 
 	updateRendering(questionId, initialLoad) {
@@ -1367,72 +1373,33 @@ export default class NeuraFormRenderer extends LightningElement {
 	}
 
 	getKeyConditionMap(conditions) {
-		let keyConditionMap = new Map();
-		conditions.forEach((item) => {
-			let answerValue;
-			const questionId = item.resource;
-
+		// Per-condition answer resolution stays here because it consults
+		// both the in-memory questionAnswerMap (live edits) and the
+		// server-side persisted answers via checkInSavedAnswers. The
+		// expression-building + eval is in
+		// ./conditionalRenderingEvaluator.js so each operator branch is
+		// directly unit-tested.
+		const answerFieldName = FIELDS.Form_Answer__c.Answer.fieldApiName;
+		return buildKeyConditionMap(conditions, (questionId) => {
 			if (this.questionAnswerMap.has(questionId)) {
 				const answerAvailable = this.questionAnswerMap.get(questionId);
-				if (
-					answerAvailable.hasOwnProperty(
-						FIELDS.Form_Answer__c.Answer.fieldApiName
-					)
-				) {
-					answerValue =
-						answerAvailable[FIELDS.Form_Answer__c.Answer.fieldApiName];
+				if (Object.prototype.hasOwnProperty.call(answerAvailable, answerFieldName)) {
+					const v = answerAvailable[answerFieldName];
+					if (v) return v;
 				}
 			}
-
-			if (!answerValue) {
-				const answers = this.checkInSavedAnswers(questionId, false);
-				if (answers && answers.length) {
-					const answerAvailable = answers[0];
-					answerValue =
-						answerAvailable[FIELDS.Form_Answer__c.Answer.fieldApiName];
-				}
+			const answers = this.checkInSavedAnswers(questionId, false);
+			if (answers && answers.length) {
+				return answers[0][answerFieldName];
 			}
-
-			let condition;
-
-			if (STRING_LIST_OPERATORS.includes(item.operator)) {
-				if (Array.isArray(item.value)) {
-					let stringArray = new String();
-					item.value.forEach((val) => {
-						stringArray += `'${val}',`;
-					});
-					stringArray = stringArray.substring(0, stringArray.length - 1);
-					condition = `[${stringArray}].${OPERATOR_MAP.get(item.operator)}('${answerValue}')`;
-				} else {
-					condition = `'${answerValue}'.${OPERATOR_MAP.get(item.operator)}('${item.value}')`;
-				}
-
-				if (NEGATION_STRING_LIST_OPERATORS.includes(item.operator)) {
-					condition = `!${condition}`;
-				}
-			} else {
-				if (
-					this.isNumericValue(answerValue) &&
-					this.isNumericValue(item.value)
-				) {
-					condition = `${answerValue} ${OPERATOR_MAP.get(item.operator)} ${item.value}`;
-				} else {
-					condition = `'${answerValue}' ${OPERATOR_MAP.get(item.operator)} '${item.value}'`;
-				}
-			}
-
-			keyConditionMap.set(item.key, eval(condition));
+			return undefined;
 		});
-
-		return keyConditionMap;
 	}
 
+	// Back-compat shim — preserved so any external caller (or future
+	// inline use) continues to work; delegates to the extracted module.
 	isNumericValue(str) {
-		if (typeof str != 'string') return false; // we only process strings!
-		return (
-			!isNaN(str) && // use type coercion to parse the _entirety_ of the string (`parseFloat` alone does not do this)...
-			!isNaN(parseFloat(str))
-		); // ...and ensure strings of whitespace fail
+		return _isNumericValueImpl(str);
 	}
 
 	removeAnswersOfHiddenQuestions(questionId) {
