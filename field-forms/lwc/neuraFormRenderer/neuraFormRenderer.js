@@ -22,6 +22,8 @@ import {
 } from './constants';
 
 import { saveAnswers, deleteAnswers } from './databaseLayer';
+import { createSwipeController } from './swipeController';
+import { createAutoSaveController } from './autoSaveController';
 
 import { reduceError } from 'c/nfCommonUtility';
 
@@ -1096,12 +1098,14 @@ export default class NeuraFormRenderer extends LightningElement {
 
 	// --- Auto-save -----------------------------------------------------------
 	//
-	// Drafts are enqueued via uiRecordApi (which IS drafts-enabled offline)
-	// inside saveAnswers(). Each successful save flips the answer's
-	// uploadCompleted to true so subsequent auto-save passes skip it.
+	// Reactive state lives here so the template re-renders on transitions;
+	// the actual state machine (debounce timer, dirty-check, save call,
+	// error handling) lives in ./autoSaveController.js. The controller
+	// is constructed in connectedCallback below.
 	@track autoSaveStatus = 'idle'; // 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 	@track autoSaveLabel = '';
-	_autoSaveTimer = null;
+	_autoSave;
+	_lastSavedAt = null;
 
 	// --- Skip-and-return queue ---
 	// Set of question Ids the tech long-pressed to defer. Surfaced as a
@@ -1191,129 +1195,48 @@ export default class NeuraFormRenderer extends LightningElement {
 	}
 
 	// --- Swipe-between-pages gesture ----------------------------------------
-	//
-	// Horizontal swipe on inert page chrome navigates prev/next, matching the
-	// "carousel" gesture mobile users already expect. Carefully avoids
-	// stealing the gesture from signature canvases, scrollable lists, and
-	// form inputs (those keep their native touch behavior).
-	_swipeStartX = 0;
-	_swipeStartY = 0;
-	_swipeStartTime = 0;
-	_swipeBailed = false;
+	// Logic lives in ./swipeController.js. The renderer just owns the
+	// callback that translates a 'previous'|'next' direction into the
+	// existing footer-click navigation path (so validation, save, and
+	// the page animation all run identically to a button-driven flow).
+	_swipe = createSwipeController({
+		onNavigate: (direction) => {
+			this.handleFooterButtonClick({ detail: { actionType: direction } });
+		}
+	});
 
-	handlePageSwipeStart(event) {
-		const touch = event.touches && event.touches[0];
-		if (!touch) return;
-		this._swipeStartX = touch.clientX;
-		this._swipeStartY = touch.clientY;
-		this._swipeStartTime = Date.now();
-		// Bail if the gesture starts inside an interactive element. The
-		// closest() check walks up through Light DOM ancestors; LWC Shadow
-		// DOM boundaries are opaque here, which is fine — we just need to
-		// know we're on inert chrome vs. a real input.
-		const target = event.target;
-		this._swipeBailed = !!(
-			target && typeof target.closest === 'function' &&
-			target.closest(
-				'canvas, input, textarea, select, button, ' +
-				'lightning-input, lightning-textarea, lightning-combobox, ' +
-				'lightning-input-rich-text, lightning-radio-group, ' +
-				'lightning-checkbox-group, lightning-file-upload, ' +
-				'lightning-button, [contenteditable="true"]'
-			)
-		);
-	}
-
-	handlePageSwipeEnd(event) {
-		if (this._swipeBailed) { this._swipeBailed = false; return; }
-		const touch = event.changedTouches && event.changedTouches[0];
-		if (!touch) return;
-		const dx = touch.clientX - this._swipeStartX;
-		const dy = touch.clientY - this._swipeStartY;
-		const dt = Date.now() - this._swipeStartTime;
-		const absX = Math.abs(dx);
-		const absY = Math.abs(dy);
-		// Tunable thresholds — chosen to feel responsive without firing
-		// on incidental drags or vertical scroll attempts.
-		const HORIZONTAL_PX = 60;
-		const MAX_VERT_PX = 30;
-		const MAX_DURATION_MS = 500;
-		if (absX < HORIZONTAL_PX) return;
-		if (absY > MAX_VERT_PX) return;
-		if (absX < 2 * absY) return;
-		if (dt > MAX_DURATION_MS) return;
-		// Right-swipe = previous page; left-swipe = next page. Reuse the
-		// existing footer-click path so validation, save, and the page
-		// animation all run identically to the button-driven flow.
-		const actionType = dx > 0 ? 'previous' : 'next';
-		this.handleFooterButtonClick({ detail: { actionType } });
-	}
+	handlePageSwipeStart(event) { this._swipe.onTouchStart(event); }
+	handlePageSwipeEnd(event)   { this._swipe.onTouchEnd(event); }
 	// --- /Swipe-between-pages -----------------------------------------------
 
-	_lastSavedAt = null;
+	// Bridge the auto-save controller's state-change callback into the
+	// renderer's reactive @track fields + the draftstate CustomEvent
+	// consumed by c-neura-draft-queue-badge in the mobile shell.
+	_handleAutoSaveStateChange(state) {
+		this.autoSaveStatus = state.status;
+		this.autoSaveLabel = state.label;
+		this._lastSavedAt = state.lastSavedAt;
+		this.dispatchEvent(new CustomEvent('draftstate', {
+			detail: state.draftState,
+			bubbles: true,
+			composed: true
+		}));
+	}
 
-	// Translate the form-local autoSaveStatus into the shape consumed by
-	// the device-level c-neura-draft-queue-badge mounted by the mobile shell.
-	// The mobile shell aggregates these signals; on FSL Mobile this is the
-	// closest approximation we have to a device draft-queue inspector
-	// (the platform doesn't expose one directly).
-	_emitDraftState() {
-		const pendingStatuses = ['pending', 'saving'];
-		const detail = {
-			pendingCount: pendingStatuses.includes(this.autoSaveStatus) ? 1 : 0,
-			hasError: this.autoSaveStatus === 'error',
-			lastSyncedAt: this._lastSavedAt
-		};
-		this.dispatchEvent(new CustomEvent('draftstate', { detail, bubbles: true, composed: true }));
+	_initAutoSave() {
+		if (this._autoSave) return;
+		this._autoSave = createAutoSaveController({
+			getDirtyAnswers: () => this.questionAnswerMap,
+			getLinkedFormId: () => this._formObject?.linkedForm?.Id,
+			getFormFactor: () => formFactorPropertyName,
+			save: saveAnswers,
+			onStateChange: (state) => this._handleAutoSaveStateChange(state)
+		});
 	}
 
 	scheduleAutoSave() {
-		this.autoSaveStatus = 'pending';
-		this.autoSaveLabel = 'Unsaved changes';
-		this._emitDraftState();
-		if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
-		this._autoSaveTimer = setTimeout(() => {
-			this._runAutoSave();
-		}, 1500);
-	}
-
-	async _runAutoSave() {
-		// Only run if there's something dirty. saveAnswers already filters
-		// to uploadCompleted=false; this short-circuit avoids the call
-		// entirely when the map is clean.
-		let hasDirty = false;
-		for (const v of this.questionAnswerMap.values()) {
-			if (!v.uploadCompleted) { hasDirty = true; break; }
-		}
-		if (!hasDirty) {
-			this.autoSaveStatus = 'idle';
-			this.autoSaveLabel = '';
-			this._emitDraftState();
-			return;
-		}
-
-		this.autoSaveStatus = 'saving';
-		this.autoSaveLabel = 'Saving…';
-		this._emitDraftState();
-		try {
-			await saveAnswers(
-				this.questionAnswerMap,
-				this._formObject.linkedForm.Id,
-				formFactorPropertyName
-			);
-			this.autoSaveStatus = 'saved';
-			const now = new Date();
-			this._lastSavedAt = now.toISOString();
-			const hh = String(now.getHours() % 12 || 12);
-			const mm = String(now.getMinutes()).padStart(2, '0');
-			const ampm = now.getHours() >= 12 ? 'pm' : 'am';
-			this.autoSaveLabel = `Saved ${hh}:${mm} ${ampm}`;
-			this._emitDraftState();
-		} catch (e) {
-			this.autoSaveStatus = 'error';
-			this.autoSaveLabel = 'Save failed (will retry on Next)';
-			this._emitDraftState();
-		}
+		this._initAutoSave();
+		this._autoSave.schedule();
 	}
 	// --- /Auto-save ----------------------------------------------------------
 
