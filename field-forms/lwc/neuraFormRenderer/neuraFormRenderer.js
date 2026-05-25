@@ -44,6 +44,8 @@ import {
 	formatDictationDiagnostic,
 	formatDictationSuccessMessage
 } from './dictationHelpers';
+import { resolveFieldPath as _resolveFieldPathImpl } from './pathResolver';
+import { collectMissingRequiredLabels as _collectMissingRequiredImpl } from './validationHelpers';
 
 import { reduceError } from 'c/nfCommonUtility';
 
@@ -269,34 +271,11 @@ export default class NeuraFormRenderer extends LightningElement {
 		this.questionAnswerMap.set(question.Id, tempAns);
 	}
 
-	/**
-	 * Walks a getRecord result via a dotted path like
-	 * "WorkOrder.Account.Name". Returns the resolved primitive, or undefined.
-	 *
-	 * uiRecordApi nests spanning lookups under `fields.<lookup>.value.fields`
-	 * - this walker handles both shapes: bare values and the nested-record
-	 * containers. Tolerant to missing intermediates.
-	 */
+	// Back-compat shim — preserved so any caller (and the inline
+	// applySourceDefaults call below) continues to work; delegates to
+	// the pure module at ./pathResolver.js for direct testability.
 	resolveFieldPath(record, fullPath) {
-		if (!record || !fullPath) return undefined;
-		// Drop the leading object name if present (WorkOrder.Account.Name -> Account.Name).
-		const parts = fullPath.split('.');
-		if (parts.length > 1 && parts[0] === record.apiName) parts.shift();
-
-		let current = record.fields;
-		for (let i = 0; i < parts.length; i++) {
-			if (!current) return undefined;
-			const node = current[parts[i]];
-			if (node === undefined) return undefined;
-			const isLast = i === parts.length - 1;
-			if (isLast) {
-				// Leaf: extract .value or the bare value.
-				return node && typeof node === 'object' && 'value' in node ? node.value : node;
-			}
-			// Spanning: follow into the related record's fields.
-			current = node?.value?.fields ?? node?.fields ?? undefined;
-		}
-		return undefined;
+		return _resolveFieldPathImpl(record, fullPath);
 	}
 	loadComplete() {
 		this._loaded = true;
@@ -695,25 +674,24 @@ export default class NeuraFormRenderer extends LightningElement {
 	}
 
 	collectMissingRequiredLabels() {
-		const out = [];
+		// Delegates to the pure walker at ./validationHelpers.js. Field
+		// name resolution stays here because FIELDS.* is namespace-aware
+		// at runtime while the helper needs to stay namespace-agnostic
+		// for direct unit testing.
 		try {
-			(this.currentPage?.sections || []).forEach((section) => {
-				(section.questions || []).forEach((q) => {
-					const required = q[FIELDS.Form_Question__c.Required.fieldApiName];
-					if (!required || q.shouldRender === false) return;
-					const answer = this.questionAnswerMap?.get?.(q.Id);
-					const value = answer?.[AnswerField.fieldApiName];
-					const empty = value === undefined || value === null || String(value).trim() === '';
-					if (empty) {
-						const label = q[FIELDS.Form_Question__c.Question.fieldApiName] || q.Name || 'Unnamed question';
-						out.push(label);
-					}
-				});
-			});
+			return _collectMissingRequiredImpl(
+				this.currentPage,
+				this.questionAnswerMap,
+				{
+					required: FIELDS.Form_Question__c.Required.fieldApiName,
+					question: FIELDS.Form_Question__c.Question.fieldApiName,
+					answer: AnswerField.fieldApiName
+				}
+			);
 		} catch (e) {
 			console.warn('collectMissingRequiredLabels failed', e);
+			return [];
 		}
-		return out;
 	}
 
 	checkValidations() {
