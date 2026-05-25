@@ -15,8 +15,12 @@
         <object>Form_Section__c</object>
     </objects>
     <objects>
-        <description>Form questions for primed templates (3 levels deep). Briefcase queries are limited to 3-level depth; the JSON snapshot fields on Form_Template are the offline-read fallback.</description>
+        <description>Form questions for primed templates (3 levels deep). Briefcase queries are limited to 3-level depth; the JSON snapshot fields on Form_Template (legacy) and Form_Template_Snapshot__c rows (v2) are the offline-read fast path.</description>
         <object>Form_Question__c</object>
+    </objects>
+    <objects>
+        <description>Chunked renderer-ready JSON snapshot rows for primed templates. The mobile renderer concatenates Payload__c values ordered by (Payload_Type__c, Chunk_Index__c) to reconstruct each section/page/question/conditions document. See docs/snapshot-v2.md.</description>
+        <object>Form_Template_Snapshot__c</object>
     </objects>
     <objects>
         <description>Default_Form mappings keyed by WorkType. Used by the draft-parent fallback in neuraFormMobile to materialize a Linked_Form locally when the host record itself was created offline.</description>

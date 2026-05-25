@@ -179,36 +179,55 @@ public with sharing class NeuraFormLogic {
             }
         }
 
+        Boolean v2Enabled = NeuraFormSnapshotV2.isEnabled();
+
         // Loop over the Form Wrapper Map and update the JSON field on Form Template
         for(Form_Template__c formTemplate : recordMap.values()){
             if(formTemplateMap.containsKey(formTemplate.Id)){
-                formTemplate.Pages_JSON__c = JSON.serialize(formTemplateMap.get(formTemplate.Id).pages);
-                formTemplate.Sections_JSON__c = JSON.serialize(formTemplateMap.get(formTemplate.Id).sections);
+                if (v2Enabled) {
+                    // v2: chunk rows on Form_Template_Snapshot__c carry the
+                    // payload. Null the legacy fields so the renderer's
+                    // fallback logic doesn't read stale data.
+                    formTemplate.Pages_JSON__c = null;
+                    formTemplate.Sections_JSON__c = null;
+                    formTemplate.Questions_JSON__c = null;
+                    formTemplate.Questions_JSON_1__c = null;
+                    formTemplate.Questions_JSON_2__c = null;
+                    formTemplate.Page_Conditions__c = null;
+                    formTemplate.Section_Conditions__c = null;
+                    formTemplate.Question_Conditions__c = null;
+                } else {
+                    formTemplate.Pages_JSON__c = JSON.serialize(formTemplateMap.get(formTemplate.Id).pages);
+                    formTemplate.Sections_JSON__c = JSON.serialize(formTemplateMap.get(formTemplate.Id).sections);
 
-                // Reset all questions;
-                formTemplate.Questions_JSON__c = '[]';
-                formTemplate.Questions_JSON_1__c = '[]';
-                formTemplate.Questions_JSON_2__c = '[]';
-                List<String> questionsStringList = buildJSONStringListFromList(formTemplateMap.get(formTemplate.Id).questions, 131072);
-                Integer counter = 0;
-                for(String questionString : questionsStringList){
-                    if(counter == 0){
-                        formTemplate.Questions_JSON__c = questionString;
-                    } else if (counter == 1){
-                        formTemplate.Questions_JSON_1__c = questionString;
-                    } else if (counter == 2){
-                        formTemplate.Questions_JSON_2__c = questionString;
+                    // Reset all questions;
+                    formTemplate.Questions_JSON__c = '[]';
+                    formTemplate.Questions_JSON_1__c = '[]';
+                    formTemplate.Questions_JSON_2__c = '[]';
+                    List<String> questionsStringList = buildJSONStringListFromList(formTemplateMap.get(formTemplate.Id).questions, 131072);
+                    Integer counter = 0;
+                    for(String questionString : questionsStringList){
+                        if(counter == 0){
+                            formTemplate.Questions_JSON__c = questionString;
+                        } else if (counter == 1){
+                            formTemplate.Questions_JSON_1__c = questionString;
+                        } else if (counter == 2){
+                            formTemplate.Questions_JSON_2__c = questionString;
+                        }
+                        counter++;
                     }
-                    counter++;
-                }                
-                formTemplate.Page_Conditions__c = buildJSONStringFromList(formTemplateMap.get(formTemplate.Id).pageConditions);
-                formTemplate.Section_Conditions__c = buildJSONStringFromList(formTemplateMap.get(formTemplate.Id).sectionConditions);
-                formTemplate.Question_Conditions__c = buildJSONStringFromList(formTemplateMap.get(formTemplate.Id).questionConditions);
+                    formTemplate.Page_Conditions__c = buildJSONStringFromList(formTemplateMap.get(formTemplate.Id).pageConditions);
+                    formTemplate.Section_Conditions__c = buildJSONStringFromList(formTemplateMap.get(formTemplate.Id).sectionConditions);
+                    formTemplate.Question_Conditions__c = buildJSONStringFromList(formTemplateMap.get(formTemplate.Id).questionConditions);
+                }
             }
         }
 
         update recordMap.values();
 
+        if (v2Enabled) {
+            NeuraFormSnapshotV2.rebuild(recordMap.keySet(), formTemplateMap);
+        }
     }
 
     public static String buildJSONStringFromList(List<String> jsonStringList){

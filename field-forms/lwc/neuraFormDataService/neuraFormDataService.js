@@ -1,6 +1,10 @@
 import { LightningElement, api, wire } from 'lwc';
 import { gql, graphql } from 'lightning/uiGraphQLApi';
 import { LOADING_TOKENS } from './constants';
+import {
+    applySnapshotV2,
+    normalizeSnapshotChunksFromGraphQL
+} from 'c/neuraFormSnapshotV2Utils';
 
 const DEFAULT_STATUS = 'Not Started';
 const DEFAULT_COLOR = 'blue';
@@ -93,6 +97,20 @@ export default class neuraFormDataService extends LightningElement {
         return newArray;
     }
 
+    // Mirrors neuraFormMobile.combineAndTransformJSON. Parses each non-empty
+    // JSON-array string and concatenates the parsed items before sorting +
+    // joining with the related child rows. Used for Questions_JSON__c when
+    // the legacy snapshot overflows into Questions_JSON_1__c / _2__c.
+    combineAndTransformJSON(JSONInputArrays, arrayToAdd, keyToAdd, lookupKey) {
+        let combinedArray = [];
+        JSONInputArrays.forEach(JSONInputs => {
+            if (JSONInputs) {
+                combinedArray = [...combinedArray, ...JSON.parse(JSONInputs)];
+            }
+        });
+        return this.transformJSON(JSON.stringify(combinedArray), arrayToAdd, keyToAdd, lookupKey);
+    }
+
     transformJSON(JSONInputs, arrayToAdd, keyToAdd, lookupKey) {
         if(!JSONInputs) return [];
         console.log("JSONInputs: " + JSONInputs);
@@ -139,19 +157,39 @@ export default class neuraFormDataService extends LightningElement {
          let newTemplates = graphqlData.Linked_Form__c.edges.map(templateEdge => {
             const linkedTemplate = this.standardTransform(templateEdge);
             let formTemplate = this.relatedTransform(linkedTemplate, 'Form_Template__r');
+
+            // v2 snapshot chunks: promote into the bare JSON keys so the
+            // existing transformJSON calls below need no change. When no
+            // chunks exist (legacy snapshot still in use), formTemplate is
+            // returned unchanged. See docs/snapshot-v2.md.
+            formTemplate = applySnapshotV2(formTemplate, normalizeSnapshotChunksFromGraphQL(formTemplate));
+
             let answers = this.transformEdges(linkedTemplate?.Form_Answers__r);
 
             this.setAnswerIds(answers);
 
-            let questions = this.transformJSON(formTemplate?.Questions_JSON__c, answers, 'answers', 'Form_Question__c');
+            // Legacy chunked questions live across _JSON__c / _1 / _2. v2
+            // assembly consolidates everything into _JSON__c and nulls the
+            // overflow fields, so the same concat covers both modes.
+            let questions = this.combineAndTransformJSON(
+                [
+                    formTemplate?.Questions_JSON__c,
+                    formTemplate?.Questions_JSON_1__c,
+                    formTemplate?.Questions_JSON_2__c
+                ],
+                answers,
+                'answers',
+                'Form_Question__c'
+            );
             let sections = this.transformJSON(formTemplate?.Sections_JSON__c, questions, 'questions', 'Form_Section__c');
             let pages = this.transformJSON(formTemplate?.Pages_JSON__c, sections, 'sections', 'Form_Page__c');
 
             return this.constructFormObject(linkedTemplate, formTemplate, pages);
          });
- 
+
          return newTemplates;
     }
+
 
     constructFormObject(linkedTemplate, formTemplate, pages){
         return {
@@ -237,13 +275,25 @@ export default class neuraFormDataService extends LightningElement {
                                 Form_Template__c { value }
                                 Current_Page__c { value }
                                 Status__c { value }
-                                Form_Template__r: Form_Template__r { 
-                                    Id 
+                                Form_Template__r: Form_Template__r {
+                                    Id
                                     Name { value }
                                     Selector_Color__c { value }
                                     Pages_JSON__c { value }
                                     Sections_JSON__c { value }
                                     Questions_JSON__c { value }
+                                    Questions_JSON_1__c { value }
+                                    Questions_JSON_2__c { value }
+                                    Form_Template_Snapshots__r(first: 200) {
+                                        edges {
+                                            node {
+                                                Id
+                                                Payload_Type__c { value }
+                                                Chunk_Index__c { value }
+                                                Payload__c { value }
+                                            }
+                                        }
+                                    }
                                 }
                                 Form_Answers__r: Form_Answers__r(first: 500) {
                                     edges {

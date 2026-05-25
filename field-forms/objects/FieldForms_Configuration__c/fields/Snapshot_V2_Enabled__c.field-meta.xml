@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Snapshot_V2_Enabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When true, NeuraFormLogic.updateJSON writes the renderer snapshot into Form_Template_Snapshot__c chunk rows (unbounded size) instead of the legacy Questions_JSON__c[_1_2] / *_Conditions__c fields. The renderer prefers v2 when present, falling back to the legacy fields otherwise. Disable_Form_Template_JSON_Trigger__c still suppresses all snapshot generation as the master kill switch. See docs/snapshot-v2.md.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Routes form-template snapshot writes through the chunked Form_Template_Snapshot__c child object so payloads can exceed the legacy 393K cap. Required for large compliance audits (Steritech-scale).</inlineHelpText>
+    <label>Snapshot V2 Enabled</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

@@ -15,6 +15,11 @@ import getMobileFormDetails from '@salesforce/apex/NeuraFormMobileController.get
 
 import { FIELDS, OBJECTS } from 'c/neuraFormSchemaUtils';
 import {
+    applySnapshotV2,
+    normalizeSnapshotChunksFromGraphQL,
+    normalizeSnapshotChunksFromApex
+} from 'c/neuraFormSnapshotV2Utils';
+import {
     createDraftLinkedForm,
     parentLookupFieldFor,
     buildFormObjectFromPrimedTemplate,
@@ -524,7 +529,11 @@ export default class NeuraFormMobile extends LightningElement {
 
         const templateEdge = edges[0];
         const linkedTemplate = this.standardTransform(templateEdge);
-        const formTemplate = this.relatedTransform(linkedTemplate, 'Form_Template__r');
+        let formTemplate = this.relatedTransform(linkedTemplate, 'Form_Template__r');
+
+        // Promote v2 chunk rows (if any) into the legacy field keys the
+        // existing assembly code below already consumes.
+        formTemplate = applySnapshotV2(formTemplate, normalizeSnapshotChunksFromGraphQL(formTemplate));
 
         const answers = this.transformEdges(linkedTemplate?.Form_Answers__r);
 
@@ -617,7 +626,7 @@ export default class NeuraFormMobile extends LightningElement {
         // Form_Template fields are returned as bare SObject properties; alias
         // them under the schema field-api-name constants so downstream code
         // (constructFormObject, renderer) reads them consistently.
-        const formTemplate = {
+        let formTemplate = {
             Id: tpl.Id,
             Name: tpl.Name,
             [FIELDS.Form_Template__c.SelectorColor.fieldApiName]: tpl.Selector_Color__c,
@@ -631,6 +640,13 @@ export default class NeuraFormMobile extends LightningElement {
             [FIELDS.Form_Template__c.SectionConditions.fieldApiName]: tpl.Section_Conditions__c,
             [FIELDS.Form_Template__c.QuestionConditions.fieldApiName]: tpl.Question_Conditions__c
         };
+
+        // Promote v2 chunk rows (if any) into the legacy field keys so the
+        // assembly below is unchanged.
+        formTemplate = applySnapshotV2(
+            formTemplate,
+            normalizeSnapshotChunksFromApex(details.snapshotChunks)
+        );
 
         const answers = (details.answers || []).map(a => ({
             Id: a.Id,
@@ -883,6 +899,16 @@ export default class NeuraFormMobile extends LightningElement {
                                     Page_Conditions__c { value }
                                     Section_Conditions__c { value }
                                     Question_Conditions__c { value }
+                                    Form_Template_Snapshots__r(first: 200) {
+                                        edges {
+                                            node {
+                                                Id
+                                                Payload_Type__c { value }
+                                                Chunk_Index__c { value }
+                                                Payload__c { value }
+                                            }
+                                        }
+                                    }
                                 }
                                 Form_Answers__r : Form_Answers__r(first: 500) {
                                     edges {

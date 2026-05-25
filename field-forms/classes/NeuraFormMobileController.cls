@@ -104,6 +104,20 @@ public with sharing class NeuraFormMobileController {
         ).getRecords();
         if (tpls.isEmpty()) return null;
 
+        // v2 snapshot chunks for the template. When present, the LWC
+        // assembles them into the legacy-shape JSON strings; when absent,
+        // the LWC falls back to the legacy *_JSON__c fields on the template.
+        List<Form_Template_Snapshot__c> chunks = [
+            SELECT Id, Form_Template__c, Payload_Type__c, Chunk_Index__c,
+                   Payload__c, Schema_Version__c
+            FROM Form_Template_Snapshot__c
+            WHERE Form_Template__c = :lf.Form_Template__c
+            ORDER BY Payload_Type__c, Chunk_Index__c
+        ];
+        chunks = (List<Form_Template_Snapshot__c>) Security.stripInaccessible(
+            AccessType.READABLE, chunks
+        ).getRecords();
+
         // Answers are capped to keep the payload bounded; the LWC already has
         // a warning surface for "older answers may be missing" if we hit it.
         List<Form_Answer__c> answers = [
@@ -122,6 +136,7 @@ public with sharing class NeuraFormMobileController {
         details.template = tpls[0];
         details.answers = answers;
         details.answersTruncated = (answers.size() == ANSWER_FETCH_LIMIT);
+        details.snapshotChunks = chunks;
         return details;
     }
 
@@ -141,6 +156,9 @@ public with sharing class NeuraFormMobileController {
         @AuraEnabled public Form_Template__c template;
         @AuraEnabled public List<Form_Answer__c> answers;
         @AuraEnabled public Boolean answersTruncated;
+        // v2 snapshot chunks for this template. Empty when the org is still
+        // on the legacy single-record snapshot. See docs/snapshot-v2.md.
+        @AuraEnabled public List<Form_Template_Snapshot__c> snapshotChunks;
     }
 
     // -----------------------------------------------------------------------
