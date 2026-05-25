@@ -39,6 +39,11 @@ import {
 	isNumericValue as _isNumericValueImpl
 } from './conditionalRenderingEvaluator';
 import { filterBooleanQuestions } from './booleanQuestionUtils';
+import {
+	collectDictatableQuestions,
+	formatDictationDiagnostic,
+	formatDictationSuccessMessage
+} from './dictationHelpers';
 
 import { reduceError } from 'c/nfCommonUtility';
 
@@ -587,42 +592,22 @@ export default class NeuraFormRenderer extends LightningElement {
 		const transcript = (event?.detail?.text || '').trim();
 		if (!transcript) return;
 
-		const questions = [];
-		(this.currentPage?.sections || []).forEach((s) => {
-			(s.questions || []).forEach((q) => {
-				if (q.shouldRender === false) return;
-				let allowed = [];
-				try {
-					const raw = q[FIELDS.Form_Question__c.ValueSet.fieldApiName];
-					if (raw) {
-						allowed = JSON.parse(raw).map((o) => o.value).filter(Boolean);
-					}
-				} catch (e) {
-					allowed = [];
-				}
-				questions.push({
-					questionId: q.Id,
-					label: q[FIELDS.Form_Question__c.Question.fieldApiName] || q.Name,
-					type: q[FIELDS.Form_Question__c.Type.fieldApiName],
-					allowedValues: allowed
-				});
-			});
+		// Question collection + message formatting moved to
+		// ./dictationHelpers.js for direct testability. The orchestration
+		// (Apex call, applyDictatedAnswer, imperative formPage poke,
+		// toast side effects) stays here because each step touches
+		// reactive state or child refs.
+		const questions = collectDictatableQuestions(this.currentPage, {
+			type: FIELDS.Form_Question__c.Type.fieldApiName,
+			valueSet: FIELDS.Form_Question__c.ValueSet.fieldApiName,
+			question: FIELDS.Form_Question__c.Question.fieldApiName
 		});
 
 		try {
 			const result = await mapTranscriptToQuestions({ transcript, questions });
 			const mappings = result?.mappings || [];
 			if (!mappings.length) {
-				const qCount = result?.questionCount;
-				let detail;
-				if (qCount === 0) {
-					detail = "No questions visible on this page to match against.";
-				} else if (result?.diagnostic) {
-					detail = result.diagnostic;
-				} else {
-					detail = `Couldn't match any fields to what you said (${qCount} questions on page). Try mentioning the field name, like "the customer is John Doe".`;
-				}
-				this.showToastMessage('Info', detail, 'warning');
+				this.showToastMessage('Info', formatDictationDiagnostic(result), 'warning');
 				return;
 			}
 
@@ -640,10 +625,9 @@ export default class NeuraFormRenderer extends LightningElement {
 			mappings.forEach((m) => { dictMap[m.questionId] = m.value; });
 			this.refs.formPage?.applyDictation?.(dictMap);
 
-			const src = result?.source === 'agentforce' ? ' (Agentforce)' : '';
 			this.showToastMessage(
 				'Info',
-				`Filled ${mappings.length} field${mappings.length === 1 ? '' : 's'} from dictation${src}. Review before continuing.`,
+				formatDictationSuccessMessage(mappings.length, result?.source),
 				'info'
 			);
 		} catch (err) {
