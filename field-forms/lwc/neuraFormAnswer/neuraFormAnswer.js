@@ -8,6 +8,7 @@ import FormQuestionField from '@salesforce/schema/Form_Answer__c.Form_Question__
 import IdField from '@salesforce/schema/Form_Answer__c.Id';
 
 import { FIELDS } from 'c/neuraFormSchemaUtils';
+import { lookupTypeConfig } from './typeRegistry';
 
 const FORMFACTORCLASS = {
 	desktop:
@@ -477,120 +478,85 @@ export default class NeuraFormAnswer extends LightningElement {
 		return this.question.Id;
 	}
 
-	get isTextBox() {
-		return this.inputType === 'Text';
+	// --- Type routing (registry-driven, see ./typeRegistry.js) -------------
+	//
+	// One source of truth: every input Type__c value resolves to a registry
+	// entry that names its render `shape` + display config. The is<Type>
+	// getters below are thin shims (still exported, callers haven't been
+	// migrated) but they all derive from the registry — adding a new type
+	// is a one-row change in typeRegistry.js, not a 4-file change.
+
+	get _typeConfig() {
+		return lookupTypeConfig(this.inputType);
 	}
 
-	get isTextArea() {
-		return this.inputType === 'Text Area';
+	get _shape() {
+		return this._typeConfig.shape;
 	}
 
-	get isRadioButtons() {
-		return this.inputType === 'Radio Buttons';
+	// --- Shape-test getters used by the template branches -----------------
+	get useNativeInput() { return this._shape === 'nativeInput'; }
+	get useTextArea()    { return this._shape === 'textArea'; }
+	get useSlider()      { return this._shape === 'slider'; }
+	get useCheckboxes()  { return this._shape === 'checkboxes'; }
+	get usePassFailNaShape() { return this._shape === 'passFailNa'; }
+	get useCounterShape()    { return this._shape === 'counter'; }
+	get useRepeatableShape() { return this._shape === 'repeatable'; }
+	get useLookupShape()     { return this._shape === 'lookup'; }
+	get useCalculationShape(){ return this._shape === 'calculation'; }
+	get useChecklistShape()  { return this._shape === 'checklist'; }
+	get useGeolocationShape(){ return this._shape === 'geolocation'; }
+	get useScanBarcodeShape(){ return this._shape === 'scanBarcode'; }
+	get useRatingShape()     { return this._shape === 'rating'; }
+	get useFileUploadShape() { return this._shape === 'fileUpload'; }
+	get useSignatureShape()  { return this._shape === 'signature'; }
+
+	// --- Native-input config accessors (drives the single collapsed template
+	//     branch that replaces 10 per-type <lightning-input> blocks) -------
+	get nativeInputType()        { return this._typeConfig.subtype; }
+	get nativeInputDataId()      { return this._typeConfig.dataId; }
+	get nativeInputFormatter()   { return this._typeConfig.formatter; }
+	get nativeInputPlaceholder() { return this._typeConfig.placeholder; }
+
+	// Step: Currency has a registry-baked value ("0.01"); Number derives
+	// from DecimalPlaces__c via the existing numberStep getter; the rest
+	// don't need a step.
+	get nativeInputStep() {
+		if (this._typeConfig.step) return this._typeConfig.step;
+		if (this.isNumberInput) return this.numberStep;
+		return undefined;
 	}
 
-	get isScanBarcode() {
-		return this.inputType === 'Scan Barcode';
-	}
-
-	get isDatePicker() {
-		return this.inputType === 'Date';
-	}
-
-	get isSlider() {
-		return this.inputType === 'Slider';
-	}
-
-	get isTimePicker() {
-		return this.inputType === 'Time';
-	}
-
-	get isNumberInput() {
-		return this.inputType === 'Number';
-	}
-
-	get isEmail() {
-		return this.inputType === 'Email';
-	}
-
-	get isPhone() {
-		return this.inputType === 'Phone';
-	}
-
-	get isRatingScale() {
-		return this.inputType === 'Rating';
-	}
-
-	get isSlider() {
-		return this.inputType === 'Slider';
-	}
-
-	get isFileUpload() {
-		return this.inputType === 'File Upload';
-	}
-
-	get isCheckbox() {
-		return this.inputType === 'Checkbox';
-	}
-
-	get isCheckboxes() {
-		return this.inputType === 'Checkboxes';
-	}
-
-	get isRating() {
-		return this.inputType === 'Rating';
-	}
-
-	get isDropDown() {
-		return this.inputType === 'Dropdown';
-	}
-	get isGeolocation() {
-		return this.inputType === 'Geolocation';
-	}
-
-	get isToggle() {
-		return this.inputType === 'Toggle';
-	}
-
-	get isSignature() {
-		return this.inputType === 'Signature';
-	}
-
-	get isMultipleChoice() {
-		return this.inputType === 'Multiple Choice';
-	}
-
-	get isCalculation() {
-		return this.inputType === 'Calculation';
-	}
-
-	get isPassFailNa() {
-		return this.inputType === 'Pass Fail NA';
-	}
-
-	get isCounter() {
-		return this.inputType === 'Counter';
-	}
-
-	get isDateTime() {
-		return this.inputType === 'Date Time';
-	}
-
-	get isCurrency() {
-		return this.inputType === 'Currency';
-	}
-
-	get isLookup() {
-		return this.inputType === 'Lookup';
-	}
-
-	get isRepeatable() {
-		return this.inputType === 'Repeatable';
-	}
-
-	get isChecklist() {
-		return this.inputType === 'Checklist';
-	}
+	// --- Back-compat is<Type> shims. Kept so external callers (validation,
+	//     filesData, etc.) don't break. Each forwards to the registry. ----
+	get isTextBox()        { return this._typeConfig.picklist === 'Text'; }
+	get isTextArea()       { return this._typeConfig.picklist === 'Text Area'; }
+	get isRadioButtons()   { return this._typeConfig.picklist === 'Radio Buttons'; }
+	get isScanBarcode()    { return this._typeConfig.picklist === 'Scan Barcode'; }
+	get isDatePicker()     { return this._typeConfig.picklist === 'Date'; }
+	get isSlider()         { return this._typeConfig.picklist === 'Slider'; }
+	get isTimePicker()     { return this._typeConfig.picklist === 'Time'; }
+	get isNumberInput()    { return this._typeConfig.picklist === 'Number'; }
+	get isEmail()          { return this._typeConfig.picklist === 'Email'; }
+	get isPhone()          { return this._typeConfig.picklist === 'Phone'; }
+	get isRatingScale()    { return this._typeConfig.picklist === 'Rating'; }
+	get isFileUpload()     { return this._typeConfig.picklist === 'File Upload'; }
+	get isCheckbox()       { return this._typeConfig.picklist === 'Checkbox'; }
+	get isCheckboxes()     { return this._typeConfig.picklist === 'Checkboxes'; }
+	get isRating()         { return this._typeConfig.picklist === 'Rating'; }
+	get isDropDown()       { return this._typeConfig.picklist === 'Dropdown'; }
+	get isGeolocation()    { return this._typeConfig.picklist === 'Geolocation'; }
+	get isToggle()         { return this._typeConfig.picklist === 'Toggle'; }
+	get isSignature()      { return this._typeConfig.picklist === 'Signature'; }
+	get isMultipleChoice() { return this._typeConfig.picklist === 'Multiple Choice'; }
+	get isCalculation()    { return this._typeConfig.picklist === 'Calculation'; }
+	get isPassFailNa()     { return this._typeConfig.picklist === 'Pass Fail NA'; }
+	get isCounter()        { return this._typeConfig.picklist === 'Counter'; }
+	get isDateTime()       { return this._typeConfig.picklist === 'Date Time'; }
+	get isCurrency()       { return this._typeConfig.picklist === 'Currency'; }
+	get isLookup()         { return this._typeConfig.picklist === 'Lookup'; }
+	get isRepeatable()     { return this._typeConfig.picklist === 'Repeatable'; }
+	get isChecklist()      { return this._typeConfig.picklist === 'Checklist'; }
 
 	// --- Choice-pills routing -----------------------------------------------
 	//

@@ -3,16 +3,27 @@
 		class="slds-grid slds-wrap slds-gutters slds-m-bottom_small"
 	>
 		<div class={columnSizingClass}>
-			<template
-				if:true={isTextBox}
-			>
+			<!-- Native lightning-input shape — replaces 10 per-type branches
+			     (Text / Date / Time / Number / Email / Phone / Toggle /
+			     Checkbox / Date Time / Currency). The active type's HTML
+			     `type` attribute + data-id + optional formatter/step/
+			     placeholder all come from typeRegistry.js via the
+			     nativeInput* getters. Adding a new lightning-input-flavored
+			     type is now one row in the registry, no template change. -->
+			<template if:true={useNativeInput}>
 				<div class="slds-grid slds-grid_vertical-align-center">
 					<div class="slds-col slds-grow">
 						<lightning-input
-							data-id="textBox"
-							type="text"
-							label="Text Box"
+							data-id={nativeInputDataId}
+							type={nativeInputType}
+							formatter={nativeInputFormatter}
+							step={nativeInputStep}
+							placeholder={nativeInputPlaceholder}
+							label={nativeInputDataId}
 							value={value}
+							checked={value}
+							message-toggle-active={toggleActiveMessage}
+							message-toggle-inactive={toggleInactiveMessage}
 							variant="label-hidden"
 							onchange={handleChange}
 						></lightning-input>
@@ -56,22 +67,9 @@
 				></c-neura-form-answer-input-multi-select>
 			</template>
 
-			<!-- Checkboxes -->
-			<!-- Assuming checkboxes are passed as an array of { label, value, checked } -->
-			<template
-				if:true={isCheckbox}
-			>
-				<lightning-input
-					data-id="checkboxButton"
-					type="checkbox-button"
-					label="check-box"
-					name="input1"
-					checked={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
-			</template>
-
+			<!-- Single Checkbox (one-box) is now handled by the
+			     useNativeInput shape block above. Multi-checkbox
+			     (Checkboxes, plural) renders an iteration below. -->
 			<template
 				if:true={isCheckboxes}
 			>
@@ -139,19 +137,7 @@
 				></c-neura-form-answer-input-choice-pills>
 			</template>
 
-			<!-- Date Picker -->
-			<template
-				if:true={isDatePicker}
-			>
-				<lightning-input
-					data-id="datePicker"
-					type="date"
-					label="Date Picker"
-					value={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
-			</template>
+			<!-- Date Picker is now handled by the useNativeInput shape above. -->
 
 			<!-- Rating -->
 			<template if:true={isRating}>
@@ -171,58 +157,9 @@
 				></c-neura-form-answer-input-scan-barcode>
 			</template>
 
-			<!-- Time Picker -->
-			<template
-				if:true={isTimePicker}
-			>
-				<lightning-input
-					data-id="timePicker"
-					type="time"
-					label="Time Picker"
-					value={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
-			</template>
+			<!-- Time / Number / Email / Phone are now handled by the
+			     useNativeInput shape above. -->
 
-			<!-- Number Input -->
-			<template
-				if:true={isNumberInput}
-			>
-				<lightning-input
-					data-id="numberInput"
-					type="number"
-					label="Number Input"
-					value={value}
-					step={numberStep}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
-			</template>
-
-			<!-- Email Address Field -->
-			<template if:true={isEmail}>
-				<lightning-input
-					data-id="emailInput"
-					type="email"
-					label="Email Address"
-					value={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
-			</template>
-
-			<!-- Phone Number Field -->
-			<template if:true={isPhone}>
-				<lightning-input
-					data-id="phoneInput"
-					type="tel"
-					label="Phone Number"
-					value={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
-			</template>
 			<!-- Geolocation Field -->
 			<template
 				if:true={isGeolocation}
@@ -234,18 +171,10 @@
 				></c-neura-form-answer-input-geolocation>
 			</template>
 
-			<!-- Toggle Field -->
-			<template if:true={isToggle}>
-				<lightning-input
-					data-id="toggle"
-					type="toggle"
-					name="input1"
-					checked={value}
-					message-toggle-active={toggleActiveMessage}
-					message-toggle-inactive={toggleInactiveMessage}
-					onchange={handleChange}
-				></lightning-input>
-			</template>
+			<!-- Toggle is now handled by the useNativeInput shape above
+			     (the shape block passes message-toggle-active /
+			     message-toggle-inactive which lightning-input ignores
+			     for non-toggle types). -->
 
 			<template
 				if:true={isFileUpload}
@@ -299,35 +228,9 @@
 				></c-neura-form-answer-input-counter>
 			</template>
 
-			<!-- Date + Time combined -->
-			<template if:true={isDateTime}>
-				<lightning-input
-					data-id="dateTimeInput"
-					type="datetime"
-					label="Date Time"
-					value={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
-			</template>
-
-			<!-- Currency (formatted Number) — placeholder shows the locale's
-			     currency formatting at empty state so the intent is obvious
-			     at design time (lightning-input only renders the formatter
-			     on blur with a value). -->
-			<template if:true={isCurrency}>
-				<lightning-input
-					data-id="currencyInput"
-					type="number"
-					formatter="currency"
-					step="0.01"
-					label="Currency"
-					placeholder="$0.00"
-					value={value}
-					variant="label-hidden"
-					onchange={handleChange}
-				></lightning-input>
-			</template>
+			<!-- Date Time + Currency are now handled by the useNativeInput
+			     shape above. Currency's formatter / step / $0.00
+			     placeholder are baked into typeRegistry.js. -->
 
 			<!-- Lookup — pick a Salesforce record from the host's related list -->
 			<template if:true={isLookup}>

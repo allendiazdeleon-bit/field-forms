@@ -190,6 +190,51 @@ Components already on tokens:
 - `neuraSkeleton` — new pattern component
 - `neuraDraftQueueBadge` — new pattern component
 
+Wave 13 — Type-routing registry + safety-net tests:
+
+- **`neuraFormAnswer/typeRegistry.js`** — single source of truth mapping
+  each `Form_Question__c.Type__c` value to its render shape + display
+  config. Replaces the previous pattern of having the same type-string
+  in 4 places (HTML template branch, is<Type> getter, picklist value,
+  Form_Setting__mdt record).
+- **10 per-type lightning-input branches in `neuraFormAnswer.html`
+  collapsed into 1** `useNativeInput` shape block. The active type's
+  HTML `type=` attribute, `data-id`, `formatter`, `step`, `placeholder`
+  all come from the registry via getters. Adding a new
+  lightning-input-flavored type is now a one-row registry change.
+- **All `is<Type>` getters** preserved as thin shims forwarding to the
+  registry, so callers don't need to migrate.
+- **Jest infrastructure brought up in wave 26** — 50 tests now pass:
+  29 smoke tests covering every Type's routing, 16 existing formula
+  evaluator tests, and 5 new registry-integrity tests that catch
+  wave-7-style picklist/MasterLabel mismatches at CI before they hit
+  the org.
+
+Updated playbook — adding a new input type
+------------------------------------------
+
+1. Add a row to `typeRegistry.js`. Pick a `shape` from the vocabulary
+   in that file's header comment.
+2. Add a `<customValue>` to
+   `globalValueSets/Form_Question_Answer_types.globalValueSet-meta.xml`
+   with `<fullName>` matching the registry's `picklist`.
+3. Add `customMetadata/Form_Setting.<Name>.md-meta.xml` with `<label>`
+   matching the picklist value (NOT a friendly variant — the builder
+   stores the MasterLabel as Type__c). Set `Display_Label__c` to the
+   admin-friendly version if different.
+4. If the new type uses a custom LWC, add a template branch in
+   `neuraFormAnswer.html` that fires on the matching `use<Shape>`
+   getter. (lightning-input-flavored types need no template change —
+   the existing nativeInput block handles them.)
+5. Add a row to the parametric test in
+   `__tests__/neuraFormAnswer.test.js` so the smoke suite covers your
+   type.
+
+The registry-integrity test (`__tests__/typeRegistry.test.js`) will
+catch any contract violation in steps 1-3 on the next test run.
+
+---
+
 Wave 12 — Choice-input modernization (Phase 1 of full UX refresh):
 
 - **`neuraFormAnswerInputChoicePills`** — new mobile-first replacement
