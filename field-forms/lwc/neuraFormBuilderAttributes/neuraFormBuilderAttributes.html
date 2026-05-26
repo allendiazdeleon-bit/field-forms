@@ -97,5 +97,11 @@
         <template lwc:if={isNotForm}>
             <c-neura-form-criteria-builder onupdate={handleConditionsUpdate} selection={selection} condition-field-value={conditionFieldValue}></c-neura-form-criteria-builder>
         </template>
+        <!-- Pillar 5 — Scoring panel on the question editor. Catalog-only
+             fields (Weight, Severity, Pass_Criteria, etc) edit the linked
+             Form_Question_Catalog__c record directly. -->
+        <template if:true={isQuestion}>
+            <c-neura-form-builder-scoring selection={selection}></c-neura-form-builder-scoring>
+        </template>
     </div>
 </template>

@@ -1,0 +1,53 @@
+<template>
+    <section class="builder-scoring">
+        <header class="builder-scoring__header">
+            <h3 class="builder-scoring__title">Scoring</h3>
+            <p class="builder-scoring__hint">
+                Scoring fields live on the catalog entry. Changes here
+                apply to every binding referencing this catalog item.
+            </p>
+        </header>
+
+        <template if:false={hasCatalog}>
+            <p class="builder-scoring__no-catalog" role="status">
+                This question isn't linked to a catalog entry yet. Use
+                "Override" or "Create catalog entry" above to enable
+                scoring.
+            </p>
+        </template>
+
+        <template if:true={hasCatalog}>
+            <lightning-record-edit-form
+                object-api-name={catalogApiName}
+                record-id={catalogId}
+                onsubmit={handleSubmit}
+                onsuccess={handleSuccess}>
+                <lightning-messages></lightning-messages>
+
+                <lightning-input-field field-name="Weight__c"></lightning-input-field>
+
+                <h4 class="builder-scoring__subheading">Pass criteria</h4>
+                <lightning-input-field field-name="Pass_Criteria__c"></lightning-input-field>
+                <p class="builder-scoring__hint">
+                    JSON. Same shape as the conditional-rendering JSON
+                    on the binding — an "all" or "any" wrapper around
+                    leaf items with resource / operator / value keys.
+                </p>
+
+                <h4 class="builder-scoring__subheading">If this question fails</h4>
+                <lightning-input-field field-name="Failure_Severity__c"></lightning-input-field>
+                <lightning-input-field field-name="Failure_Auto_Finding__c"></lightning-input-field>
+                <lightning-input-field field-name="Failure_Photo_Required__c"></lightning-input-field>
+                <lightning-input-field field-name="Allow_Exception_Override__c"></lightning-input-field>
+
+                <div class="builder-scoring__actions">
+                    <lightning-button
+                        type="submit"
+                        variant="brand"
+                        label="Save scoring">
+                    </lightning-button>
+                </div>
+            </lightning-record-edit-form>
+        </template>
+    </section>
+</template>
