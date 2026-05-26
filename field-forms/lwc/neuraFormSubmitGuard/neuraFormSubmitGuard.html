@@ -1,0 +1,90 @@
+<template>
+    <section class="submit-guard">
+        <header class="submit-guard__heading">
+            <h2 class="submit-guard__title">Review &amp; Submit</h2>
+        </header>
+
+        <div class="submit-guard__score">
+            <c-neura-form-score-badge
+                score={score}
+                max-score={maxScore}
+                threshold={threshold}>
+            </c-neura-form-score-badge>
+        </div>
+
+        <template if:true={hasFindings}>
+            <div class="submit-guard__findings">
+                <p class="submit-guard__findings-heading">
+                    Findings: {openCount} open
+                </p>
+                <ul class="submit-guard__breakdown">
+                    <template for:each={severityRows} for:item="row">
+                        <li key={row.key} class="submit-guard__breakdown-row">
+                            <lightning-icon
+                                icon-name={row.icon}
+                                variant={row.iconVariant}
+                                size="x-small"
+                                alternative-text={row.label}>
+                            </lightning-icon>
+                            <span>{row.count} {row.label}{row.blocksLabel}</span>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+
+        <div class="submit-guard__cta">
+            <template if:true={isSubmitDisabled}>
+                <div class="submit-guard__blocked" role="alert">
+                    <lightning-icon
+                        icon-name="utility:block_visitor"
+                        variant="error"
+                        size="x-small"
+                        alternative-text="Cannot submit">
+                    </lightning-icon>
+                    <div class="submit-guard__blocked-text">
+                        <p class="submit-guard__blocked-title">Cannot submit</p>
+                        <p class="submit-guard__blocked-reason">
+                            {computedDisabledReason}
+                        </p>
+                    </div>
+                    <template if:true={hasFindings}>
+                        <button
+                            type="button"
+                            class="submit-guard__view-findings"
+                            onclick={handleViewFindings}>
+                            View findings
+                        </button>
+                    </template>
+                </div>
+            </template>
+
+            <template if:false={isSubmitDisabled}>
+                <button
+                    type="button"
+                    class="submit-guard__submit"
+                    onclick={handleSubmit}>
+                    Submit →
+                </button>
+                <template if:true={nonBlockingNote}>
+                    <p class="submit-guard__note" role="status">
+                        <lightning-icon
+                            icon-name="utility:info"
+                            variant="warning"
+                            size="x-small"
+                            alternative-text="">
+                        </lightning-icon>
+                        <span>{nonBlockingNote}</span>
+                    </p>
+                </template>
+            </template>
+
+            <button
+                type="button"
+                class="submit-guard__draft"
+                onclick={handleSaveDraft}>
+                Save draft
+            </button>
+        </div>
+    </section>
+</template>

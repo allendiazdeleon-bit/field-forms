@@ -1,0 +1,96 @@
+<template>
+    <template if:true={open}>
+        <div
+            class="exception-modal__backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="exception-modal-title"
+            onclick={handleBackdropClick}>
+            <div class="exception-modal__panel">
+                <header class="exception-modal__header">
+                    <h2 id="exception-modal-title" class="exception-modal__title">
+                        {headerLabel}
+                    </h2>
+                    <button
+                        type="button"
+                        class="exception-modal__close"
+                        onclick={handleCancel}
+                        aria-label="Close">
+                        <lightning-icon
+                            icon-name="utility:close"
+                            size="x-small"
+                            alternative-text="Close">
+                        </lightning-icon>
+                    </button>
+                </header>
+
+                <div class="exception-modal__body">
+                    <p class={severityClass}>
+                        {findingSeverity} · {findingName}
+                    </p>
+
+                    <template if:false={isAllowed}>
+                        <p class="exception-modal__locked">
+                            This finding cannot be cleared by exception.
+                            Address the underlying issue (e.g., attach the
+                            required photo, correct the answer) to unblock
+                            submission.
+                        </p>
+                    </template>
+
+                    <template if:true={isAllowed}>
+                        <lightning-combobox
+                            label="Exception reason"
+                            value={reason}
+                            options={reasonOptions}
+                            onchange={handleReasonChange}
+                            required>
+                        </lightning-combobox>
+
+                        <template if:true={isOtherSelected}>
+                            <lightning-textarea
+                                label="Detail"
+                                value={detail}
+                                onchange={handleDetailChange}
+                                placeholder="Briefly describe why this finding is being cleared."
+                                required>
+                            </lightning-textarea>
+                        </template>
+
+                        <template if:true={requiresPhoto}>
+                            <lightning-input
+                                type="checkbox"
+                                label="I will attach a photo before submitting."
+                                checked={willAttachPhoto}
+                                onchange={handlePhotoToggle}>
+                            </lightning-input>
+                            <p class="exception-modal__note">
+                                Policy requires a photo when overriding this
+                                finding. The form won't submit until one is
+                                attached.
+                            </p>
+                        </template>
+                    </template>
+                </div>
+
+                <footer class="exception-modal__footer">
+                    <button
+                        type="button"
+                        class="exception-modal__button"
+                        onclick={handleCancel}>
+                        Cancel
+                    </button>
+                    <template if:true={isAllowed}>
+                        <button
+                            type="button"
+                            class="exception-modal__button exception-modal__button--primary"
+                            disabled={isConfirmDisabled}
+                            onclick={handleConfirm}>
+                            Mark exception
+                        </button>
+                    </template>
+                </footer>
+            </div>
+        </div>
+    </template>
+</template>
