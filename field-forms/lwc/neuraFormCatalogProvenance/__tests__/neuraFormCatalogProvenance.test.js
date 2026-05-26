@@ -124,3 +124,43 @@ describe('neuraFormCatalogProvenance — linked + overridden', () => {
         expect(secondary).toContain('required');
     });
 });
+
+describe('neuraFormCatalogProvenance — "Open catalog entry" button', () => {
+    function readOpenButton(el) {
+        return el.shadowRoot.querySelector('lightning-button');
+    }
+
+    test('button is hidden when not linked', async () => {
+        const el = await mount({ attributes: {} });
+        expect(readOpenButton(el)).toBeNull();
+    });
+
+    test('button is visible when linked (inherited)', async () => {
+        const el = await mount({
+            attributes: {
+                Form_Question_Catalog__c: 'a01000000ABCDEFGHI'
+            }
+        });
+        const btn = readOpenButton(el);
+        expect(btn).not.toBeNull();
+        expect(btn.label).toBe('Open catalog entry');
+    });
+
+    test('button is visible when linked (overridden)', async () => {
+        const el = await mount({
+            attributes: {
+                Form_Question_Catalog__c: 'a01000000ABCDEFGHI',
+                Override_Question__c: 'Anything'
+            }
+        });
+        expect(readOpenButton(el)).not.toBeNull();
+    });
+
+    // Click-fires-navigate behavior is not unit-tested here. The
+    // sfdx-lwc-jest stub for lightning-button is a property bag with
+    // no real click semantics, and lightning/navigation's mock binds
+    // NavigationMixin.Navigate as a no-op on the prototype, making
+    // both event propagation and spy-on-prototype awkward. The button
+    // visibility + label tests above lock in the public surface;
+    // manual smoke against afcc_apr26 covers the navigation roundtrip.
+});

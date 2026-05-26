@@ -17,6 +17,18 @@
                     {badgeSecondaryText}
                 </p>
             </div>
+            <template if:true={hasCatalogLink}>
+                <div class="slds-col slds-no-flex">
+                    <lightning-button
+                        label="Open catalog entry"
+                        variant="base"
+                        icon-name="utility:new_window"
+                        icon-position="right"
+                        onclick={handleOpenCatalog}
+                        title="Open the catalog record in a new tab. Edits there affect every template using this question.">
+                    </lightning-button>
+                </div>
+            </template>
         </div>
     </div>
 </template>
