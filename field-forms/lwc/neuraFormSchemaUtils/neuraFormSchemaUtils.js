@@ -28,6 +28,10 @@ import ExternalReferenceTemplate from '@salesforce/schema/Form_Template__c.Exter
 import PageConditions from '@salesforce/schema/Form_Template__c.Page_Conditions__c';
 import SectionConditions from '@salesforce/schema/Form_Template__c.Section_Conditions__c';
 import QuestionConditions from '@salesforce/schema/Form_Template__c.Question_Conditions__c';
+// Pillar 5 — template-level scoring policy.
+import TemplateScoringEnabled from '@salesforce/schema/Form_Template__c.Scoring_Enabled__c';
+import TemplatePassThresholdPercent from '@salesforce/schema/Form_Template__c.Pass_Threshold_Percent__c';
+import TemplateMaxScore from '@salesforce/schema/Form_Template__c.Max_Score__c';
 
 //import FormTemplatePages from '@salesforce/schema/Form_Template__c.Form_Pages__r';
 //import FormTemplateSections from '@salesforce/schema/Form_Template__c.Form_Sections__r';
@@ -48,6 +52,16 @@ import Status from '@salesforce/schema/Linked_Form__c.Status__c';
 import WorkOrderLineItem from '@salesforce/schema/Linked_Form__c.Work_Order_Line_Item__c';
 import WorkOrder from '@salesforce/schema/Linked_Form__c.Work_Order__c';
 import LinkedFormTemplate from '@salesforce/schema/Linked_Form__c.Form_Template__c';
+// Pillar 5 — scoring rollups + finding counts. Score__c / Max_Score__c are
+// written by NeuraFormScoringRollupQueueable; Score_Percent__c + Passed__c
+// are formula fields; Findings_*_Count__c are rollup summaries on the
+// Form_Finding__c master-detail.
+import LinkedFormScore from '@salesforce/schema/Linked_Form__c.Score__c';
+import LinkedFormMaxScore from '@salesforce/schema/Linked_Form__c.Max_Score__c';
+import LinkedFormScorePercent from '@salesforce/schema/Linked_Form__c.Score_Percent__c';
+import LinkedFormPassed from '@salesforce/schema/Linked_Form__c.Passed__c';
+import LinkedFormFindingsOpenCount from '@salesforce/schema/Linked_Form__c.Findings_Open_Count__c';
+import LinkedFormFindingsBlockingCount from '@salesforce/schema/Linked_Form__c.Findings_Blocking_Count__c';
 //import FormAnswers from '@salesforce/schema/Linked_Form__c.Form_Answers__r';
 
 // Imports for Form_Answer__c
@@ -186,7 +200,10 @@ export const FIELDS = {
         ExternalReferenceTemplate,
         PageConditions,
         SectionConditions,
-        QuestionConditions
+        QuestionConditions,
+        ScoringEnabled: TemplateScoringEnabled,
+        PassThresholdPercent: TemplatePassThresholdPercent,
+        TemplateMaxScore
     },
     Linked_Form__c: {
         Id: LinkedFormId,
@@ -202,7 +219,13 @@ export const FIELDS = {
         Status,
         WorkOrderLineItem,
         WorkOrder,
-        FormTemplate: LinkedFormTemplate
+        FormTemplate: LinkedFormTemplate,
+        Score: LinkedFormScore,
+        MaxScore: LinkedFormMaxScore,
+        ScorePercent: LinkedFormScorePercent,
+        Passed: LinkedFormPassed,
+        FindingsOpenCount: LinkedFormFindingsOpenCount,
+        FindingsBlockingCount: LinkedFormFindingsBlockingCount
     },
     Form_Answer__c: {
         Id,

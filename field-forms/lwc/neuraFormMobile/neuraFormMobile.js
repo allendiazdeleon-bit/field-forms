@@ -560,7 +560,11 @@ export default class NeuraFormMobile extends LightningElement {
         let pages = this.transformJSON(formTemplate?.[FIELDS.Form_Template__c.PagesJSON.fieldApiName], sections, 'sections', OBJECTS.Form_Page__c.objectApiName);
         pages = this.updateRenderingConditions(pages, formTemplate[FIELDS.Form_Template__c.PageConditions.fieldApiName]);
 
-        return this.constructFormObject(linkedTemplate, formTemplate, pages);
+        // Pillar 5 — Form_Findings__r subquery rows. The GraphQL response
+        // wraps each scalar in { value }; transformEdges unwraps for us.
+        const findings = this.transformEdges(linkedTemplate?.Form_Findings__r);
+
+        return this.constructFormObject(linkedTemplate, formTemplate, pages, findings);
     }
 
     // Back-compat shim. External callers (and our own legacy code paths) may
@@ -622,6 +626,13 @@ export default class NeuraFormMobile extends LightningElement {
         const linkedTemplate = { Id: lf.Id };
         linkedTemplate[FIELDS.Linked_Form__c.Status.fieldApiName] = lf.Status__c;
         linkedTemplate[FIELDS.Linked_Form__c.CurrentPage.fieldApiName] = lf.Current_Page__c;
+        // Pillar 5 scoring rollups + finding counts (mirrors the GraphQL path).
+        linkedTemplate[FIELDS.Linked_Form__c.Score.fieldApiName] = lf.Score__c;
+        linkedTemplate[FIELDS.Linked_Form__c.MaxScore.fieldApiName] = lf.Max_Score__c;
+        linkedTemplate[FIELDS.Linked_Form__c.ScorePercent.fieldApiName] = lf.Score_Percent__c;
+        linkedTemplate[FIELDS.Linked_Form__c.Passed.fieldApiName] = lf.Passed__c;
+        linkedTemplate[FIELDS.Linked_Form__c.FindingsOpenCount.fieldApiName] = lf.Findings_Open_Count__c;
+        linkedTemplate[FIELDS.Linked_Form__c.FindingsBlockingCount.fieldApiName] = lf.Findings_Blocking_Count__c;
 
         // Form_Template fields are returned as bare SObject properties; alias
         // them under the schema field-api-name constants so downstream code
@@ -638,7 +649,11 @@ export default class NeuraFormMobile extends LightningElement {
             [FIELDS.Form_Template__c.QuestionsJSON2.fieldApiName]: tpl.Questions_JSON_2__c,
             [FIELDS.Form_Template__c.PageConditions.fieldApiName]: tpl.Page_Conditions__c,
             [FIELDS.Form_Template__c.SectionConditions.fieldApiName]: tpl.Section_Conditions__c,
-            [FIELDS.Form_Template__c.QuestionConditions.fieldApiName]: tpl.Question_Conditions__c
+            [FIELDS.Form_Template__c.QuestionConditions.fieldApiName]: tpl.Question_Conditions__c,
+            // Pillar 5 — template-level scoring policy.
+            [FIELDS.Form_Template__c.ScoringEnabled.fieldApiName]: tpl.Scoring_Enabled__c,
+            [FIELDS.Form_Template__c.PassThresholdPercent.fieldApiName]: tpl.Pass_Threshold_Percent__c,
+            [FIELDS.Form_Template__c.TemplateMaxScore.fieldApiName]: tpl.Max_Score__c
         };
 
         // Promote v2 chunk rows (if any) into the legacy field keys so the
@@ -672,7 +687,10 @@ export default class NeuraFormMobile extends LightningElement {
         let pages = this.transformJSON(formTemplate[FIELDS.Form_Template__c.PagesJSON.fieldApiName], sections, 'sections', OBJECTS.Form_Page__c.objectApiName);
         pages = this.updateRenderingConditions(pages, formTemplate[FIELDS.Form_Template__c.PageConditions.fieldApiName]);
 
-        return this.constructFormObject(linkedTemplate, formTemplate, pages);
+        // Pillar 5 — controller's findings list comes through as plain SObjects.
+        const findings = details.findings || [];
+
+        return this.constructFormObject(linkedTemplate, formTemplate, pages, findings);
     }
 
     updateRenderingConditions(jsonObject, conditionJson) {
@@ -718,7 +736,7 @@ export default class NeuraFormMobile extends LightningElement {
         this.answersId = [...this.answersId, ...ids];
     }
 
-    constructFormObject(linkedTemplate, formTemplate, pages){
+    constructFormObject(linkedTemplate, formTemplate, pages, findings){
         const formObject = {
             Id: formTemplate?.Id,
             Name: formTemplate?.Name,
@@ -727,13 +745,39 @@ export default class NeuraFormMobile extends LightningElement {
 
         formObject[FIELDS.Form_Template__c.SelectorColor.fieldApiName] = formTemplate?.[FIELDS.Form_Template__c.SelectorColor.fieldApiName] ?? DEFAULT_COLOR;
 
+        // Pillar 5 — template-level scoring policy is read by
+        // c-neura-form-renderer's formScoreThreshold getter and by the
+        // submit-guard composition.
+        formObject[FIELDS.Form_Template__c.ScoringEnabled.fieldApiName] =
+            formTemplate?.[FIELDS.Form_Template__c.ScoringEnabled.fieldApiName] ?? false;
+        formObject[FIELDS.Form_Template__c.PassThresholdPercent.fieldApiName] =
+            formTemplate?.[FIELDS.Form_Template__c.PassThresholdPercent.fieldApiName] ?? null;
+        formObject[FIELDS.Form_Template__c.TemplateMaxScore.fieldApiName] =
+            formTemplate?.[FIELDS.Form_Template__c.TemplateMaxScore.fieldApiName] ?? null;
+
         const linkedForm = {
             Id: linkedTemplate.Id
         };
         linkedForm[FIELDS.Linked_Form__c.Status.fieldApiName] = linkedTemplate?.[FIELDS.Linked_Form__c.Status.fieldApiName] ?? DEFAULT_STATUS;
         linkedForm[FIELDS.Linked_Form__c.CurrentPage.fieldApiName] = linkedTemplate?.[FIELDS.Linked_Form__c.CurrentPage.fieldApiName];
+        // Scoring rollups + finding counts. All optional — the renderer hides
+        // its score badge when Max_Score__c is null/0 so non-scored forms
+        // render unchanged.
+        linkedForm[FIELDS.Linked_Form__c.Score.fieldApiName] =
+            linkedTemplate?.[FIELDS.Linked_Form__c.Score.fieldApiName] ?? null;
+        linkedForm[FIELDS.Linked_Form__c.MaxScore.fieldApiName] =
+            linkedTemplate?.[FIELDS.Linked_Form__c.MaxScore.fieldApiName] ?? null;
+        linkedForm[FIELDS.Linked_Form__c.ScorePercent.fieldApiName] =
+            linkedTemplate?.[FIELDS.Linked_Form__c.ScorePercent.fieldApiName] ?? null;
+        linkedForm[FIELDS.Linked_Form__c.Passed.fieldApiName] =
+            linkedTemplate?.[FIELDS.Linked_Form__c.Passed.fieldApiName] ?? false;
+        linkedForm[FIELDS.Linked_Form__c.FindingsOpenCount.fieldApiName] =
+            linkedTemplate?.[FIELDS.Linked_Form__c.FindingsOpenCount.fieldApiName] ?? 0;
+        linkedForm[FIELDS.Linked_Form__c.FindingsBlockingCount.fieldApiName] =
+            linkedTemplate?.[FIELDS.Linked_Form__c.FindingsBlockingCount.fieldApiName] ?? 0;
 
         formObject['linkedForm'] = linkedForm;
+        formObject['findings'] = Array.isArray(findings) ? findings : [];
 
         return formObject;
     }
@@ -887,6 +931,12 @@ export default class NeuraFormMobile extends LightningElement {
                                 Form_Template__c { value }
                                 Current_Page__c { value }
                                 Status__c { value }
+                                Score__c { value }
+                                Max_Score__c { value }
+                                Score_Percent__c { value }
+                                Passed__c { value }
+                                Findings_Open_Count__c { value }
+                                Findings_Blocking_Count__c { value }
                                 Form_Template__r : Form_Template__r {
                                     Id
                                     Name { value }
@@ -899,6 +949,9 @@ export default class NeuraFormMobile extends LightningElement {
                                     Page_Conditions__c { value }
                                     Section_Conditions__c { value }
                                     Question_Conditions__c { value }
+                                    Scoring_Enabled__c { value }
+                                    Pass_Threshold_Percent__c { value }
+                                    Max_Score__c { value }
                                     Form_Template_Snapshots__r(first: 200) {
                                         edges {
                                             node {
@@ -919,6 +972,25 @@ export default class NeuraFormMobile extends LightningElement {
                                             Answer__c { value }
                                             Related_Comment__c { value }
                                             Type__c { value }
+                                        }
+                                    }
+                                }
+                                Form_Findings__r : Form_Findings__r(first: 200) {
+                                    edges {
+                                        node {
+                                            Id
+                                            Name { value }
+                                            Status__c { value }
+                                            Severity__c { value }
+                                            Blocks_Submission__c { value }
+                                            Photo_Required__c { value }
+                                            Photo_Attached__c { value }
+                                            External_Reference__c { value }
+                                            Exception_Reason__c { value }
+                                            Exception_Detail__c { value }
+                                            Notes__c { value }
+                                            Form_Question_Catalog__c { value }
+                                            Form_Answer__c { value }
                                         }
                                     }
                                 }

@@ -27,6 +27,7 @@ public with sharing class NeuraFormMobileController {
     };
 
     private static final Integer ANSWER_FETCH_LIMIT = 500;
+    private static final Integer FINDING_FETCH_LIMIT = 200;
 
     @AuraEnabled(cacheable=true)
     public static List<LinkedFormListItem> getMobileFormList(Id parentId, String parentField) {
@@ -78,8 +79,13 @@ public with sharing class NeuraFormMobileController {
         if (linkedFormId == null) return null;
 
         // Pull the Linked_Form first so we know which template to fetch.
+        // Score__c / Max_Score__c are written by the scoring rollup queueable;
+        // Score_Percent__c / Passed__c are formula fields; Findings_*_Count__c
+        // are rollup summaries from Form_Finding__c.
         List<Linked_Form__c> lfs = [
-            SELECT Id, Name, Form_Template__c, Current_Page__c, Status__c
+            SELECT Id, Name, Form_Template__c, Current_Page__c, Status__c,
+                   Score__c, Max_Score__c, Score_Percent__c, Passed__c,
+                   Findings_Open_Count__c, Findings_Blocking_Count__c
             FROM Linked_Form__c
             WHERE Id = :linkedFormId
             LIMIT 1
@@ -94,7 +100,8 @@ public with sharing class NeuraFormMobileController {
             SELECT Id, Name, Indicator_Type__c, Selector_Color__c,
                    Pages_JSON__c, Sections_JSON__c,
                    Questions_JSON__c, Questions_JSON_1__c, Questions_JSON_2__c,
-                   Page_Conditions__c, Section_Conditions__c, Question_Conditions__c
+                   Page_Conditions__c, Section_Conditions__c, Question_Conditions__c,
+                   Scoring_Enabled__c, Pass_Threshold_Percent__c, Max_Score__c
             FROM Form_Template__c
             WHERE Id = :lf.Form_Template__c
             LIMIT 1
@@ -131,12 +138,30 @@ public with sharing class NeuraFormMobileController {
             AccessType.READABLE, answers
         ).getRecords();
 
+        // Pillar 5 — open findings for this Linked_Form. Capped so a runaway
+        // ruleset doesn't blow the payload; the LWC surfaces a warning if it
+        // ever sees the cap hit.
+        List<Form_Finding__c> findings = [
+            SELECT Id, Name, Status__c, Severity__c, Blocks_Submission__c,
+                   Photo_Required__c, Photo_Attached__c,
+                   External_Reference__c, Exception_Reason__c, Exception_Detail__c,
+                   Notes__c, Form_Question_Catalog__c, Form_Answer__c
+            FROM Form_Finding__c
+            WHERE Linked_Form__c = :linkedFormId
+            LIMIT :FINDING_FETCH_LIMIT
+        ];
+        findings = (List<Form_Finding__c>) Security.stripInaccessible(
+            AccessType.READABLE, findings
+        ).getRecords();
+
         FormDetails details = new FormDetails();
         details.linkedForm = lf;
         details.template = tpls[0];
         details.answers = answers;
         details.answersTruncated = (answers.size() == ANSWER_FETCH_LIMIT);
         details.snapshotChunks = chunks;
+        details.findings = findings;
+        details.findingsTruncated = (findings.size() == FINDING_FETCH_LIMIT);
         return details;
     }
 
@@ -159,6 +184,10 @@ public with sharing class NeuraFormMobileController {
         // v2 snapshot chunks for this template. Empty when the org is still
         // on the legacy single-record snapshot. See docs/snapshot-v2.md.
         @AuraEnabled public List<Form_Template_Snapshot__c> snapshotChunks;
+        // Pillar 5 — Form_Finding__c records for this Linked_Form, capped at
+        // FINDING_FETCH_LIMIT. findingsTruncated is true when we hit the cap.
+        @AuraEnabled public List<Form_Finding__c> findings;
+        @AuraEnabled public Boolean findingsTruncated;
     }
 
     // -----------------------------------------------------------------------
