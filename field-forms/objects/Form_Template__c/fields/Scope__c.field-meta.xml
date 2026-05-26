@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Scope__c</fullName>
+    <description>Partition key paired with Form_Question_Catalog__c.Scope__c — see that field's description for the architectural framing. A template's Scope__c determines which catalog entries are eligible for binding (null Scope on a catalog entry = globally available; matching string = same partition). v1 ships the field only; future write-side filtering enforces.</description>
+    <externalId>false</externalId>
+    <label>Scope</label>
+    <length>80</length>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

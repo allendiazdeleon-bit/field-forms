@@ -360,6 +360,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Form_Question_Catalog__c.Scope__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Form_Question_Catalog__c.Slider_Size__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -526,6 +531,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Form_Template__c.Sections_JSON__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Form_Template__c.Scope__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

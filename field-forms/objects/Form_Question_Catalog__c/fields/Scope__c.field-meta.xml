@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Scope__c</fullName>
+    <description>Partitioning hook for service-provider customers (e.g. Steritech) who serve many downstream customers within one Salesforce org and need to keep their question catalogs disjoint. Null = global (visible to all templates); any string value = partition key. Templates also gain Scope__c; future write paths (e.g. "Pick from catalog") filter to entries matching the template's Scope__c or null. v1 ships the field only — filtering is implemented as customers need it. Free-form text avoids committing to a specific scoping object until customer pressure emerges; future migration to a Lookup on Catalog_Scope__c is open. See docs/phase-2-pillar-2-question-catalog.md "Customer scoping".</description>
+    <externalId>false</externalId>
+    <label>Scope</label>
+    <length>80</length>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
