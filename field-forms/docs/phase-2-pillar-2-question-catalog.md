@@ -171,6 +171,98 @@ Two new affordances:
 Existing "add question" flow still works: it creates a catalog entry
 and a binding in one shot (the catalog-of-one default).
 
+### The "fresh binding" problem (resolved)
+
+Once "catalog-of-one default" is implemented, every new question in
+the builder also produces a fresh catalog entry that has exactly one
+binding. The Wave 35.7 read-only-when-inherited treatment was designed
+for *shared* catalog entries (multiple bindings, edits would surprise
+other templates). For a fresh binding with a fresh catalog entry,
+forcing the admin through an "Override in this template" click before
+they can type anything is friction.
+
+**Resolution:** make the inherited-mode read-only treatment
+**binding-count-aware**. When the catalog entry has only one binding
+(this one), the question input remains editable and edits write
+through to the catalog directly. Once a second binding points at the
+same catalog entry (via "Pick from catalog" or programmatic linking),
+the editing UX shifts to the shared/inherited treatment.
+
+The controller (`getFormDetails`) includes the binding count per
+catalog entry in its response so the LWC can compute this without an
+extra round-trip.
+
+## Operating at scale
+
+Three concerns surface when multiple admins author concurrently or
+when the org serves multiple downstream customers. Each is a layered
+control rather than a single fix.
+
+### Drift — near-duplicate catalog entries
+
+Without intervention, the catalog turns into noise within months:
+
+```
+"Enter the date of last service"
+"Enter date of last service"
+"What was the date of last service?"
+```
+
+All mean the same thing; analytics, reuse, and scoring fragment.
+**Three controls, deployed in layers:**
+
+| Control | Surface | When it fires | v1 vs deferred |
+|---|---|---|---|
+| Type-ahead similarity at create | Builder add-question modal | Admin types question text → SOSL search the catalog → "Did you mean…?" hints | v1 — closes the loop at the boundary where drift starts |
+| Mass-add staging UI | New surface | Power user pastes/uploads N candidate questions → each pre-matched against catalog → admin reviews and bulk-inserts only what's truly new | Deferred — Pillar 3 adapter framework also covers mass-add from external sources |
+| Merge workflow | Catalog browser | Admin selects N near-duplicates → picks canonical → bindings re-point → losers deleted | Deferred — surgical cleanup, after-the-fact |
+
+SOSL is the practical search engine in v1
+(`FIND :userText IN ALL FIELDS RETURNING Form_Question_Catalog__c(Id, Question__c)`).
+It's token-matching with stemming, already indexed, free. If the
+platform ships vector search natively, swap to embeddings then.
+
+### Customer scoping — cross-customer pollution
+
+A service provider like Steritech audits many downstream customers
+within their single Salesforce org. Some questions should be
+universally reusable (brand standards, regulatory); others should
+be partitioned per chain or geography. Editing a chain-A-scoped
+question must not silently affect chain-B's templates.
+
+**Decision: add `Scope__c` to `Form_Question_Catalog__c` now,
+implement filtering soon, defer scope-management UX.**
+
+- Field type: **Text(80)**. Customers populate with whatever scoping
+  string makes sense for their data model ("steritech-default",
+  "chain-A", "regulatory"). Zero migration cost.
+- Default: **null = global/unscoped**, visible to all templates. All
+  catalog entries created before this field's introduction default
+  to null and remain visible everywhere.
+- Filtering: `Form_Template__c` also gains `Scope__c`. Snapshot
+  writer + builder controller filter catalog reads to entries where
+  `catalog.Scope__c IN (null, template.Scope__c)`.
+- UX for scope management: deferred. Admins set values via record
+  edit pages until a real management surface is needed.
+
+Future enhancement path: convert `Scope__c` from Text to a Lookup
+on a `Catalog_Scope__c` custom object if customers hit the limits of
+free-form string scoping. The migration is a one-way schema change
+that can ship in a later wave.
+
+### Interaction with the override math
+
+Today's "shared catalog → read-only inherited mode" decision counts
+bindings globally. With scoping, the more correct rule is:
+
+> A catalog entry is "shared" from this template's perspective when
+> it has >1 binding **in scope** (matching the template's `Scope__c`
+> or unscoped).
+
+For v1 we ship the simpler global-count rule; scoping is mostly
+disjoint in practice, so the edge case is rare. Revisit if real
+customers hit it.
+
 ## UX wireframes
 
 ### Catalog browser
@@ -309,10 +401,12 @@ Color coding (supplemental to the icon, not the only signal):
 |---|---|
 | Migration touches every Form_Question__c in every org | Idempotent, batch-driven, dry-run mode that reports counts before writing. Skip orgs already on v2. |
 | Existing customizations reference `Form_Question__c.Question__c` directly | Dual-read shim keeps it working through 2 minor versions. Document the deprecation. |
-| Catalog grows unbounded in dedupe-less mode | Documented as expected behavior. UI nudges admins to merge duplicates. Future: passive duplicate-detection report. |
+| Catalog grows unbounded in dedupe-less mode | Type-ahead similarity at create (SOSL) catches near-duplicates at the boundary. Merge workflow handles cleanup. Mass-add staging UI for batched imports. |
 | Override fields create N-way merge complexity at read time | Limit overrides to two fields in v1. Force forks for anything else. Revisit only on customer demand. |
 | Snapshot writer needs a join — extra query per template | One query batched across all bindings for a template (`WHERE Id IN :catalogIds`). Adds <50ms even for Steritech-scale. |
 | Cross-org reuse expectations | Catalog is per-org. Cross-org catalog (a shared question library across customers) is a separate, larger project. |
+| Service-provider customers (Steritech) need within-org scoping by downstream customer | `Scope__c` Text(80) field on catalog + template; reads filter to (null OR matching scope). Field shipped early; scope-management UX deferred. |
+| Fresh builder-created question stuck in read-only inherited mode | Binding-count-aware editing: when catalog entry has only one binding, edits write through to the catalog directly. Read-only "shared" treatment kicks in once a 2nd binding exists. |
 
 ## Decisions
 
@@ -325,6 +419,10 @@ Color coding (supplemental to the icon, not the only signal):
 | Migration backfill: batch or queueable | Batch (`Database.Batchable`) | Already proven pattern (Phase 1 snapshot backfill). 200-question batches keep heap predictable. |
 | Catalog rides briefcase | No | Snapshot has resolved values; catalog is authoring-time data |
 | Export shape | Embed catalog content into export | Portability between orgs without requiring catalog sync |
+| Builder "+Question" → catalog entry auto-creation | Yes, when `Question_Catalog_Enabled__c` is on | Removes the friction of admins not realizing they need to put questions in the catalog. Closes the workflow gap where builder-created questions skipped the catalog model. |
+| Dedup at scale | Layered: type-ahead at create (v1, SOSL), mass-add staging (deferred), merge workflow (deferred) | Hard prevention (unique constraint) blocks legitimate near-duplicates. Soft prevention via type-ahead at the boundary where drift starts. Merge workflow as cleanup safety net. |
+| Customer scoping | `Scope__c` Text(80) field; null = global; read paths filter | Cheap insurance against cross-customer pollution (Steritech-class concern). Text avoids committing to a specific scoping object until customer pressure emerges. |
+| Search engine for type-ahead | SOSL (native Salesforce search) | Token-matching with stemming, already indexed, free. Vector-search upgrade path open if platform ships native support. |
 
 ## Open questions
 
@@ -357,7 +455,32 @@ Color coding (supplemental to the icon, not the only signal):
 Bigger than Phase 1 (~7 dev-days); the builder UX work is the largest
 single chunk.
 
-## Sequencing within Pillar 2
+## Wave timeline
+
+Reflects what's actually shipped vs. what's pending. Each wave is
+independently deployable and reversible.
+
+| Wave | Slice | Status |
+|---|---|---|
+| 35 | Schema (catalog SObject + 30 fields + 3 binding fields + feature flag + perms) | ✅ shipped |
+| 35.1 | Catalog backfill batch (catalog-of-one) | ✅ shipped |
+| 35.2 | Snapshot writer resolves through catalog | ✅ shipped |
+| 35.3 | Builder controller dual-read shim | ✅ shipped |
+| 35.4 | Builder catalog provenance badge v1 (read-only) | ✅ shipped |
+| 35.5 | "Open catalog entry" navigation button | ✅ shipped |
+| 35.6 | Page layout for catalog records | ✅ shipped |
+| 35.7 | In-place override / revert flow + correctness fix | ✅ shipped |
+| **35.8** | **Auto-create catalog from builder + binding-count-aware editing** | next |
+| 35.9 | Type-ahead similarity at create (SOSL) | pending |
+| 35.10 | `Scope__c` field + read-side filtering | pending |
+| 35.11 | Mass-add staging UI | pending |
+| 35.12 | Merge workflow (catalog dedupe) | pending |
+
+35.8 closes the most-noticed workflow gap (builder-created questions
+skipping the catalog). 35.9-35.12 are scale-readiness work; ship in
+priority order as customer pressure emerges.
+
+## Sequencing within Pillar 2 (original)
 
 1. Schema + catalog SObject deploy (no behavior change)
 2. Backfill batch (one-shot; produces catalog-of-one for every org)
