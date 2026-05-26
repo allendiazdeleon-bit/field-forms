@@ -39,13 +39,33 @@
         <template if:true={isQuestion}>
             <!-- Pillar 2 catalog provenance: shows whether this binding is
                  linked to a catalog entry and whether per-binding overrides
-                 are in effect. Read-only in v1; action buttons (override /
-                 revert / open catalog entry) are a future wave. -->
-            <c-neura-form-catalog-provenance selection={selection}></c-neura-form-catalog-provenance>
+                 are in effect. Action buttons fire requestoverride /
+                 revert events that we handle below. -->
+            <c-neura-form-catalog-provenance
+                selection={selection}
+                onrequestoverride={handleRequestOverride}
+                onrevert={handleRevert}>
+            </c-neura-form-catalog-provenance>
             <lightning-record-edit-form object-api-name={formQuestionApiName}>
                 <lightning-messages></lightning-messages>
                 <div lwc:if={isNotDisplayText}>
-                    <lightning-input-field onchange={handleAttributeChange} field-name={questionFieldApiName} value={questionFieldValue}> </lightning-input-field>
+                    <!-- Three render modes for the question text input — see
+                         the getters in neuraFormBuilderAttributes.js for the
+                         decision matrix. -->
+                    <template if:true={showLegacyQuestionInput}>
+                        <lightning-input-field onchange={handleAttributeChange} field-name={questionFieldApiName} value={questionFieldValue}> </lightning-input-field>
+                    </template>
+                    <template if:true={showInheritedQuestionReadOnly}>
+                        <div class="slds-form-element slds-form-element_readonly">
+                            <span class="slds-form-element__label">Question (inherited from catalog)</span>
+                            <div class="slds-form-element__control">
+                                <div class="slds-form-element__static slds-text-color_weak">{questionFieldValue}</div>
+                            </div>
+                        </div>
+                    </template>
+                    <template if:true={showOverrideQuestionInput}>
+                        <lightning-input-field onchange={handleAttributeChange} field-name={overrideQuestionFieldApiName} value={overrideQuestionFieldValue}> </lightning-input-field>
+                    </template>
                 </div>
                 <template for:each={activeSelection} for:item="setting">
                     <template if:true={setting.isStandard}>

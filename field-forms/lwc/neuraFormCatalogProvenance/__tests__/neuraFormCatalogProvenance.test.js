@@ -125,42 +125,104 @@ describe('neuraFormCatalogProvenance — linked + overridden', () => {
     });
 });
 
-describe('neuraFormCatalogProvenance — "Open catalog entry" button', () => {
-    function readOpenButton(el) {
-        return el.shadowRoot.querySelector('lightning-button');
+describe('neuraFormCatalogProvenance — action buttons (visibility)', () => {
+    function findButton(el, label) {
+        return Array.from(
+            el.shadowRoot.querySelectorAll('lightning-button')
+        ).find((b) => b.label === label) || null;
     }
 
-    test('button is hidden when not linked', async () => {
+    test('not linked → no buttons at all', async () => {
         const el = await mount({ attributes: {} });
-        expect(readOpenButton(el)).toBeNull();
+        expect(findButton(el, 'Open catalog entry')).toBeNull();
+        expect(findButton(el, 'Override in this template')).toBeNull();
+        expect(findButton(el, 'Revert to catalog default')).toBeNull();
     });
 
-    test('button is visible when linked (inherited)', async () => {
+    test('linked + inherited → "Open" + "Override" buttons, no "Revert"', async () => {
         const el = await mount({
-            attributes: {
-                Form_Question_Catalog__c: 'a01000000ABCDEFGHI'
-            }
+            attributes: { Form_Question_Catalog__c: 'a01000000ABCDEFGHI' }
         });
-        const btn = readOpenButton(el);
-        expect(btn).not.toBeNull();
-        expect(btn.label).toBe('Open catalog entry');
+        expect(findButton(el, 'Open catalog entry')).not.toBeNull();
+        expect(findButton(el, 'Override in this template')).not.toBeNull();
+        expect(findButton(el, 'Revert to catalog default')).toBeNull();
     });
 
-    test('button is visible when linked (overridden)', async () => {
+    test('linked + overridden → "Open" + "Revert" buttons, no "Override"', async () => {
         const el = await mount({
             attributes: {
                 Form_Question_Catalog__c: 'a01000000ABCDEFGHI',
-                Override_Question__c: 'Anything'
+                Override_Question__c: 'Per-template override'
             }
         });
-        expect(readOpenButton(el)).not.toBeNull();
+        expect(findButton(el, 'Open catalog entry')).not.toBeNull();
+        expect(findButton(el, 'Revert to catalog default')).not.toBeNull();
+        expect(findButton(el, 'Override in this template')).toBeNull();
+    });
+});
+
+describe('neuraFormCatalogProvenance — action button events', () => {
+    test('handleRequestOverride fires requestoverride event with field detail', async () => {
+        const el = await mount({
+            attributes: { Form_Question_Catalog__c: 'a01000000ABCDEFGHI' }
+        });
+        const handler = jest.fn();
+        el.addEventListener('requestoverride', handler);
+
+        // Invoke directly — lightning-button stub doesn't simulate clicks.
+        el.handleRequestOverride();
+        await Promise.resolve();
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler.mock.calls[0][0].detail.field).toBe('Override_Question__c');
     });
 
-    // Click-fires-navigate behavior is not unit-tested here. The
-    // sfdx-lwc-jest stub for lightning-button is a property bag with
-    // no real click semantics, and lightning/navigation's mock binds
-    // NavigationMixin.Navigate as a no-op on the prototype, making
-    // both event propagation and spy-on-prototype awkward. The button
-    // visibility + label tests above lock in the public surface;
-    // manual smoke against afcc_apr26 covers the navigation roundtrip.
+    test('handleRequestOverride is a no-op when not linked', async () => {
+        const el = await mount({ attributes: {} });
+        const handler = jest.fn();
+        el.addEventListener('requestoverride', handler);
+        el.handleRequestOverride();
+        await Promise.resolve();
+        expect(handler).not.toHaveBeenCalled();
+    });
+
+    test('handleRequestOverride is a no-op when already overridden', async () => {
+        const el = await mount({
+            attributes: {
+                Form_Question_Catalog__c: 'a01000000ABCDEFGHI',
+                Override_Question__c: 'Already overridden'
+            }
+        });
+        const handler = jest.fn();
+        el.addEventListener('requestoverride', handler);
+        el.handleRequestOverride();
+        await Promise.resolve();
+        expect(handler).not.toHaveBeenCalled();
+    });
+
+    test('handleRevert fires revert event when overridden', async () => {
+        const el = await mount({
+            attributes: {
+                Form_Question_Catalog__c: 'a01000000ABCDEFGHI',
+                Override_Question__c: 'Override'
+            }
+        });
+        const handler = jest.fn();
+        el.addEventListener('revert', handler);
+        el.handleRevert();
+        await Promise.resolve();
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler.mock.calls[0][0].detail.field).toBe('Override_Question__c');
+    });
+
+    test('handleRevert is a no-op when not overridden', async () => {
+        const el = await mount({
+            attributes: { Form_Question_Catalog__c: 'a01000000ABCDEFGHI' }
+        });
+        const handler = jest.fn();
+        el.addEventListener('revert', handler);
+        el.handleRevert();
+        await Promise.resolve();
+        expect(handler).not.toHaveBeenCalled();
+    });
 });

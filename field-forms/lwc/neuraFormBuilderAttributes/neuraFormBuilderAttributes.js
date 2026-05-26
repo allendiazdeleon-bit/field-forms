@@ -151,6 +151,68 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
         return this.selection?.attributes[FIELDS.Form_Question__c.Question.fieldApiName];
     }
 
+    // ----- Pillar 2 catalog-aware question input wiring -------------------
+    // The Question__c input has three render modes depending on the
+    // binding's catalog state:
+    //   1. Editable Question__c     — no catalog link OR catalog feature off
+    //   2. Read-only resolved value — linked to catalog, no override
+    //   3. Editable Override_Question__c — linked to catalog, override set
+    // Without the read-only-when-inherited mode, edits made under catalog
+    // resolution would silently disappear on the next snapshot rebuild —
+    // the shim re-resolves catalog content over whatever was saved.
+
+    get hasCatalogLink() {
+        return Boolean(this.selection?.attributes?.Form_Question_Catalog__c);
+    }
+
+    get hasQuestionOverride() {
+        return Boolean(this.selection?.attributes?.Override_Question__c);
+    }
+
+    // Mode 3: show the editable override input.
+    get showOverrideQuestionInput() {
+        return this.hasCatalogLink && this.hasQuestionOverride;
+    }
+
+    // Mode 2: show the resolved value as read-only, with the override CTA
+    // surfaced via the provenance badge above.
+    get showInheritedQuestionReadOnly() {
+        return this.hasCatalogLink && !this.hasQuestionOverride;
+    }
+
+    // Mode 1: legacy editable input. Used when catalog isn't in play.
+    get showLegacyQuestionInput() {
+        return !this.hasCatalogLink;
+    }
+
+    get overrideQuestionFieldApiName() {
+        return 'Override_Question__c';
+    }
+
+    get overrideQuestionFieldValue() {
+        return this.selection?.attributes?.Override_Question__c;
+    }
+
+    /**
+     * Provenance badge fires this when the admin clicks "Override in
+     * this template". Seed Override_Question__c with the current
+     * resolved value so the admin has something to edit from rather
+     * than an empty box.
+     */
+    handleRequestOverride() {
+        const seedValue = this.questionFieldValue || '';
+        this.sendChangeUpdate(seedValue, 'Override_Question__c');
+    }
+
+    /**
+     * Provenance badge fires this when the admin clicks "Revert to
+     * catalog default". Clear the override; next render the binding
+     * shows the read-only catalog value again.
+     */
+    handleRevert() {
+        this.sendChangeUpdate(null, 'Override_Question__c');
+    }
+
     handleAttributeChange(event) {
         // update the selection with the new value of the event detail 
         try {

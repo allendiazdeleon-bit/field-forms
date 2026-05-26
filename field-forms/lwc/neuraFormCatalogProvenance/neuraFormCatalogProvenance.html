@@ -17,6 +17,30 @@
                     {badgeSecondaryText}
                 </p>
             </div>
+            <template if:true={showOverrideButton}>
+                <div class="slds-col slds-no-flex">
+                    <lightning-button
+                        label="Override in this template"
+                        variant="brand-outline"
+                        icon-name="utility:edit"
+                        icon-position="left"
+                        onclick={handleRequestOverride}
+                        title="Edit the question text for this template only. The catalog default stays unchanged.">
+                    </lightning-button>
+                </div>
+            </template>
+            <template if:true={showRevertButton}>
+                <div class="slds-col slds-no-flex">
+                    <lightning-button
+                        label="Revert to catalog default"
+                        variant="destructive-text"
+                        icon-name="utility:undo"
+                        icon-position="left"
+                        onclick={handleRevert}
+                        title="Discard the per-template override and inherit the catalog default again.">
+                    </lightning-button>
+                </div>
+            </template>
             <template if:true={hasCatalogLink}>
                 <div class="slds-col slds-no-flex">
                     <lightning-button

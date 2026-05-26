@@ -97,4 +97,45 @@ export default class NeuraFormCatalogProvenance extends NavigationMixin(Lightnin
             }
         });
     }
+
+    /**
+     * "Override in this template" — when inherited, this is the explicit
+     * gesture admins use to start editing the question text per-template
+     * instead of the catalog default. Parent picks up the event and
+     * seeds Override_Question__c with the current resolved value so the
+     * admin has a starting point to edit from (rather than an empty box).
+     *
+     * @api so unit tests can drive the handler directly. The
+     * sfdx-lwc-jest lightning-button stub doesn't simulate click
+     * events, so direct invocation is the only path to coverage.
+     */
+    @api
+    handleRequestOverride() {
+        if (!this.hasCatalogLink || this.hasQuestionOverride) return;
+        this.dispatchEvent(new CustomEvent('requestoverride', {
+            detail: { field: 'Override_Question__c' }
+        }));
+    }
+
+    /**
+     * "Revert to catalog default" — when overridden, clears the
+     * per-binding override and goes back to inheriting from catalog.
+     * Parent persists the change. @api for the same testability
+     * reason as handleRequestOverride.
+     */
+    @api
+    handleRevert() {
+        if (!this.hasQuestionOverride) return;
+        this.dispatchEvent(new CustomEvent('revert', {
+            detail: { field: 'Override_Question__c' }
+        }));
+    }
+
+    // Convenience getters used by the template's conditional rendering.
+    get showOverrideButton() {
+        return this.hasCatalogLink && !this.hasQuestionOverride;
+    }
+    get showRevertButton() {
+        return this.hasQuestionOverride;
+    }
 }
