@@ -176,6 +176,62 @@ public with sharing class NeuraFormMobileController {
         @AuraEnabled public String status;
     }
 
+    /**
+     * Pillar 5 — clear a blocking Form_Finding via an exception override.
+     * Returns the updated Status / Exception_Reason__c so the caller can
+     * refresh its in-memory finding without re-querying the whole detail
+     * payload. When `policyRequiresPhoto` is true the caller has indicated
+     * the user will attach a photo before submit; the field is set to
+     * preserve the obligation, but the photo capture itself happens client-
+     * side and writes Photo_Attached__c separately.
+     *
+     * Throws AuraHandledException on invalid id / lack of edit permission;
+     * the LWC surfaces the message verbatim so techs see what went wrong.
+     */
+    @AuraEnabled
+    public static Form_Finding__c markFindingException(
+        Id findingId,
+        String reason,
+        String detail,
+        Boolean policyRequiresPhoto
+    ) {
+        if (findingId == null) {
+            throw new AuraHandledException('Finding Id is required.');
+        }
+        if (String.isBlank(reason)) {
+            throw new AuraHandledException('Exception reason is required.');
+        }
+
+        Form_Finding__c update_ = new Form_Finding__c(
+            Id = findingId,
+            Status__c = 'Resolved-Exception',
+            Exception_Reason__c = reason,
+            Exception_Detail__c = detail
+        );
+        // Keep Photo_Required__c sticky — the obligation persists even
+        // though the finding is no longer blocking submit. The client
+        // writes Photo_Attached__c when the camera/file picker succeeds.
+        if (policyRequiresPhoto == true) {
+            update_.Photo_Required__c = true;
+        }
+
+        try {
+            update update_;
+        } catch (DmlException e) {
+            throw new AuraHandledException(e.getMessage());
+        }
+
+        // Re-query with the fields the LWC needs to re-render the card.
+        return [
+            SELECT Id, Name, Status__c, Severity__c, Blocks_Submission__c,
+                   Photo_Required__c, Photo_Attached__c,
+                   External_Reference__c, Exception_Reason__c,
+                   Exception_Detail__c, Notes__c
+            FROM Form_Finding__c
+            WHERE Id = :findingId
+        ];
+    }
+
     public class FormDetails {
         @AuraEnabled public Linked_Form__c linkedForm;
         @AuraEnabled public Form_Template__c template;

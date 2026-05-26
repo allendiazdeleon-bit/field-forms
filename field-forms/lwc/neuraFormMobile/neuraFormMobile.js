@@ -12,6 +12,7 @@ import { reduceError } from 'c/nfCommonUtility';
 // haven't set it up). See NeuraFormMobileController.cls for the trade-offs.
 import getMobileFormList from '@salesforce/apex/NeuraFormMobileController.getMobileFormList';
 import getMobileFormDetails from '@salesforce/apex/NeuraFormMobileController.getMobileFormDetails';
+import markFindingException from '@salesforce/apex/NeuraFormMobileController.markFindingException';
 
 import { FIELDS, OBJECTS } from 'c/neuraFormSchemaUtils';
 import {
@@ -840,6 +841,86 @@ export default class NeuraFormMobile extends LightningElement {
         this.showSelector = true;
         this.setLoading(LOADING_TOKENS.DATA_LOAD, false);
     } 
+
+    // ---- Pillar 5 finding event handlers ----------------------------------
+    // The renderer composes c-neura-form-findings-panel and rebroadcasts
+    // its events. We own the cross-cutting flows (modal display, server
+    // save, post-save refresh) here so the renderer stays presentational.
+
+    @track exceptionModalOpen = false;
+    @track exceptionModalFindingId = null;
+    @track exceptionModalFindingName = '';
+    @track exceptionModalFindingSeverity = '';
+    @track exceptionModalPolicy = 'Allow';
+
+    handleFindingClick({ detail }) {
+        // TODO Wave 42 — scroll the source question into view by walking
+        // the form pages for a question matching detail.externalReference,
+        // then page-jump + DOM scrollIntoView on the question element.
+        console.log('findingclick (todo: scroll-to-question)', detail);
+    }
+
+    handleFindingAddPhoto({ detail }) {
+        // TODO Wave 42 — open the file picker / camera flow for the
+        // finding's Form_Answer__c, then write Photo_Attached__c through
+        // the same uploader pipeline the question-level photo uses.
+        console.log('findingaddphoto (todo: open photo capture)', detail);
+    }
+
+    handleFindingMarkException({ detail }) {
+        const finding = (this.selectedForm?.findings || []).find(
+            (f) => f.Id === detail?.findingId
+        );
+        if (!finding) return;
+        this.exceptionModalFindingId = finding.Id;
+        this.exceptionModalFindingName = finding.Name;
+        this.exceptionModalFindingSeverity = finding.Severity__c;
+        // Policy lookup is TODO — the per-question Allow_Exception_Override__c
+        // field needs threading through formObject. Default to "Allow" so
+        // the modal renders the form path; the server-side update will
+        // still respect any record-level validation.
+        this.exceptionModalPolicy = 'Allow';
+        this.exceptionModalOpen = true;
+    }
+
+    handleExceptionCancel() {
+        this.exceptionModalOpen = false;
+        this.exceptionModalFindingId = null;
+    }
+
+    async handleExceptionConfirm({ detail }) {
+        const { findingId, reason, detail: justification, willAttachPhoto } = detail || {};
+        if (!findingId) {
+            this.handleExceptionCancel();
+            return;
+        }
+        this.exceptionModalOpen = false;
+        try {
+            const updated = await markFindingException({
+                findingId,
+                reason,
+                detail: justification,
+                policyRequiresPhoto: willAttachPhoto === true
+            });
+            // Patch the in-memory findings array so the panel + submit guard
+            // reflect the new status immediately, without re-fetching the
+            // whole details payload. The next refresh round will replace
+            // this with the server-of-truth shape.
+            if (this.selectedForm && Array.isArray(this.selectedForm.findings)) {
+                const next = this.selectedForm.findings.map((f) =>
+                    f.Id === updated.Id ? { ...f, ...updated } : f
+                );
+                this.selectedForm = { ...this.selectedForm, findings: next };
+            }
+            this.messageObj = {
+                message: 'Exception recorded. Finding cleared.',
+                variant: MESSAGE_VARIANT.INFO,
+                isClosable: true
+            };
+        } catch (err) {
+            this.setCriticalInlineMessage(reduceError(err), MESSAGE_VARIANT.ERROR);
+        }
+    }
 
     handleFormRendererError({detail}) {
         this.setCriticalInlineMessage(reduceError(detail), MESSAGE_VARIANT.ERROR);

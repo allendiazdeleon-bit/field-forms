@@ -93,8 +93,23 @@
                 is-desktop={isDesktop}
                 onerror={handleFormRendererError}
                 onmessage={handleFormRendererMessage}
+                onfindingclick={handleFindingClick}
+                onfindingaddphoto={handleFindingAddPhoto}
+                onfindingmarkexception={handleFindingMarkException}
             >
             </c-neura-form-renderer>
+
+            <!-- Pillar 5 exception modal. Mounted at the form level so it
+                 sits above the renderer's swipe handlers / sticky bars. -->
+            <c-neura-form-exception-modal
+                open={exceptionModalOpen}
+                finding-id={exceptionModalFindingId}
+                finding-name={exceptionModalFindingName}
+                finding-severity={exceptionModalFindingSeverity}
+                exception-policy={exceptionModalPolicy}
+                onconfirm={handleExceptionConfirm}
+                oncancel={handleExceptionCancel}
+            ></c-neura-form-exception-modal>
         </template>
     </div>
 </template>
