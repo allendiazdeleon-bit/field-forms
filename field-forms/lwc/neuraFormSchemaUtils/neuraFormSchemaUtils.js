@@ -32,6 +32,7 @@ import QuestionConditions from '@salesforce/schema/Form_Template__c.Question_Con
 import TemplateScoringEnabled from '@salesforce/schema/Form_Template__c.Scoring_Enabled__c';
 import TemplatePassThresholdPercent from '@salesforce/schema/Form_Template__c.Pass_Threshold_Percent__c';
 import TemplateMaxScore from '@salesforce/schema/Form_Template__c.Max_Score__c';
+import TemplateAllowExceptionOverride from '@salesforce/schema/Form_Template__c.Allow_Exception_Override__c';
 
 //import FormTemplatePages from '@salesforce/schema/Form_Template__c.Form_Pages__r';
 //import FormTemplateSections from '@salesforce/schema/Form_Template__c.Form_Sections__r';
@@ -203,7 +204,8 @@ export const FIELDS = {
         QuestionConditions,
         ScoringEnabled: TemplateScoringEnabled,
         PassThresholdPercent: TemplatePassThresholdPercent,
-        TemplateMaxScore
+        TemplateMaxScore,
+        AllowExceptionOverride: TemplateAllowExceptionOverride
     },
     Linked_Form__c: {
         Id: LinkedFormId,

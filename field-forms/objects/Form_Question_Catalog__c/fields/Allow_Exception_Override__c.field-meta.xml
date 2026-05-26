@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Allow_Exception_Override__c</fullName>
+    <description>Pillar 5 policy controlling whether a tech can clear a blocking finding for this question via an exception override. "Inherit" defers to the template-level Allow_Exception_Override__c default.</description>
+    <inlineHelpText>Inherit (default) uses the template setting. Allow lets the tech mark an exception with just a reason. Require photo additionally requires a photo. Disallow closes the override path so the failure must be remediated.</inlineHelpText>
+    <label>Allow Exception Override</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Inherit</fullName>
+                <default>true</default>
+                <label>Inherit (template default)</label>
+            </value>
+            <value>
+                <fullName>Allow</fullName>
+                <default>false</default>
+                <label>Allow</label>
+            </value>
+            <value>
+                <fullName>Require photo</fullName>
+                <default>false</default>
+                <label>Require photo</label>
+            </value>
+            <value>
+                <fullName>Disallow</fullName>
+                <default>false</default>
+                <label>Disallow</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

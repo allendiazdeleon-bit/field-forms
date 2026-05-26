@@ -185,6 +185,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Form_Question_Catalog__c.Allow_Exception_Override__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Form_Question_Catalog__c.Calculation_Formula__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -626,6 +631,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Form_Template_Snapshot__c.Schema_Version__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Form_Template__c.Allow_Exception_Override__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

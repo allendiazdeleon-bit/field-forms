@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Allow_Exception_Override__c</fullName>
+    <description>Pillar 5 template-level default for exception overrides on blocking findings. Per-question Allow_Exception_Override__c on Form_Question_Catalog__c can override this for specific questions; when the catalog value is "Inherit" (default) this template setting applies.</description>
+    <inlineHelpText>Allow lets techs clear blocking findings with just a reason. Require photo additionally requires a photo before the override stands. Disallow closes the override path globally for this template.</inlineHelpText>
+    <label>Allow Exception Override</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Allow</fullName>
+                <default>true</default>
+                <label>Allow</label>
+            </value>
+            <value>
+                <fullName>Require photo</fullName>
+                <default>false</default>
+                <label>Require photo</label>
+            </value>
+            <value>
+                <fullName>Disallow</fullName>
+                <default>false</default>
+                <label>Disallow</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

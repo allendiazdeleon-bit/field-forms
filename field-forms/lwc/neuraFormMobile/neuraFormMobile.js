@@ -654,7 +654,8 @@ export default class NeuraFormMobile extends LightningElement {
             // Pillar 5 — template-level scoring policy.
             [FIELDS.Form_Template__c.ScoringEnabled.fieldApiName]: tpl.Scoring_Enabled__c,
             [FIELDS.Form_Template__c.PassThresholdPercent.fieldApiName]: tpl.Pass_Threshold_Percent__c,
-            [FIELDS.Form_Template__c.TemplateMaxScore.fieldApiName]: tpl.Max_Score__c
+            [FIELDS.Form_Template__c.TemplateMaxScore.fieldApiName]: tpl.Max_Score__c,
+            [FIELDS.Form_Template__c.AllowExceptionOverride.fieldApiName]: tpl.Allow_Exception_Override__c
         };
 
         // Promote v2 chunk rows (if any) into the legacy field keys so the
@@ -755,6 +756,8 @@ export default class NeuraFormMobile extends LightningElement {
             formTemplate?.[FIELDS.Form_Template__c.PassThresholdPercent.fieldApiName] ?? null;
         formObject[FIELDS.Form_Template__c.TemplateMaxScore.fieldApiName] =
             formTemplate?.[FIELDS.Form_Template__c.TemplateMaxScore.fieldApiName] ?? null;
+        formObject[FIELDS.Form_Template__c.AllowExceptionOverride.fieldApiName] =
+            formTemplate?.[FIELDS.Form_Template__c.AllowExceptionOverride.fieldApiName] ?? 'Allow';
 
         const linkedForm = {
             Id: linkedTemplate.Id
@@ -875,12 +878,27 @@ export default class NeuraFormMobile extends LightningElement {
         this.exceptionModalFindingId = finding.Id;
         this.exceptionModalFindingName = finding.Name;
         this.exceptionModalFindingSeverity = finding.Severity__c;
-        // Policy lookup is TODO — the per-question Allow_Exception_Override__c
-        // field needs threading through formObject. Default to "Allow" so
-        // the modal renders the form path; the server-side update will
-        // still respect any record-level validation.
-        this.exceptionModalPolicy = 'Allow';
+        this.exceptionModalPolicy = this._resolveExceptionPolicy(finding);
         this.exceptionModalOpen = true;
+    }
+
+    // Pillar 5 policy cascade — Form_Question_Catalog__r.Allow_Exception_Override__c
+    // takes precedence unless it's "Inherit" (or missing), in which case the
+    // Form_Template__c.Allow_Exception_Override__c default applies. Final
+    // fallback "Allow" matches the field's template default so a misconfigured
+    // setup degrades to permissive rather than locking techs out.
+    _resolveExceptionPolicy(finding) {
+        const POLICY_INHERIT = 'Inherit';
+        const catalogPolicy =
+            finding?.Form_Question_Catalog__r?.Allow_Exception_Override__c;
+        if (catalogPolicy && catalogPolicy !== POLICY_INHERIT) {
+            return catalogPolicy;
+        }
+        const templatePolicy =
+            this.selectedForm?.[
+                FIELDS.Form_Template__c.AllowExceptionOverride.fieldApiName
+            ];
+        return templatePolicy || 'Allow';
     }
 
     handleExceptionCancel() {
@@ -1033,6 +1051,7 @@ export default class NeuraFormMobile extends LightningElement {
                                     Scoring_Enabled__c { value }
                                     Pass_Threshold_Percent__c { value }
                                     Max_Score__c { value }
+                                    Allow_Exception_Override__c { value }
                                     Form_Template_Snapshots__r(first: 200) {
                                         edges {
                                             node {
@@ -1072,6 +1091,10 @@ export default class NeuraFormMobile extends LightningElement {
                                             Notes__c { value }
                                             Form_Question_Catalog__c { value }
                                             Form_Answer__c { value }
+                                            Form_Question_Catalog__r : Form_Question_Catalog__r {
+                                                Id
+                                                Allow_Exception_Override__c { value }
+                                            }
                                         }
                                     }
                                 }

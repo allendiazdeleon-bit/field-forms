@@ -101,7 +101,8 @@ public with sharing class NeuraFormMobileController {
                    Pages_JSON__c, Sections_JSON__c,
                    Questions_JSON__c, Questions_JSON_1__c, Questions_JSON_2__c,
                    Page_Conditions__c, Section_Conditions__c, Question_Conditions__c,
-                   Scoring_Enabled__c, Pass_Threshold_Percent__c, Max_Score__c
+                   Scoring_Enabled__c, Pass_Threshold_Percent__c, Max_Score__c,
+                   Allow_Exception_Override__c
             FROM Form_Template__c
             WHERE Id = :lf.Form_Template__c
             LIMIT 1
@@ -145,7 +146,8 @@ public with sharing class NeuraFormMobileController {
             SELECT Id, Name, Status__c, Severity__c, Blocks_Submission__c,
                    Photo_Required__c, Photo_Attached__c,
                    External_Reference__c, Exception_Reason__c, Exception_Detail__c,
-                   Notes__c, Form_Question_Catalog__c, Form_Answer__c
+                   Notes__c, Form_Question_Catalog__c, Form_Answer__c,
+                   Form_Question_Catalog__r.Allow_Exception_Override__c
             FROM Form_Finding__c
             WHERE Linked_Form__c = :linkedFormId
             LIMIT :FINDING_FETCH_LIMIT
