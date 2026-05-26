@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>External_Reference__c</fullName>
+    <caseSensitive>true</caseSensitive>
+    <description>Stable cross-system identifier for this catalog entry. Adapter-driven imports (Steritech, HVAC, etc.) populate this with the source system's question id so re-imports upsert idempotently. Unique because that's how upsert works.</description>
+    <externalId>true</externalId>
+    <label>External Reference</label>
+    <length>80</length>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

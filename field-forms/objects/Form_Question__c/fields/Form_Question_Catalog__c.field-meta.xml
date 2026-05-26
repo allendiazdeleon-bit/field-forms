@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Form_Question_Catalog__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <description>Reference to the canonical catalog entry. Resolved by the snapshot writer when assembling the renderer payload; this binding's own content fields are used as fallback during Phase 2 migration. Restricted delete protects historical responses when the catalog entry is referenced by snapshots.</description>
+    <externalId>false</externalId>
+    <label>Form Question Catalog</label>
+    <referenceTo>Form_Question_Catalog__c</referenceTo>
+    <relationshipLabel>Form Questions (Bindings)</relationshipLabel>
+    <relationshipName>Form_Question_Bindings</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

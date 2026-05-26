@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Calculation_Formula__c</fullName>
+    <description>Expression evaluated at runtime for "Calculation" question types. Reference other questions on the same form by Id with {{Id}}. Supports + - * / % (mod), parentheses, and the SUM/AVG/MIN/MAX/COUNT/IF functions. Example: ROUND({{a0K...}} * {{a0K...}}, 2). Errors (missing references, divide-by-zero) render as blank.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Expression for Calculation-type questions. Reference other answers via {{questionId}}. Supports +-*/%, parens, SUM/AVG/MIN/MAX/COUNT/IF/ROUND.</inlineHelpText>
+    <label>Calculation Formula</label>
+    <length>1000</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

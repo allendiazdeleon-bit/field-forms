@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tags__c</fullName>
+    <description>Comma-separated tags for filtering / grouping the catalog browser. Free-form for v1; may migrate to a junction object if filtering needs index support at scale. See Open questions in the design doc.</description>
+    <externalId>false</externalId>
+    <label>Tags</label>
+    <length>4000</length>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

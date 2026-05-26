@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Date_Time_Save_Format__c</fullName>
+    <externalId>false</externalId>
+    <label>Date/Time Save Format</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>YYYY</fullName>
+                <default>false</default>
+                <label>YYYY</label>
+            </value>
+            <value>
+                <fullName>YYYY-MM</fullName>
+                <default>false</default>
+                <label>YYYY-MM</label>
+            </value>
+            <value>
+                <fullName>YYYY-MM-DD</fullName>
+                <default>false</default>
+                <label>YYYY-MM-DD</label>
+            </value>
+            <value>
+                <fullName>YYYY-MM-DDThh:mmTZD</fullName>
+                <default>false</default>
+                <label>YYYY-MM-DDThh:mmTZD</label>
+            </value>
+            <value>
+                <fullName>YYYY-MM-DDThh:mm:ssTZD</fullName>
+                <default>false</default>
+                <label>YYYY-MM-DDThh:mm:ssTZD</label>
+            </value>
+            <value>
+                <fullName>YYYY-MM-DDThh:mm:ss.sTZD</fullName>
+                <default>false</default>
+                <label>YYYY-MM-DDThh:mm:ss.sTZD</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

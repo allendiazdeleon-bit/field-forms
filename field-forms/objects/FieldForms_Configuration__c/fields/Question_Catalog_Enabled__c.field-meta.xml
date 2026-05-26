@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Question_Catalog_Enabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When true, the snapshot writer resolves question content fields through Form_Question_Catalog__c entries (with per-binding Override_Question__c / Override_Required__c applied) instead of reading directly from Form_Question__c. Backfill of catalog entries should happen before flipping this on. See docs/phase-2-pillar-2-question-catalog.md.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Routes question content reads through the catalog model (Form_Question_Catalog__c). Requires the catalog backfill batch to have populated catalog entries for all existing bindings.</inlineHelpText>
+    <label>Question Catalog Enabled</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>
