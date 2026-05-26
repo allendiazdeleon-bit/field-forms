@@ -1,4 +1,33 @@
 public with sharing class neuraFormBuilderController {
+
+    /**
+     * Question content fields resolved through Form_Question_Catalog__c
+     * when Question_Catalog_Enabled__c is on. Same field set as
+     * NeuraFormSnapshotV2.CATALOG_RESOLVABLE_FIELDS — both lists must
+     * stay in sync when adding/removing catalog content fields.
+     */
+    private static final List<String> CATALOG_CONTENT_FIELDS = new List<String>{
+        'Active_Message__c',
+        'Calculation_Formula__c',
+        'Calculation_Result_Format__c',
+        'Decimal_Places__c',
+        'Default_Value_Source__c',
+        'Default_Value_Static__c',
+        'Display_Rich_Text__c',
+        'Font_Color__c',
+        'Font_Size__c',
+        'Inactive_Message__c',
+        'Include_Comment__c',
+        'Include_Photo__c',
+        'Label_Visible__c',
+        'Layout_Item__c',
+        'Question__c',
+        'Required__c',
+        'Text_Alignment__c',
+        'Type__c',
+        'Value_Set__c'
+    };
+
     @AuraEnabled(cacheable=true)
     public static List<Form_Setting_to_Field__mdt> getAllAttributes() {
         List<Form_Setting_to_Field__mdt> formSettingToField = [SELECT MasterLabel, Form_Setting__r.Label, Form_Setting_Field__r.Label FROM Form_Setting_to_Field__mdt];
@@ -57,10 +86,86 @@ public with sharing class neuraFormBuilderController {
 
         // Cast the result to the specific SObject type if needed
         List<Form_Question__c> formattedQuestions = (List<Form_Question__c>) questions;
-        
-        //List<Form_Question__c> questions = [SELECT Id, Name, Type__c, Order__c, Question__c, Column__c, Form_Template__c, Form_Section__c, Form_Page__c, Value_Set__c, Required__c, Slider_Size__c, Min__c, Max__c, Slider_Step__c FROM Form_Question__c WHERE Form_Template__c = :ft.Id];
+
+        // Pillar 2: when Question_Catalog_Enabled__c is on, overlay catalog
+        // content (and per-binding overrides) onto each binding in-place
+        // before returning. The LWC sees resolved values under the original
+        // field names; the Override_*/Form_Question_Catalog__c fields stay
+        // on the wire so a future LWC pass can show provenance badges
+        // without another Apex roundtrip.
+        if (isCatalogEnabled()) {
+            resolveQuestionContentThroughCatalog(formattedQuestions);
+        }
 
         return new FormWrapper(ft, pages, formattedSections, formattedQuestions);
+    }
+
+    /**
+     * True when the builder should overlay catalog content onto bindings.
+     * Reads the per-user hierarchy custom setting, matching the lookup
+     * pattern used in NeuraFormSnapshotV2.
+     */
+    @TestVisible
+    private static Boolean isCatalogEnabled() {
+        FieldForms_Configuration__c cfg = FieldForms_Configuration__c.getInstance();
+        return cfg != null && cfg.Question_Catalog_Enabled__c == true;
+    }
+
+    /**
+     * Overlay catalog content + per-binding overrides onto each binding in
+     * the input list, mutating in place. No-op when the list is empty or
+     * no binding has a catalog reference.
+     *
+     * Heap-conscious: one SOQL for all catalog entries referenced, in-place
+     * mutation (no Map<String, Object> intermediate). At 1300 bindings the
+     * baseline getFormDetails sits at ~3.1 MB sync heap; this adds ~2 MB
+     * for the catalog query, landing around 5 MB out of the 6 MB cap.
+     * Bindings beyond ~2x our test scale will need a chunked approach.
+     *
+     * Precedence (matches NeuraFormSnapshotV2.resolveQuestionThroughCatalog):
+     *   1. Catalog content for each field in CATALOG_CONTENT_FIELDS
+     *   2. Binding's Override_Question__c (if set) → Question__c
+     *   3. Binding's Override_Required__c (if not 'Inherit') → Required__c
+     */
+    @TestVisible
+    private static void resolveQuestionContentThroughCatalog(List<Form_Question__c> bindings) {
+        if (bindings == null || bindings.isEmpty()) return;
+
+        Set<Id> catalogIds = new Set<Id>();
+        for (Form_Question__c b : bindings) {
+            if (b.Form_Question_Catalog__c != null) catalogIds.add(b.Form_Question_Catalog__c);
+        }
+        if (catalogIds.isEmpty()) return;
+
+        Map<Id, Form_Question_Catalog__c> catalogById = new Map<Id, Form_Question_Catalog__c>([
+            SELECT Id, Active_Message__c, Calculation_Formula__c,
+                   Calculation_Result_Format__c, Decimal_Places__c,
+                   Default_Value_Source__c, Default_Value_Static__c,
+                   Display_Rich_Text__c, Font_Color__c, Font_Size__c,
+                   Inactive_Message__c, Include_Comment__c, Include_Photo__c,
+                   Label_Visible__c, Layout_Item__c, Question__c,
+                   Required__c, Text_Alignment__c, Type__c, Value_Set__c
+            FROM Form_Question_Catalog__c
+            WHERE Id IN :catalogIds
+        ]);
+
+        for (Form_Question__c b : bindings) {
+            if (b.Form_Question_Catalog__c == null
+                || !catalogById.containsKey(b.Form_Question_Catalog__c)) {
+                continue;
+            }
+            Form_Question_Catalog__c cat = catalogById.get(b.Form_Question_Catalog__c);
+            for (String f : CATALOG_CONTENT_FIELDS) {
+                Object val = cat.get(f);
+                if (val != null) b.put(f, val);
+            }
+            if (b.Override_Question__c != null) {
+                b.Question__c = b.Override_Question__c;
+            }
+            if (b.Override_Required__c != null && b.Override_Required__c != 'Inherit') {
+                b.Required__c = (b.Override_Required__c == 'Yes');
+            }
+        }
     }
 
     private static List<SObject> dynamicQuery(SObjectType sObjectType, String whereClause) {

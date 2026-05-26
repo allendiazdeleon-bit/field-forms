@@ -175,4 +175,132 @@ private class NeuraFormBuilderControllerTest {
         // Verify the result
         System.assertNotEquals(0, result.size(), 'Expected non-zero size of results');
     }
+
+    // ----- Pillar 2 catalog resolution tests --------------------------------
+
+    @isTest
+    static void testGetFormDetails_catalogOff_returnsBindingFields() {
+        // No FieldForms_Configuration__c.Question_Catalog_Enabled__c set —
+        // catalog resolution is a no-op and the LWC sees the binding's
+        // own field values as before. Important backward-compat guarantee.
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Question__c binding = [
+            SELECT Id, Question__c FROM Form_Question__c
+            WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+
+        // Link to a catalog entry with different content; verify the
+        // catalog content does NOT bleed into the response.
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-builder-off',
+            Question__c = 'Catalog truth (should not appear)',
+            Type__c = 'Text'
+        );
+        insert cat;
+        binding.Form_Question_Catalog__c = cat.Id;
+        update binding;
+
+        Test.startTest();
+        neuraFormBuilderController.FormWrapper result =
+            neuraFormBuilderController.getFormDetails(ft.Id);
+        Test.stopTest();
+
+        System.assertEquals('Test Question?', result.questions[0].Question__c,
+            'Catalog off → returned binding should keep its own Question__c');
+    }
+
+    @isTest
+    static void testGetFormDetails_catalogOn_returnsResolvedFields() {
+        // Catalog enabled → resolved values flow back to the LWC as if
+        // they were the binding's own fields.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Question__c binding = [
+            SELECT Id FROM Form_Question__c WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-builder-on',
+            Question__c = 'Catalog-resolved text',
+            Type__c = 'Multiple Choice',
+            Required__c = true
+        );
+        insert cat;
+        binding.Form_Question_Catalog__c = cat.Id;
+        update binding;
+
+        Test.startTest();
+        neuraFormBuilderController.FormWrapper result =
+            neuraFormBuilderController.getFormDetails(ft.Id);
+        Test.stopTest();
+
+        Form_Question__c resolved = result.questions[0];
+        System.assertEquals('Catalog-resolved text', resolved.Question__c,
+            'Catalog on → Question__c resolves through catalog');
+        System.assertEquals('Multiple Choice', resolved.Type__c,
+            'Catalog on → Type__c resolves through catalog');
+        System.assertEquals(true, resolved.Required__c,
+            'Catalog on → Required__c resolves through catalog');
+        // Override fields are also returned on the wire so the LWC can show
+        // "inherited" vs "overridden" badges without another roundtrip.
+        System.assertEquals(cat.Id, resolved.Form_Question_Catalog__c,
+            'Catalog ref stays on the binding for the LWC to read provenance');
+    }
+
+    @isTest
+    static void testGetFormDetails_catalogOn_overridesWin() {
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Question__c binding = [
+            SELECT Id FROM Form_Question__c WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-builder-override',
+            Question__c = 'Catalog default',
+            Type__c = 'Text',
+            Required__c = true
+        );
+        insert cat;
+        binding.Form_Question_Catalog__c = cat.Id;
+        binding.Override_Question__c = 'Per-binding override wins';
+        binding.Override_Required__c = 'No';
+        update binding;
+
+        Test.startTest();
+        neuraFormBuilderController.FormWrapper result =
+            neuraFormBuilderController.getFormDetails(ft.Id);
+        Test.stopTest();
+
+        Form_Question__c resolved = result.questions[0];
+        System.assertEquals('Per-binding override wins', resolved.Question__c,
+            'Override_Question__c should beat catalog Question__c');
+        System.assertEquals(false, resolved.Required__c,
+            'Override_Required__c=No should flip catalog true to false');
+        System.assertEquals('Per-binding override wins', resolved.Override_Question__c,
+            'Override field itself stays on the wire for the LWC badge');
+    }
+
+    @isTest
+    static void testGetFormDetails_catalogOn_nullCatalogRefFallsBackToBinding() {
+        // Mid-migration: catalog enabled but a binding hasn't been linked
+        // yet (Form_Question_Catalog__c is null). Should not crash and
+        // should return the binding's own fields.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+
+        Test.startTest();
+        neuraFormBuilderController.FormWrapper result =
+            neuraFormBuilderController.getFormDetails(ft.Id);
+        Test.stopTest();
+
+        System.assertEquals('Test Question?', result.questions[0].Question__c,
+            'Null catalog ref → binding keeps its own Question__c');
+    }
+
+    private static void enableCatalog() {
+        FieldForms_Configuration__c cfg = new FieldForms_Configuration__c();
+        cfg.Question_Catalog_Enabled__c = true;
+        insert cfg;
+    }
 }
