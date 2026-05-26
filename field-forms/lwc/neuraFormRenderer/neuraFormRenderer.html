@@ -90,6 +90,20 @@
 				total-pages={totalPageCount}
 				current-page-index={currentPageIndex}
 			></c-neura-form-footer>
+
+			<!-- Pillar 5 findings panel. Only mounts when scoring is enabled
+			     on the template so non-scored forms keep their original
+			     chrome. The panel manages its own expanded state via the
+			     swipe handle. -->
+			<template if:true={showFindingsPanel}>
+				<c-neura-form-findings-panel
+					class="renderer-findings-panel"
+					findings={findings}
+					onfindingclick={handleFindingClick}
+					onaddphoto={handleFindingAddPhoto}
+					onmarkexception={handleFindingMarkException}
+				></c-neura-form-findings-panel>
+			</template>
 		</div>
 	</template>
 	<template if:true={isCompleted}>

@@ -23,6 +23,47 @@ export default class NeuraFormReview extends LightningElement {
     @track summaryLoading = false;
     @track summaryError = '';
 
+    /* Pillar 5 — pass-through reads of the scoring fields stashed on
+       formObject by neuraFormMobile.constructFormObject. When the template
+       isn't scored these are null/0 and the submit-guard hides its scoring
+       chrome; the submit button still works as before. */
+    get scoringEnabled() {
+        return this.formObject?.Scoring_Enabled__c === true;
+    }
+
+    get formScore() {
+        return this.formObject?.linkedForm?.Score__c ?? null;
+    }
+
+    get formMaxScore() {
+        return this.formObject?.linkedForm?.Max_Score__c ?? null;
+    }
+
+    get formScoreThreshold() {
+        return this.formObject?.Pass_Threshold_Percent__c ?? null;
+    }
+
+    get findings() {
+        return Array.isArray(this.formObject?.findings)
+            ? this.formObject.findings
+            : [];
+    }
+
+    handleSubmitGuardViewFindings() {
+        // Re-dispatch so the renderer (or its parent) can open the findings
+        // panel pre-expanded. The renderer composes the panel today; this
+        // keeps the submit-guard primitive position-agnostic.
+        this.dispatchEvent(
+            new CustomEvent('viewfindings', { bubbles: true, composed: true })
+        );
+    }
+
+    handleSubmitGuardSaveDraft() {
+        this.dispatchEvent(
+            new CustomEvent('savedraft', { bubbles: true, composed: true })
+        );
+    }
+
     get pages() {
         return (this.formObject?.pages || []).map((p, idx) => {
             return {

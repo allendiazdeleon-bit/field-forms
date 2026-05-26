@@ -302,3 +302,14 @@
         animation: none;
     }
 }
+
+/* Pillar 5 findings panel — sticks to the bottom of the viewport so the
+   summary handle is always reachable while the tech scrolls through the
+   page. The panel itself owns the expand/collapse interaction; this
+   rule only positions it. */
+.renderer-findings-panel {
+    position: sticky;
+    bottom: 0;
+    z-index: var(--neura-z-sticky, 10);
+    margin-top: auto;
+}

@@ -121,6 +121,57 @@ export default class NeuraFormRenderer extends LightningElement {
 		return this._formObject?.Pass_Threshold_Percent__c ?? null;
 	}
 
+	/* Findings for the current Linked_Form. Mobile data path
+	   (NeuraFormMobileController + transformDetailData) stashes them on
+	   formObject.findings; desktop neuraForm doesn't carry them today so
+	   the array falls back to empty and the panel doesn't mount. */
+	get findings() {
+		return Array.isArray(this._formObject?.findings)
+			? this._formObject.findings
+			: [];
+	}
+
+	/* The findings panel only mounts when the template has scoring on.
+	   This keeps the chrome unchanged for legacy non-scored templates
+	   even if a stray finding ever appeared. */
+	get showFindingsPanel() {
+		return this._formObject?.Scoring_Enabled__c === true;
+	}
+
+	/* Event passthrough from the findings panel. The parent (neuraFormMobile)
+	   handles the actual question scroll / photo capture / exception modal
+	   flows — we bubble + compose so it can listen from anywhere up the
+	   tree. handle* names match the panel's event payloads. */
+	handleFindingClick(event) {
+		this.dispatchEvent(
+			new CustomEvent('findingclick', {
+				detail: event.detail,
+				bubbles: true,
+				composed: true
+			})
+		);
+	}
+
+	handleFindingAddPhoto(event) {
+		this.dispatchEvent(
+			new CustomEvent('findingaddphoto', {
+				detail: event.detail,
+				bubbles: true,
+				composed: true
+			})
+		);
+	}
+
+	handleFindingMarkException(event) {
+		this.dispatchEvent(
+			new CustomEvent('findingmarkexception', {
+				detail: event.detail,
+				bubbles: true,
+				composed: true
+			})
+		);
+	}
+
 	get isCompleted() {
 		return this._completed && this._loaded;
 	}

@@ -67,12 +67,28 @@
         </template>
 
         <div class="review-footer">
-            <lightning-button
-                label="Submit"
-                variant="brand"
-                onclick={handleSubmit}
-                class="review-submit-btn"
-            ></lightning-button>
+            <!-- Pillar 5 submit guard. When the template isn't scored the
+                 component gracefully renders an empty header + an enabled
+                 submit button — non-scored forms keep the original UX. -->
+            <template if:true={scoringEnabled}>
+                <c-neura-form-submit-guard
+                    score={formScore}
+                    max-score={formMaxScore}
+                    threshold={formScoreThreshold}
+                    findings={findings}
+                    onsubmit={handleSubmit}
+                    onviewfindings={handleSubmitGuardViewFindings}
+                    onsavedraft={handleSubmitGuardSaveDraft}
+                ></c-neura-form-submit-guard>
+            </template>
+            <template if:false={scoringEnabled}>
+                <lightning-button
+                    label="Submit"
+                    variant="brand"
+                    onclick={handleSubmit}
+                    class="review-submit-btn"
+                ></lightning-button>
+            </template>
         </div>
     </div>
 </template>
