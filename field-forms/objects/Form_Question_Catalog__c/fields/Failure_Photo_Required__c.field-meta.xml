@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Failure_Photo_Required__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When true, a Form_Finding__c generated from a failing answer on this question requires a Photo_Attached__c before the form can be submitted (Linked_Form__c.Findings_Blocking_Count__c &gt; 0 hard-blocks submit via the renderer). Independent of Include_Photo__c, which offers a photo regardless of pass/fail.</description>
+    <externalId>false</externalId>
+    <label>Failure Photo Required</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

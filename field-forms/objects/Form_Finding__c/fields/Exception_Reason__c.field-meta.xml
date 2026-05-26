@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Exception_Reason__c</fullName>
+    <description>Justification category captured by the override modal. Required by the renderer when transitioning to Status__c = Resolved-Exception. Picklist values mirror the four options shown in the doc's exception-modal wireframe.</description>
+    <externalId>false</externalId>
+    <label>Exception Reason</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>No camera access</fullName>
+                <default>false</default>
+                <label>No camera access</label>
+            </value>
+            <value>
+                <fullName>Hazardous area</fullName>
+                <default>false</default>
+                <label>Hazardous area</label>
+            </value>
+            <value>
+                <fullName>Equipment unavailable</fullName>
+                <default>false</default>
+                <label>Equipment unavailable</label>
+            </value>
+            <value>
+                <fullName>Other</fullName>
+                <default>false</default>
+                <label>Other</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Weight__c</fullName>
+    <defaultValue>1</defaultValue>
+    <description>Point value awarded to a Form_Answer when its value satisfies Pass_Criteria__c. Default 1; 0 means informational-only (still tracked as pass/fail but contributes no score). Per Pillar 5 the only supported aggregation is sum-of-weights — averages and weighted-categorical models are deferred (see docs/phase-2-pillar-5-scoring-findings.md).</description>
+    <externalId>false</externalId>
+    <label>Weight</label>
+    <precision>5</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

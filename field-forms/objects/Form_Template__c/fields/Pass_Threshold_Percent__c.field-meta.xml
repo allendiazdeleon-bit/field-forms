@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Pass_Threshold_Percent__c</fullName>
+    <description>Linked_Form__c.Score_Percent__c at or above this threshold marks the response as passed. Null means no overall pass/fail concept — Linked_Form__c.Passed__c stays false (formula treats null threshold as never-pass). Typical Steritech compliance threshold is 80%.</description>
+    <externalId>false</externalId>
+    <label>Pass Threshold %</label>
+    <precision>5</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Percent</type>
+    <unique>false</unique>
+</CustomField>

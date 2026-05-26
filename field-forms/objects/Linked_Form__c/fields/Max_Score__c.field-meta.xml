@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Max_Score__c</fullName>
+    <description>Snapshot of Form_Template__c.Max_Score__c at the time this Linked_Form was created (or first scored). Pinned to the template's max-at-evaluation so historical responses survive later re-weighting of the template. Linked_Form__c.Score_Percent__c uses this as the denominator.</description>
+    <externalId>false</externalId>
+    <label>Max Score</label>
+    <precision>8</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

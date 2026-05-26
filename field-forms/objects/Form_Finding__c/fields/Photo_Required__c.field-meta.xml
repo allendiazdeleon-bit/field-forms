@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Photo_Required__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Mirrors Form_Question_Catalog__c.Failure_Photo_Required__c at finding-creation time. Combines with Photo_Attached__c + Status__c to drive Blocks_Submission__c.</description>
+    <externalId>false</externalId>
+    <label>Photo Required</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

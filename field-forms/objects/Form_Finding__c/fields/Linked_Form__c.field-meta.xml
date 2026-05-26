@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Linked_Form__c</fullName>
+    <description>Master-detail parent. Findings cascade-delete with their Linked_Form (the response record) and inherit its sharing — ControlledByParent satisfies Open Question #1 in the design doc by default.</description>
+    <externalId>false</externalId>
+    <label>Linked Form</label>
+    <referenceTo>Linked_Form__c</referenceTo>
+    <relationshipLabel>Form Findings</relationshipLabel>
+    <relationshipName>Form_Findings</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <trackTrending>false</trackTrending>
+    <type>MasterDetail</type>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>

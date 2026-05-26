@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Findings_Blocking_Count__c</fullName>
+    <description>Count of Form_Finding__c child records on this Linked_Form whose Blocks_Submission__c formula evaluates true (photo required, no photo attached, status Open). Renderer's submit guard hard-blocks the Submit button while this is &gt; 0. Maintained alongside Findings_Open_Count__c by the scoring trigger / rollup queueable.</description>
+    <externalId>false</externalId>
+    <label>Findings Blocking Count</label>
+    <precision>5</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

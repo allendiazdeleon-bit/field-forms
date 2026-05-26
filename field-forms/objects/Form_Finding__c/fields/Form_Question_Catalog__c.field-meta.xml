@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Form_Question_Catalog__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>Catalog entry the finding was generated against. Stored at finding-creation time so the finding remains meaningful even if the binding (Form_Question__c) is later deleted or repointed to a different catalog entry. Reports / dashboards aggregate findings by catalog entry to surface recurring issues.</description>
+    <externalId>false</externalId>
+    <label>Form Question Catalog</label>
+    <referenceTo>Form_Question_Catalog__c</referenceTo>
+    <relationshipLabel>Form Findings</relationshipLabel>
+    <relationshipName>Form_Findings</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

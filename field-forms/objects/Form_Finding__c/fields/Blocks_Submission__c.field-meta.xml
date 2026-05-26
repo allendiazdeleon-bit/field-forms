@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Blocks_Submission__c</fullName>
+    <description>True when the finding currently prevents form submission. Counted into Linked_Form__c.Findings_Blocking_Count__c by the scoring trigger. Resolved-Exception, Auto-Resolved, Resolved and Waived statuses all unblock; In Progress with photo attached also unblocks.</description>
+    <externalId>false</externalId>
+    <formula>Photo_Required__c &amp;&amp; NOT(Photo_Attached__c) &amp;&amp; ISPICKVAL(Status__c, "Open")</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Blocks Submission</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

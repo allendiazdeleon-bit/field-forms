@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Exception_Detail__c</fullName>
+    <description>Free-text justification accompanying Exception_Reason__c. Required by the renderer when Exception_Reason__c = Other; encouraged for the other reasons. Length 1024 keeps the audit-trail concise while leaving room for context.</description>
+    <externalId>false</externalId>
+    <label>Exception Detail</label>
+    <length>1024</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

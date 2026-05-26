@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <description>Lifecycle state. Open = newly auto-created and unresolved. In Progress = an assignee acknowledged it. Resolved = manually closed by a reviewer. Auto-Resolved = the underlying answer flipped from failing to passing, the trigger marked the finding closed but kept it for audit. Resolved-Exception = the tech (or admin) recorded an exception via the override workflow; unblocks submit but logs the reason for review. Waived = an admin explicitly waived the finding without remediation.</description>
+    <externalId>false</externalId>
+    <label>Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Open</fullName>
+                <default>true</default>
+                <label>Open</label>
+            </value>
+            <value>
+                <fullName>In Progress</fullName>
+                <default>false</default>
+                <label>In Progress</label>
+            </value>
+            <value>
+                <fullName>Resolved</fullName>
+                <default>false</default>
+                <label>Resolved</label>
+            </value>
+            <value>
+                <fullName>Auto-Resolved</fullName>
+                <default>false</default>
+                <label>Auto-Resolved</label>
+            </value>
+            <value>
+                <fullName>Resolved-Exception</fullName>
+                <default>false</default>
+                <label>Resolved-Exception</label>
+            </value>
+            <value>
+                <fullName>Waived</fullName>
+                <default>false</default>
+                <label>Waived</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

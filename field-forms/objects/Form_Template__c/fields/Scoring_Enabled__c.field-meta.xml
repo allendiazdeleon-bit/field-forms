@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Scoring_Enabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Per-template opt-in for the scoring + findings runtime (Pillar 5). When false, FormAnswerScoringTrigger short-circuits and the renderer hides score badges / findings panels. Separate from FieldForms_Configuration__c.Scoring_Enabled__c, which is the org-wide kill switch; BOTH must be true for any scoring work to run. Default false preserves backward compatibility on existing templates.</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Turn on to compute pass/fail and create findings for this template's answers. Each question's catalog entry needs a Pass_Criteria__c and Weight__c set before this is meaningful.</inlineHelpText>
+    <label>Scoring Enabled</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Scoring_Enabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Org-wide kill switch for the Pillar 5 scoring + findings runtime. When false, FormAnswerScoringTrigger short-circuits before any evaluation or finding upsert, regardless of per-template Scoring_Enabled__c. Default false preserves backward compatibility for orgs that don't run scored audits. Per repo convention this is a hierarchy custom setting field and is intentionally NOT included in the FieldForms_Admin / FieldForms_User perm sets (matches Disable_Form_Template_JSON_Trigger__c, Snapshot_V2_Enabled__c, Question_Catalog_Enabled__c).</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Master switch for scoring. Each template still needs its own Scoring_Enabled__c flag; this gates the runtime work at the org level so a noisy trigger never fires when scoring isn't being used.</inlineHelpText>
+    <label>Scoring Enabled</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

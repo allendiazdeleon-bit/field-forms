@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Score__c</fullName>
+    <description>Sum of Form_Answer__c.Points_Earned__c across all answers for this response. Maintained by FormAnswerScoringTrigger / NeuraFormScoringRollupQueueable. Null until the first evaluable answer is saved (treat as "not yet scored").</description>
+    <externalId>false</externalId>
+    <label>Score</label>
+    <precision>8</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

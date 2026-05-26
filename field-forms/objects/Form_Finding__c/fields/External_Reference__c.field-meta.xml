@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>External_Reference__c</fullName>
+    <caseSensitive>true</caseSensitive>
+    <description>Stable cross-system identifier for the finding. Populated by FormAnswerScoringTrigger as "{Linked_Form__c.Id}:{Form_Answer__c.Id}" so the trigger can upsert idempotently. Also used by downstream work-order integrations (FSL WorkOrder, external CMMS) to correlate the source finding.</description>
+    <externalId>true</externalId>
+    <label>External Reference</label>
+    <length>80</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

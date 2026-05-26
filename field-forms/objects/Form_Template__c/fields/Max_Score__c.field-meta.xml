@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Max_Score__c</fullName>
+    <description>Sum of Form_Section__c.Max_Score__c for active sections in this template — the maximum achievable Linked_Form__c.Score__c. Denormalized for read perf and snapshotted onto Linked_Form__c.Max_Score__c at submission time so historical responses keep their original max even if the template is re-weighted later. Populated by the snapshot writer.</description>
+    <externalId>false</externalId>
+    <label>Max Score</label>
+    <precision>8</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

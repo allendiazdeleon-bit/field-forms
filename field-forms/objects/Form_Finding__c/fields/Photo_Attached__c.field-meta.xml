@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Photo_Attached__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>True once a ContentDocumentLink exists for this finding (or on the underlying Form_Answer__c). Maintained by a ContentDocumentLink trigger or by the renderer's photo-upload flow — wave 36 ships the field; the trigger ships with the photo-required UX wave.</description>
+    <externalId>false</externalId>
+    <label>Photo Attached</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

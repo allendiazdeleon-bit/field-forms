@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Failure_Auto_Finding__c</fullName>
+    <defaultValue>true</defaultValue>
+    <description>When true, FormAnswerScoringTrigger upserts a Form_Finding__c whenever a Form_Answer for this catalog entry evaluates Passed__c = false. Set to false for advisory-only questions where a failure should be scored but should not generate an exception record. Default true matches the common Steritech-style audit pattern.</description>
+    <externalId>false</externalId>
+    <label>Failure Auto-Create Finding</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Max_Score__c</fullName>
+    <description>Sum of Form_Question_Catalog__c.Weight__c for catalog entries referenced by this section's Form_Question bindings. Denormalized for read perf (matches the snapshot architecture pattern — see docs/snapshot-v2.md). Populated by the snapshot writer / catalog backfill batch; may be null in templates where Scoring_Enabled__c is off or the field hasn't been backfilled yet.</description>
+    <externalId>false</externalId>
+    <label>Max Score</label>
+    <precision>7</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

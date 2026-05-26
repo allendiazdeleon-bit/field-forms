@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Pass_Criteria__c</fullName>
+    <description>JSON expression that decides whether a Form_Answer for this catalog entry passes. Same shape as Form_Question__c.Conditions__c — { "all": [{ resource, operator, value }] } / { "any": [...] } — interpreted server-side by NeuraFormScoringEvaluator. The new "self" resource keyword refers to this answer's own value; existing external_ref keywords reference other answers in the same Linked_Form. Null Pass_Criteria__c means the question is informational and Passed__c stays null. See docs/phase-2-pillar-5-scoring-findings.md.</description>
+    <externalId>false</externalId>
+    <label>Pass Criteria</label>
+    <length>32768</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>10</visibleLines>
+</CustomField>
