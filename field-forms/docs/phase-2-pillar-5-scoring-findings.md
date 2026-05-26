@@ -222,6 +222,277 @@ release). Customers can build native Salesforce reports against
 `Form_Finding__c` and `Linked_Form__c` immediately. A future Pillar 7
 might ship pre-built dashboards.
 
+## UX wireframes
+
+The renderer UI is the highest-stakes surface in Phase 2. Field techs
+on mobile/tablet are the primary users; design must work small-screen
+first.
+
+### Section header — accessible score badge
+
+Color alone fails for color-blind users. Icon + color + progress bar
+together signal pass/fail with redundancy.
+
+```
+─── Desktop (or large mobile) ─────────────────────────────────
+┌───────────────────────────────────────────────────────────────┐
+│ Pest Prevention                          ✓ 12 / 15  ━━━━━ 80% │
+└───────────────────────────────────────────────────────────────┘
+
+─── Below threshold (color = red, icon = ✗) ──────────────────
+┌───────────────────────────────────────────────────────────────┐
+│ Temperature Documentation                ✗ 4 / 10  ━━━░░ 40% │
+└───────────────────────────────────────────────────────────────┘
+
+─── Empty / not yet evaluated (no answers in section) ────────
+┌───────────────────────────────────────────────────────────────┐
+│ Restroom Cleanliness                     · 0 / 8   ░░░░░  0% │
+└───────────────────────────────────────────────────────────────┘
+```
+
+The triple signal (icon + color + bar) means even a black-and-white
+print of the form still communicates the score state.
+
+### Question with failure-photo requirement
+
+When `Failure_Photo_Required__c` is true and the answer fails the
+pass criteria, the question needs visually distinct treatment — not
+just a footnote. Existing `Include_Photo__c` UI was designed for
+optional photos; mandatory photos need clear "REQUIRED" framing.
+
+```
+┌─ Mobile screen ──────────────────────────┐
+│                                          │
+│ Q5  Is the cooler in temperature range?  │
+│                                          │
+│  ○ Yes   ●No   ○ N/A                     │
+│                                          │
+│ ╔════════════════════════════════════╗   │ ← red border
+│ ║ ⚠ PHOTO REQUIRED                   ║   │
+│ ║                                    ║   │
+│ ║ This finding blocks form submit    ║   │
+│ ║ until a photo is attached or an    ║   │
+│ ║ exception is recorded.             ║   │
+│ ║                                    ║   │
+│ ║ [ 📸 Take photo ]                  ║   │
+│ ║ [ 📁 Choose from library ]         ║   │
+│ ║ [ ⊘ Cannot take photo — exception ]║   │
+│ ╚════════════════════════════════════╝   │
+│                                          │
+│ Notes (optional):                        │
+│ [ ____________________________ ]         │
+│                                          │
+└──────────────────────────────────────────┘
+```
+
+The third action — **"Cannot take photo — exception"** — is the
+override workflow flagged in Risks/Open Questions. **Shipping this in
+v1 is strongly recommended** (not v1.1) because the alternative is
+field techs unable to submit forms when they hit real-world
+constraints (no signal, broken camera, hazardous area).
+
+### Exception override modal
+
+When admin allows exceptions (configured per-template or org-wide),
+the override path requires justification. Creates an audit-trail
+finding instead of an unresolved blocking finding.
+
+```
+┌─ Record Exception ─────────────────────────────────────────────┐
+│                                                                │
+│  Why is the photo unavailable?                                 │
+│  (Select one — required for audit trail)                       │
+│                                                                │
+│  ○ No camera/device access                                     │
+│  ○ Hazardous area — cannot enter                               │
+│  ○ Equipment removed/unavailable                               │
+│  ● Other (specify below)                                       │
+│                                                                │
+│  Details:                                                      │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Cooler door was inaccessible at time of inspection due   │  │
+│  │ to maintenance work in progress.                         │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ⚠ This will mark the finding "Resolved — Exception" and       │
+│    unblock submit. The exception is logged on the finding      │
+│    record for follow-up review.                                │
+│                                                                │
+│  [ Cancel ]                              [ Record exception ]  │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Findings panel — mobile bottom sheet
+
+The doc text said "slides in from the right" — mobile-hostile. On
+small screens, this should be a bottom sheet with a swipe-up handle.
+
+```
+┌──── Mobile screen ────┐
+│                       │
+│ [Current form page]   │
+│                       │
+│ Q12: Was the cooler   │
+│ in range?             │
+│ ○ Yes  ● No  ○ N/A    │
+│                       │
+│  ⋮ collapsed state    │
+├───────────────────────┤
+│ ▔▔▔▔ ⌃ swipe up ▔▔▔▔  │ ← handle (always visible)
+│ ⚠ 3 findings · 1 blocks│
+└───────────────────────┘
+
+┌──── Mobile screen ────┐
+│                       │
+│ ⚠ 3 findings · 1 blocks│ ← collapsed bar tap-expanded
+│ ──────────────────    │
+│                       │
+│ 🚨 CRITICAL · BLOCKS  │ ← icon + label (color secondary)
+│  Foreign matter in    │
+│  prep area            │
+│  Section: Food Safety │
+│  📸 Photo required    │
+│  [ Add photo → ]      │
+│  [ Mark exception ]   │
+│  ─────────────────    │
+│                       │
+│ ⚠ HIGH                │
+│  Cooler temp out of   │
+│  range                │
+│  Section: Temp Logs   │
+│  [ Add notes ]        │
+│  ─────────────────    │
+│                       │
+│ ⚠ MEDIUM              │
+│  Pest verification    │
+│  missing              │
+│  Section: Pest Prev   │
+│  ─────────────────    │
+│                       │
+│ [ ⌄ Close panel ]     │
+└───────────────────────┘
+```
+
+Empty state (no findings):
+
+```
+┌──── Mobile screen ────┐
+│ ✓ No findings · 0     │ ← collapsed; positive signal
+│ ──────────────────    │
+│                       │
+│         ✓             │
+│   No open findings    │
+│                       │
+│ Findings appear here  │
+│ when an answer fails  │
+│ a pass criterion.     │
+│                       │
+└───────────────────────┘
+```
+
+### Submit guard — review screen
+
+The final gate. Tech sees aggregate score + blocking-finding count
+before they tap submit.
+
+```
+┌──── Mobile screen ────┐
+│                       │
+│  ── Review & Submit ─ │
+│                       │
+│  Score: 23 / 30  77%  │
+│  ✗ Below 80% threshold│
+│                       │
+│  Findings: 3 open     │
+│  🚨 1 critical (blocks)│
+│  ⚠ 1 high             │
+│  ⚠ 1 medium           │
+│                       │
+│ ┌──────────────────┐  │
+│ │ ⊘ Cannot submit  │  │ ← clearly disabled state
+│ │ Resolve 1 blocking│ │
+│ │ finding first.   │  │
+│ │ [ View findings ]│  │
+│ └──────────────────┘  │
+│                       │
+│  [ Save draft ]       │ ← always available
+│                       │
+└───────────────────────┘
+```
+
+After all blockers resolved:
+
+```
+┌──── Mobile screen ────┐
+│                       │
+│  ── Review & Submit ─ │
+│                       │
+│  Score: 23 / 30  77%  │
+│  ✗ Below 80% threshold│
+│                       │
+│  Findings: 2 open     │
+│  ⚠ 1 high (not block) │
+│  ⚠ 1 medium           │
+│  ✓ 1 resolved exception│
+│                       │
+│  ┌─────────────────┐  │
+│  │  Submit  →      │  │ ← enabled
+│  └─────────────────┘  │
+│                       │
+│  ⚠ Note: form will    │
+│  submit with 2 open   │
+│  findings. These      │
+│  remain visible to    │
+│  reviewers.           │
+│                       │
+└───────────────────────┘
+```
+
+The note matters: non-blocking findings *don't* prevent submit but
+*do* persist for downstream review (work order generation, audit
+trail). Tech needs to know they're not "completing" the form by
+submitting — open findings stay open.
+
+### Builder — Scoring tab on a question
+
+```
+┌─ Question Settings ────────────────────────────────────────────┐
+│                                                                │
+│  [ Basic ]  [ Validation ]  [ Conditions ]  [ Scoring ◀ ]      │
+│  ──────────────────────────────────────────────────────────    │
+│                                                                │
+│  Weight:  [ 1.0 ]                                              │
+│  How many points this question is worth when passed.           │
+│  Use 0 for informational-only questions.                       │
+│                                                                │
+│  Pass criteria:                                                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Answer  [ equals     ▾ ]  [ Yes              ▾ ]         │  │
+│  │ [ + add criterion (all / any) ]                          │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ── If this question fails ─────────────────────────────────   │
+│                                                                │
+│  Severity:           [ Critical ▾ ]                            │
+│  Auto-create finding:  ●Yes ○No                                │
+│  Require photo:        ●Yes ○No                                │
+│                                                                │
+│  Allow exception override:                                     │
+│      ○ Inherit from template setting (currently: allow)        │
+│      ●Always require photo (no override)                       │
+│      ○ Allow exception with justification                      │
+│                                                                │
+│  [ Cancel ]                                  [ Save changes ]  │
+└────────────────────────────────────────────────────────────────┘
+```
+
+The "allow exception override" tri-state is where the v1 vs. v1.1
+override-workflow decision becomes concrete. Default to "inherit
+from template setting" so admins configure the policy once at the
+template level and only override per-question for high-stakes items
+("Always require photo, no exception" for compliance-critical
+questions like cooking temperature).
+
 ## Backward compatibility
 
 - `Scoring_Enabled__c` defaults to false. Existing templates and
@@ -270,7 +541,8 @@ default; admins run when ready.
 | Max_Score__c on section/template | Denormalized field updated on snapshot rebuild | Avoids per-question SOQL on every answer save; consistent with snapshot architecture |
 | Default `Failure_Auto_Finding__c` | True | Match the common case; turn off for advisory-only questions |
 | Findings on auto-resolve | Status changes to Auto-Resolved, not deleted | Audit trail; "this finding once existed" is useful for trend data |
-| Block submission on missing photo | Hard block (no override at v1) | Aligns with compliance customers' expectation. "Mark as exception" added in v1.1 if requested. |
+| Block submission on missing photo | Hard block with documented exception workflow (justification required) | Compliance customers expect the hard block; field realities (no signal, broken camera, hazardous area) demand an override path. Justification-required exceptions satisfy both — the finding is marked "Resolved — Exception" with the override reason logged for audit. Promoted from v1.1 to v1 after UX review. |
+| Exception override per question | Tri-state: inherit / always-require / allow-with-justification | Template-level policy is the common case; per-question override accommodates compliance-critical items where no exception should ever be allowed (e.g., cooking temperature) |
 | Scoring model | Sum of weights | Opinionated; covers Steritech and similar audits. Other models deferred. |
 | `Pass_Criteria__c` evaluator | Reuse conditionalRenderingEvaluator.js | Same syntax = same builder UI = same security review; future replacement of eval() helps both at once |
 | Builder visibility | Scoring tab hidden when `Scoring_Enabled__c = false` | Avoids cluttering UI for customers who don't use it |
@@ -313,14 +585,17 @@ default; admins run when ready.
 - Builder UI — Template scoring panel: 1d
 - Renderer UI — section score badge: 1d
 - Renderer UI — findings panel + submit guard: 3d
+- Renderer UI — exception override workflow (promoted to v1): 1.5d
+- Builder UI — exception policy tri-state on question editor: 0.5d
 - Backfill batch (optional, opt-in): 1d
 - Tests (Apex + Jest): 3d
 - Integration / smoke test on a scored template end-to-end: 1.5d
 - Buffer: 1.5d
 
-**~20 dev-days end-to-end.** This is the biggest pillar by ~2x; the
+**~22 dev-days end-to-end.** This is the biggest pillar by ~2x; the
 renderer findings UI and the bulk-safe runtime evaluator are the two
-chunky pieces.
+chunky pieces. Bumped from 20d after the UX review promoted the
+exception override workflow from v1.1 to v1.
 
 ## Sequencing within Pillar 5
 

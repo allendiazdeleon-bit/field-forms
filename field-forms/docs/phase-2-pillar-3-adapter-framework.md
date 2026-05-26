@@ -229,6 +229,106 @@ The dry-run / preview is the same one the existing
 `NeuraFormExportController.previewImport` builds; route it through the
 new adapter pipeline.
 
+## UX wireframe — import dry-run
+
+The dry-run is the highest-stakes import-time UX. Without a clear
+preview, "destructive upsert" + "re-import overwrites" combine into a
+foot-gun. Admins need to see exactly what will be created, what will
+be changed, and what warnings exist before they commit.
+
+```
+┌─ Import Template ──────────────────────────────────────────────┐
+│                                                                │
+│  Source file: steritech_2026q2.json (1.5 MB)                   │
+│  Adapter detected:  Steritech Audit Format (confidence: 0.94)  │
+│  [ Use different adapter ▾ ]                                   │
+│                                                                │
+│  ─── Dry-Run Preview ──────────────────────────────────────    │
+│                                                                │
+│  Templates:        1 new                                       │
+│  Catalog entries:  1,272 new                                   │
+│  Pages:            8 new (grouped by line_item_code prefix)    │
+│  Sections:         216 new                                     │
+│  Bindings:         2,265 (1,272 unique questions, 60× reuse)   │
+│                                                                │
+│  ⚠ Warnings (24):                                              │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Type inference (24):                                     │  │
+│  │   • "Enter the date of..."  →  Date  (12 instances)      │  │
+│  │   • "Briefly describe..."   →  Text Area  (8 instances)  │  │
+│  │   • "What was the final..." →  Number  (4 instances)     │  │
+│  │   [ Review all 24 ]                                      │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ⚠ Conflicts:  None — no external refs collide with existing.  │
+│                                                                │
+│  ─── Preview tree ─────────────────────────────────────────    │
+│  ▶ Steritech Operational Excellence Audit (2026 Q2)            │
+│    ▼ Pest Prevention (line items 7xx)                          │
+│      ▶ STERITECH_700  "Pest prevention information"  (2 qs)    │
+│      ▶ STERITECH_701  "Pest service report review"   (3 qs)    │
+│      …                                                         │
+│    ▶ Food Safety — Cold (line items A1xx)                      │
+│    ▶ Food Safety — Hot (line items A2xx)                       │
+│    …                                                           │
+│                                                                │
+│  [ Cancel ]                              [ Confirm Import → ]  │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Re-import variant (template already exists)
+
+When the source matches an existing template's `external_ref`, the
+dry-run shifts to a diff view. This is the protection against the
+"destructive upsert" foot-gun documented in Risks.
+
+```
+┌─ Re-import Template ───────────────────────────────────────────┐
+│                                                                │
+│  Source file: steritech_2026q3.json (1.6 MB)                   │
+│  Matches existing template:                                    │
+│    Steritech Operational Excellence Audit (2026 Q2)            │
+│                                                                │
+│  ─── Changes ──────────────────────────────────────────────    │
+│                                                                │
+│  Catalog entries:                                              │
+│    + 14 new                                                    │
+│    ~ 32 modified                                               │
+│    – 6 removed (3 still referenced by bindings — see below)    │
+│                                                                │
+│  Bindings:                                                     │
+│    + 47 new                                                    │
+│    ~ 18 modified (order changes, condition updates)            │
+│    – 24 removed                                                │
+│                                                                │
+│  ⚠ Issues:                                                     │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ 3 catalog entries removed from source but still bound:   │  │
+│  │   • "Specify the cleaning frequency"  (2 bindings)       │  │
+│  │   • "Note the equipment ID"  (1 binding)                 │  │
+│  │ [ Keep entries (orphan) ] [ Delete & break bindings ]    │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ─── Detailed diff ────────────────────────────────────────    │
+│  [ Show field-level diff ]                                     │
+│                                                                │
+│  [ Cancel ]                              [ Apply Changes → ]   │
+└────────────────────────────────────────────────────────────────┘
+```
+
+Key affordances:
+- **Adapter override** in the header — admin can override
+  auto-detection if a different adapter applies
+- **Counts before tree** — admins decide at the summary level whether
+  to drill in
+- **Tree is expandable, not flat** — Steritech-scale (216 sections) is
+  unmanageable as a flat list
+- **Warnings are inline + reviewable** — "Review all 24" opens a
+  side-by-side editor where admin can override inferred types before
+  import
+- **Re-import diff shows orphan-handling explicitly** — defaults to
+  keeping orphans (safer) but lets admin choose
+
 ## Backward compatibility
 
 The existing exporter shape (`FormTemplateWrapper`) becomes one

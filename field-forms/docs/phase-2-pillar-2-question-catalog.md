@@ -171,6 +171,125 @@ Two new affordances:
 Existing "add question" flow still works: it creates a catalog entry
 and a binding in one shot (the catalog-of-one default).
 
+## UX wireframes
+
+### Catalog browser
+
+A new surface in the builder. Without real search/filter/group, a 50K-row
+catalog is unusable. Tag-as-LongTextArea (see Open questions) only works
+if there's an actual tag picker affordance.
+
+```
+┌─ Question Catalog ─────────────────────────────────────────────┐
+│                                                                │
+│  🔍 [Search question text or tags...]                          │
+│                                                                │
+│  Filters:  [ Type ▾ ]  [ Tag ▾ ]  [ Used by N+ templates ▾ ]   │
+│            [ × clear ]                                         │
+│                                                                │
+│  Showing 1,272 entries · sorted by Most Used ▾                 │
+│  ──────────────────────────────────────────────────────────    │
+│                                                                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Enter the date of service for the most recent report.    │  │
+│  │ 📅 Date · used in 60 templates · steritech_700, pco      │  │
+│  │ [ Use in template ]  [ Edit catalog entry ]              │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ What did you observe?                                    │  │
+│  │ ⦿ Multiple Choice · 2 options · used in 56 templates     │  │
+│  │ tags: steritech, observation                             │  │
+│  │ [ Use in template ]  [ Edit catalog entry ]              │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Briefly describe the chemical/item.                      │  │
+│  │ 📝 Text Area · used in 24 templates · chemicals, safety  │  │
+│  │ [ Use in template ]  [ Edit catalog entry ]              │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ⌃ Bulk actions:  [ Merge selected ]  [ Add tag ]              │
+└────────────────────────────────────────────────────────────────┘
+```
+
+Key affordances:
+- Default sort by **Most Used** — admins find the highest-leverage
+  entries first
+- **Usage count** ("used in 60 templates") signals catalog vs. one-off
+  questions at a glance
+- **Bulk merge** is a power-user affordance (the Phase 2.1 follow-up
+  surfaces here)
+- **Edit catalog entry** is the cross-template change path; it should
+  open a modal that prefixes the form with "This change affects N
+  templates" (next wireframe)
+
+### "Edit catalog entry" confirmation
+
+The dangerous path. Without explicit warning, admins will edit the
+catalog thinking they're editing one template.
+
+```
+┌─ Edit Catalog Entry ───────────────────────────────────────────┐
+│                                                                │
+│  ⚠ This catalog entry is used in 60 templates.                 │
+│  Changes will apply to all of them on next snapshot rebuild.   │
+│                                                                │
+│  Question text:                                                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Enter the date of service for the most recent report.    │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  Type:  [ Date ▾ ]                                             │
+│  Required:  ●Yes  ○No                                          │
+│  Tags:  [ steritech_700 × ] [ pco × ] [ + add ]                │
+│                                                                │
+│  ▼ Affected templates (60)                                     │
+│    • Steritech Operational Excellence Audit (2026 Q2)          │
+│    • Steritech Audit (2026 Q1)                                 │
+│    • Internal pest audit template                              │
+│    [ Show all 60 ]                                             │
+│                                                                │
+│  [ Cancel ]  [ Save & rebuild affected templates ]             │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Override badge on builder fields
+
+When editing a question inside a specific template, the admin needs
+to know at a glance whether a field is inherited from the catalog or
+overridden in this template. Without this, the "three sources of
+truth" problem (catalog, override, displayed) confuses users.
+
+```
+Question text:
+┌────────────────────────────────────────────────────────────────┐
+│ Enter the date of service for the most recent report.          │
+└────────────────────────────────────────────────────────────────┘
+  📎 Inherited from catalog · [ Override in this template ]
+
+  ─── after clicking "Override in this template" ───
+
+Question text (overridden):
+┌────────────────────────────────────────────────────────────────┐
+│ Enter the date of the last fumigation report.                  │
+└────────────────────────────────────────────────────────────────┘
+  ✎ Overridden in this template · [ Revert to catalog default ]
+  Catalog default: "Enter the date of service for the most..."
+```
+
+Same pattern for the Required toggle (the only other overridable field
+in v1):
+
+```
+Required:  [●] Yes  [○] No   📎 Inherited from catalog (Yes)
+                              [ Override in this template ]
+```
+
+Color coding (supplemental to the icon, not the only signal):
+- 📎 paperclip + neutral text = inherited (no template-specific change)
+- ✎ pencil + accent color = overridden (template-specific)
+
 ## Governor & perf notes
 
 - Backfill batch: ~1 SOQL + ~2 DML per question. For a 10K-question
