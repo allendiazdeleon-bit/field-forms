@@ -47,6 +47,17 @@
     font-weight: var(--neura-font-weight-medium);
 }
 
+.form-header__title-row {
+    /* Title and score badge sit on one row when there's space; on narrow
+       phones the badge wraps under the title. Flex with min-width on the
+       title prevents the badge from forcing a horizontal scroll. */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--neura-space-sm);
+}
+
 .form-header__title {
     margin: 0;
     font-family: var(--neura-font-family);
@@ -57,6 +68,14 @@
     /* Allow long titles to wrap gracefully on narrow phones rather than
        triggering a horizontal scroll. */
     word-wrap: break-word;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.form-header__score {
+    /* Right-align the badge against the title; it shrinks rather than
+       expanding past its intrinsic width. */
+    flex: 0 0 auto;
 }
 
 .form-header__progress {

@@ -104,6 +104,23 @@ export default class NeuraFormRenderer extends LightningElement {
 		return this._formObject?.linkedForm?.Id;
 	}
 
+	/* Pillar 5 score data threaded into the header. The scoring trigger
+	   writes Score__c / Max_Score__c on Linked_Form__c; Pass_Threshold_Percent__c
+	   lives on the template (spread into _formObject by neuraFormMobile).
+	   When any value is missing the header hides the badge — non-scored
+	   forms render unchanged. */
+	get formScore() {
+		return this._formObject?.linkedForm?.Score__c ?? null;
+	}
+
+	get formMaxScore() {
+		return this._formObject?.linkedForm?.Max_Score__c ?? null;
+	}
+
+	get formScoreThreshold() {
+		return this._formObject?.Pass_Threshold_Percent__c ?? null;
+	}
+
 	get isCompleted() {
 		return this._completed && this._loaded;
 	}

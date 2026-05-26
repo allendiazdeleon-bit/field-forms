@@ -8,6 +8,19 @@ export default class NeuraFormHeader extends LightningElement {
     @api currentStepIndex;
     @api totalSteps;
 
+    // Pillar 5 scoring inputs. All optional — when maxScore is null/0
+    // the badge stays hidden so non-scored forms render unchanged. The
+    // badge primitive handles its own neutral state when threshold is
+    // missing (form mid-completion / no Pass_Threshold_Percent set).
+    @api formScore;
+    @api formMaxScore;
+    @api formScoreThreshold;
+
+    get hasScore() {
+        const n = Number(this.formMaxScore);
+        return Number.isFinite(n) && n > 0;
+    }
+
     // 1-based index for user-facing "Page X of Y" — currentStepIndex is
     // 0-based internally.
     get currentStepIndexDisplay() {

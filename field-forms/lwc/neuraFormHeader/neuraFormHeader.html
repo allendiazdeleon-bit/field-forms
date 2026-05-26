@@ -12,7 +12,17 @@
                     <span class="form-header__eyebrow-next">Next: {nextStep}</span>
                 </template>
             </p>
-            <h1 class="form-header__title">{currentStep}</h1>
+            <div class="form-header__title-row">
+                <h1 class="form-header__title">{currentStep}</h1>
+                <template if:true={hasScore}>
+                    <c-neura-form-score-badge
+                        class="form-header__score"
+                        score={formScore}
+                        max-score={formMaxScore}
+                        threshold={formScoreThreshold}>
+                    </c-neura-form-score-badge>
+                </template>
+            </div>
             <div class="form-header__progress" aria-hidden="true">
                 <div class="form-header__progress-fill" style={progressStyle}></div>
             </div>
