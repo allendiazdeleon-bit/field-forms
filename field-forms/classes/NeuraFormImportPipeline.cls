@@ -26,13 +26,21 @@ public with sharing class NeuraFormImportPipeline {
     public static final String LABEL_FIELD_FORMS = 'Field Forms (native export)';
 
     /**
+     * Adapter label for the Steritech audit shape (Wave 38). Stable so
+     * re-imports keep landing on the same adapter; UI uses this string
+     * in the picker.
+     */
+    public static final String LABEL_STERITECH = 'Steritech Audit Format';
+
+    /**
      * Constant adapter registry. Replace with `NeuraForm_Adapter__mdt`
-     * lookups once a third adapter ships (Steritech is queued as #2).
+     * lookups once a third adapter ships beyond Steritech.
      */
     @TestVisible
     private static Map<String, NeuraFormSourceAdapter> registry() {
         return new Map<String, NeuraFormSourceAdapter>{
-            LABEL_FIELD_FORMS => new NeuraFormFieldFormsAdapter()
+            LABEL_FIELD_FORMS => new NeuraFormFieldFormsAdapter(),
+            LABEL_STERITECH => new NeuraFormSteritechAdapter()
         };
     }
 
