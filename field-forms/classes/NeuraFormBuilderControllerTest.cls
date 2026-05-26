@@ -621,6 +621,115 @@ private class NeuraFormBuilderControllerTest {
             'Shared catalog should not be mutated when admin edits one of many bindings');
     }
 
+    // ----- Wave 35.9: findSimilarCatalogEntries (SOSL) ---------------------
+
+    @isTest
+    static void testFindSimilarCatalogEntries_catalogOff_returnsEmpty() {
+        // No catalog feature flag → SOSL not even attempted.
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'sosl-feature-off',
+            Question__c = 'Enter the date of last service',
+            Type__c = 'Date'
+        );
+        insert cat;
+        Test.setFixedSearchResults(new Id[]{ cat.Id });
+
+        Test.startTest();
+        List<neuraFormBuilderController.CatalogMatch> matches =
+            neuraFormBuilderController.findSimilarCatalogEntries('Enter the date', 5);
+        Test.stopTest();
+
+        System.assertEquals(0, matches.size(),
+            'No matches expected when catalog feature is off');
+    }
+
+    @isTest
+    static void testFindSimilarCatalogEntries_shortQuery_returnsEmpty() {
+        enableCatalog();
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'sosl-short-query',
+            Question__c = 'Enter the date of last service',
+            Type__c = 'Date'
+        );
+        insert cat;
+        Test.setFixedSearchResults(new Id[]{ cat.Id });
+
+        Test.startTest();
+        List<neuraFormBuilderController.CatalogMatch> matchesNull =
+            neuraFormBuilderController.findSimilarCatalogEntries(null, 5);
+        List<neuraFormBuilderController.CatalogMatch> matchesEmpty =
+            neuraFormBuilderController.findSimilarCatalogEntries('', 5);
+        List<neuraFormBuilderController.CatalogMatch> matchesShort =
+            neuraFormBuilderController.findSimilarCatalogEntries('ab', 5);
+        Test.stopTest();
+
+        System.assertEquals(0, matchesNull.size());
+        System.assertEquals(0, matchesEmpty.size());
+        System.assertEquals(0, matchesShort.size(),
+            'Queries shorter than 3 chars should short-circuit');
+    }
+
+    @isTest
+    static void testFindSimilarCatalogEntries_returnsMatches() {
+        enableCatalog();
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'sosl-happy-path',
+            Question__c = 'Enter the date of last service',
+            Type__c = 'Date',
+            Tags__c = 'date, service-history'
+        );
+        insert cat;
+        // Test.setFixedSearchResults stubs SOSL for the next FIND in the
+        // test; pass the Ids of records we want returned.
+        Test.setFixedSearchResults(new Id[]{ cat.Id });
+
+        Test.startTest();
+        List<neuraFormBuilderController.CatalogMatch> matches =
+            neuraFormBuilderController.findSimilarCatalogEntries('Enter the date', 5);
+        Test.stopTest();
+
+        System.assertEquals(1, matches.size(), 'One match expected');
+        neuraFormBuilderController.CatalogMatch m = matches[0];
+        System.assertEquals(cat.Id, m.id);
+        System.assertEquals('Enter the date of last service', m.questionText);
+        System.assertEquals('Date', m.type);
+        System.assertEquals('date, service-history', m.tags);
+        System.assertEquals('sosl-happy-path', m.externalReference);
+        System.assertEquals(0, m.usageCount,
+            'No bindings reference this catalog yet — usageCount = 0');
+    }
+
+    @isTest
+    static void testFindSimilarCatalogEntries_reportsUsageCount() {
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'sosl-usage-count',
+            Question__c = 'Reused question',
+            Type__c = 'Text'
+        );
+        insert cat;
+
+        // Link the existing binding to this catalog so usage count > 0.
+        Form_Question__c existingBinding = [
+            SELECT Id FROM Form_Question__c WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+        existingBinding.Form_Question_Catalog__c = cat.Id;
+        update existingBinding;
+
+        Test.setFixedSearchResults(new Id[]{ cat.Id });
+
+        Test.startTest();
+        List<neuraFormBuilderController.CatalogMatch> matches =
+            neuraFormBuilderController.findSimilarCatalogEntries('Reused', 5);
+        Test.stopTest();
+
+        System.assertEquals(1, matches.size());
+        System.assertEquals(1, matches[0].usageCount,
+            'usageCount should reflect the number of bindings referencing the catalog');
+    }
+
     @isTest
     static void testProcessQuestionRecords_overrideBlocksSync() {
         // Binding has exclusive catalog (count == 1) BUT also has an

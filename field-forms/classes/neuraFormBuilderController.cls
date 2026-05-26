@@ -28,6 +28,82 @@ public with sharing class neuraFormBuilderController {
         'Value_Set__c'
     };
 
+    /**
+     * Wave 35.9: SOSL-backed search for catalog entries whose question
+     * text matches the given input. Powers the type-ahead "did you
+     * mean..." hint surfaced in the builder when admin types a new
+     * question. Closes the drift problem at the boundary where it
+     * starts (see docs/phase-2-pillar-2-question-catalog.md
+     * "Operating at scale — Drift").
+     *
+     * Each match carries the catalog text, type, tags, and current
+     * usage count (binding count across the org) so the LWC can show
+     * "used in N templates" alongside each suggestion.
+     *
+     * Returns an empty list when the input is blank, too short
+     * (<3 chars) to be a meaningful search, or when the catalog
+     * feature flag is off. Marked cacheable=true so the LWC's wire
+     * adapter can debounce naturally — the LDS cache absorbs repeated
+     * lookups for the same text.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<CatalogMatch> findSimilarCatalogEntries(String text, Integer limitN) {
+        List<CatalogMatch> out = new List<CatalogMatch>();
+        if (!isCatalogEnabled()) return out;
+        if (String.isBlank(text) || text.trim().length() < 3) return out;
+        Integer maxResults = (limitN != null && limitN > 0) ? limitN : 5;
+
+        // SOSL: token search across all fields, ranked by Salesforce's
+        // built-in relevance scoring (stemming + token weighting).
+        // RETURNING clause limits to catalog with the fields the LWC
+        // needs; the LIMIT shape is mandatory in SOSL.
+        List<List<SObject>> raw = [
+            FIND :text IN ALL FIELDS
+            RETURNING Form_Question_Catalog__c(
+                Id, Question__c, Type__c, Tags__c, External_Reference__c
+                LIMIT :maxResults
+            )
+        ];
+        List<SObject> hits = raw.isEmpty() ? new List<SObject>() : raw[0];
+        if (hits.isEmpty()) return out;
+
+        // Compute binding counts for the matched catalog entries so the
+        // LWC can show "used in N templates" inline. One GROUP BY query.
+        Set<Id> matchIds = new Set<Id>();
+        for (SObject s : hits) matchIds.add(s.Id);
+        Map<Id, Integer> counts = new Map<Id, Integer>();
+        for (AggregateResult ar : [
+            SELECT Form_Question_Catalog__c cat, COUNT(Id) cnt
+            FROM Form_Question__c
+            WHERE Form_Question_Catalog__c IN :matchIds
+            GROUP BY Form_Question_Catalog__c
+        ]) {
+            counts.put((Id) ar.get('cat'), (Integer) ar.get('cnt'));
+        }
+
+        for (SObject s : hits) {
+            Form_Question_Catalog__c cat = (Form_Question_Catalog__c) s;
+            CatalogMatch m = new CatalogMatch();
+            m.id = cat.Id;
+            m.questionText = cat.Question__c;
+            m.type = cat.Type__c;
+            m.tags = cat.Tags__c;
+            m.externalReference = cat.External_Reference__c;
+            m.usageCount = counts.containsKey(cat.Id) ? counts.get(cat.Id) : 0;
+            out.add(m);
+        }
+        return out;
+    }
+
+    public class CatalogMatch {
+        @AuraEnabled public Id id;
+        @AuraEnabled public String questionText;
+        @AuraEnabled public String type;
+        @AuraEnabled public String tags;
+        @AuraEnabled public String externalReference;
+        @AuraEnabled public Integer usageCount;
+    }
+
     @AuraEnabled(cacheable=true)
     public static List<Form_Setting_to_Field__mdt> getAllAttributes() {
         List<Form_Setting_to_Field__mdt> formSettingToField = [SELECT MasterLabel, Form_Setting__r.Label, Form_Setting_Field__r.Label FROM Form_Setting_to_Field__mdt];
