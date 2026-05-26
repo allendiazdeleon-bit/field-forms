@@ -281,7 +281,82 @@ public with sharing class neuraFormBuilderController {
 
     @AuraEnabled(cacheable=false)
     public static List<Form_Question__c> processQuestionRecords(List<Form_Question__c> toCreate, List<Form_Question__c> toUpdate, List<Id> toDelete){
+        // Pillar 2: when the catalog is enabled, every new binding gets a
+        // freshly-minted Form_Question_Catalog__c. Inserted BEFORE the
+        // binding so the binding can be linked to it. Without this, new
+        // questions created in the builder silently bypass the catalog
+        // model — a real workflow gap surfaced after Wave 35.7. See
+        // docs/phase-2-pillar-2-question-catalog.md "Builder UI impact".
+        if (isCatalogEnabled() && toCreate != null && !toCreate.isEmpty()) {
+            autoCreateCatalogForNewBindings(toCreate);
+        }
         return (List<Form_Question__c>) processFormUpdate(toCreate, toUpdate, toDelete);
+    }
+
+    /**
+     * For each new Form_Question__c binding lacking a catalog reference,
+     * insert a Form_Question_Catalog__c populated with the binding's
+     * content fields and link the binding back to it. Mutates the input
+     * list in place so the subsequent processFormUpdate sees the linked
+     * binding.
+     *
+     * Bindings that already have Form_Question_Catalog__c set (e.g.,
+     * created via "Pick from catalog" — future wave) are left alone.
+     */
+    @TestVisible
+    private static void autoCreateCatalogForNewBindings(List<Form_Question__c> newBindings) {
+        // Filter to bindings without a catalog ref. Pre-linked bindings
+        // (e.g. from "Pick from catalog") flow through unchanged.
+        List<Form_Question__c> needsCatalog = new List<Form_Question__c>();
+        for (Form_Question__c b : newBindings) {
+            if (b.Form_Question_Catalog__c == null) needsCatalog.add(b);
+        }
+        if (needsCatalog.isEmpty()) return;
+
+        // Build catalog entries copying content from each binding. The
+        // External_Reference__c gets a synthetic value here because the
+        // binding doesn't have an Id yet (it's pre-insert). The backfill
+        // batch uses 'cat_<bindingId>'; for net-new builder-created
+        // entries we use 'builder_<uuid>' as a distinguishable prefix.
+        // Field copy uses the same CATALOG_CONTENT_FIELDS list used by
+        // the read-side resolution in resolveQuestionContentThroughCatalog —
+        // the two paths stay in sync via that single constant.
+        List<Form_Question_Catalog__c> catalogs = new List<Form_Question_Catalog__c>();
+        for (Integer i = 0; i < needsCatalog.size(); i++) {
+            Form_Question__c b = needsCatalog[i];
+            Form_Question_Catalog__c cat = new Form_Question_Catalog__c();
+            cat.External_Reference__c = 'builder_' + generateExternalRef();
+            for (String f : CATALOG_CONTENT_FIELDS) {
+                try {
+                    Object val = b.get(f);
+                    if (val != null) cat.put(f, val);
+                } catch (System.SObjectException e) {
+                    // Field wasn't populated on the incoming binding; skip.
+                    // Happens for fields the builder didn't set (e.g.
+                    // Calculation_Formula__c on a Text question).
+                }
+            }
+            catalogs.add(cat);
+        }
+        insert catalogs;
+
+        // Link bindings to their newly-created catalog entries.
+        for (Integer i = 0; i < needsCatalog.size(); i++) {
+            needsCatalog[i].Form_Question_Catalog__c = catalogs[i].Id;
+        }
+    }
+
+    /**
+     * Generate a short, collision-resistant identifier for the catalog
+     * entry's External_Reference__c. Using DateTime + a random suffix
+     * keeps the value compact and unique-enough for the 80-char field;
+     * the unique constraint guards against real collisions.
+     */
+    @TestVisible
+    private static String generateExternalRef() {
+        return String.valueOf(Datetime.now().getTime())
+            + '_'
+            + String.valueOf(Math.abs(Crypto.getRandomLong())).left(8);
     }
 
     public static void deleteRecordsFromList(List<Id> toDeleteIds){

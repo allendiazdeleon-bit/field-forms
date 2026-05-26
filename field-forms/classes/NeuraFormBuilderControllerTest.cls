@@ -303,4 +303,158 @@ private class NeuraFormBuilderControllerTest {
         cfg.Question_Catalog_Enabled__c = true;
         insert cfg;
     }
+
+    // ----- Pillar 2 auto-create-catalog-from-builder tests ------------------
+
+    @isTest
+    static void testProcessQuestionRecords_catalogOff_skipsAutoCreate() {
+        // Catalog flag NOT set — auto-create should not run, even on a
+        // brand-new binding. Backward compat with existing flows.
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        List<Form_Question__c> toCreate = new List<Form_Question__c>{
+            new Form_Question__c(
+                Form_Template__c = ft.Id,
+                Question__c = 'Brand new question',
+                Type__c = 'Text'
+            )
+        };
+
+        Test.startTest();
+        neuraFormBuilderController.processQuestionRecords(
+            toCreate, new List<Form_Question__c>(), new List<Id>()
+        );
+        Test.stopTest();
+
+        System.assertEquals(0, [SELECT COUNT() FROM Form_Question_Catalog__c],
+            'Auto-create should not run when Question_Catalog_Enabled__c is off');
+        Form_Question__c saved = [
+            SELECT Form_Question_Catalog__c FROM Form_Question__c
+            WHERE Id = :toCreate[0].Id
+        ];
+        System.assertEquals(null, saved.Form_Question_Catalog__c,
+            'Binding should not be linked to a catalog when the flag is off');
+    }
+
+    @isTest
+    static void testProcessQuestionRecords_catalogOn_autoCreatesCatalog() {
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        List<Form_Question__c> toCreate = new List<Form_Question__c>{
+            new Form_Question__c(
+                Form_Template__c = ft.Id,
+                Question__c = 'Brand new question',
+                Type__c = 'Multiple Choice',
+                Value_Set__c = '[{"id":"yes","label":"Yes","value":"yes"}]',
+                Required__c = true
+            )
+        };
+
+        Test.startTest();
+        neuraFormBuilderController.processQuestionRecords(
+            toCreate, new List<Form_Question__c>(), new List<Id>()
+        );
+        Test.stopTest();
+
+        // A catalog entry was created.
+        List<Form_Question_Catalog__c> catalogs = [
+            SELECT Id, External_Reference__c, Question__c, Type__c,
+                   Value_Set__c, Required__c
+            FROM Form_Question_Catalog__c
+        ];
+        System.assertEquals(1, catalogs.size(),
+            'Auto-create should produce one catalog entry');
+        System.assertEquals('Brand new question', catalogs[0].Question__c,
+            'Catalog should carry the binding\'s question content');
+        System.assertEquals('Multiple Choice', catalogs[0].Type__c);
+        System.assert(catalogs[0].Value_Set__c.contains('"yes"'),
+            'Value_Set__c should be copied verbatim');
+        System.assertEquals(true, catalogs[0].Required__c);
+        System.assert(catalogs[0].External_Reference__c.startsWith('builder_'),
+            'External ref should use the builder_ prefix');
+
+        // The binding got linked to the new catalog entry.
+        Form_Question__c saved = [
+            SELECT Form_Question_Catalog__c FROM Form_Question__c
+            WHERE Id = :toCreate[0].Id
+        ];
+        System.assertEquals(catalogs[0].Id, saved.Form_Question_Catalog__c,
+            'Binding should be linked to the freshly created catalog entry');
+    }
+
+    @isTest
+    static void testProcessQuestionRecords_catalogOn_preserveExistingCatalogRef() {
+        // If the binding came in already linked to a catalog (e.g. via
+        // the future "Pick from catalog" flow), do not create a new
+        // catalog entry — respect the existing link.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+
+        Form_Question_Catalog__c existingCat = new Form_Question_Catalog__c(
+            External_Reference__c = 'existing-link',
+            Question__c = 'Existing catalog question',
+            Type__c = 'Text'
+        );
+        insert existingCat;
+
+        List<Form_Question__c> toCreate = new List<Form_Question__c>{
+            new Form_Question__c(
+                Form_Template__c = ft.Id,
+                Form_Question_Catalog__c = existingCat.Id,
+                Type__c = 'Text'
+            )
+        };
+
+        Test.startTest();
+        neuraFormBuilderController.processQuestionRecords(
+            toCreate, new List<Form_Question__c>(), new List<Id>()
+        );
+        Test.stopTest();
+
+        Integer catalogCount = [SELECT COUNT() FROM Form_Question_Catalog__c];
+        System.assertEquals(1, catalogCount,
+            'Only the existing catalog entry should be present; no new one created');
+
+        Form_Question__c saved = [
+            SELECT Form_Question_Catalog__c FROM Form_Question__c
+            WHERE Id = :toCreate[0].Id
+        ];
+        System.assertEquals(existingCat.Id, saved.Form_Question_Catalog__c,
+            'Pre-linked binding should keep its catalog reference');
+    }
+
+    @isTest
+    static void testProcessQuestionRecords_catalogOn_bulkAutoCreate() {
+        // Bulk insert path: 3 new bindings → 3 new catalog entries,
+        // each binding linked to its own.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        List<Form_Question__c> toCreate = new List<Form_Question__c>{
+            new Form_Question__c(Form_Template__c = ft.Id, Question__c = 'Q1', Type__c = 'Text'),
+            new Form_Question__c(Form_Template__c = ft.Id, Question__c = 'Q2', Type__c = 'Text'),
+            new Form_Question__c(Form_Template__c = ft.Id, Question__c = 'Q3', Type__c = 'Text')
+        };
+
+        Test.startTest();
+        neuraFormBuilderController.processQuestionRecords(
+            toCreate, new List<Form_Question__c>(), new List<Id>()
+        );
+        Test.stopTest();
+
+        System.assertEquals(3, [SELECT COUNT() FROM Form_Question_Catalog__c],
+            'Three new bindings should produce three new catalog entries');
+
+        // Each binding linked to a distinct catalog entry (no shared refs).
+        List<Form_Question__c> saved = [
+            SELECT Form_Question_Catalog__c FROM Form_Question__c
+            WHERE Id IN :toCreate
+        ];
+        Set<Id> catalogIds = new Set<Id>();
+        for (Form_Question__c b : saved) {
+            System.assertNotEquals(null, b.Form_Question_Catalog__c,
+                'Every new binding should be linked');
+            catalogIds.add(b.Form_Question_Catalog__c);
+        }
+        System.assertEquals(3, catalogIds.size(),
+            'Each binding should link to its own (unique) catalog entry');
+    }
 }
