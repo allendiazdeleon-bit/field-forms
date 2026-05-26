@@ -1,0 +1,40 @@
+<template>
+    <template if:true={hasMatches}>
+        <div class="slds-box slds-box_x-small slds-m-top_xx-small slds-theme_shade">
+            <p class="slds-text-body_small slds-m-bottom_x-small">
+                <lightning-icon icon-name="utility:search" size="x-small" variant="warning" alternative-text="info"></lightning-icon>
+                <strong class="slds-m-left_x-small">{countLabel}</strong>
+                — consider using one of these instead of creating a duplicate.
+            </p>
+            <ul class="slds-list_dotted slds-m-left_medium">
+                <template for:each={decoratedMatches} for:item="match">
+                    <li key={match.id} class="slds-m-bottom_xx-small">
+                        <div class="slds-grid slds-grid_vertical-align-start slds-gutters_xx-small">
+                            <div class="slds-col">
+                                <p class="slds-text-body_small slds-m-bottom_none">
+                                    {match.questionText}
+                                </p>
+                                <p class="slds-text-color_weak slds-text-body_small slds-m-bottom_none">
+                                    {match.type} · used in {match.usageLabel}
+                                </p>
+                            </div>
+                            <div class="slds-col slds-no-flex">
+                                <lightning-button
+                                    variant="base"
+                                    label="Open"
+                                    icon-name="utility:new_window"
+                                    icon-position="right"
+                                    data-id={match.id}
+                                    onclick={handleOpenMatch}>
+                                </lightning-button>
+                            </div>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </template>
+    <template if:true={hasError}>
+        <p class="slds-text-color_error slds-text-body_small slds-m-top_x-small">{error}</p>
+    </template>
+</template>

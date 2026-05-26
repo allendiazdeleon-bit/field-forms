@@ -61,6 +61,11 @@
                              syncs to the catalog on save. No Override click
                              required for the common new-question case. -->
                         <lightning-input-field onchange={handleAttributeChange} field-name={questionFieldApiName} value={questionFieldValue}> </lightning-input-field>
+                        <!-- Wave 35.9b: SOSL-backed "did you mean..." hint.
+                             Surfaces near-duplicate catalog entries the
+                             admin might want to use instead of creating
+                             one. Hidden when no matches; debounced. -->
+                        <c-neura-form-catalog-similar question-text={questionFieldValue}></c-neura-form-catalog-similar>
                     </template>
                     <template if:true={showInheritedQuestionReadOnly}>
                         <div class="slds-form-element slds-form-element_readonly">
