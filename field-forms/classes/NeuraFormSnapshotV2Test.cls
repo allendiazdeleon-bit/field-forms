@@ -243,6 +243,223 @@ private class NeuraFormSnapshotV2Test {
             'No snapshot rows should be created when v2 is off');
     }
 
+    // ----- Question Catalog resolution tests (Pillar 2) --------------------
+
+    @isTest
+    static void rebuild_catalogOff_serializesBindingFieldsAsBefore() {
+        // Question_Catalog_Enabled__c is unset → fall through to legacy path
+        // even when a binding has a catalog ref set. Backward compatible.
+        insertConfig(true, true);
+        Form_Template__c template = makeTemplate();
+        Form_Page__c page = makePage(template.Id);
+        Form_Section__c section = makeSection(template.Id, page.Id);
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-1',
+            Question__c = 'Catalog text', Type__c = 'Text', Required__c = true
+        );
+        insert cat;
+
+        Form_Question__c q = new Form_Question__c(
+            Form_Template__c = template.Id,
+            Form_Section__c = section.Id,
+            Question__c = 'Binding text',
+            Type__c = 'Text',
+            Required__c = false,
+            Form_Question_Catalog__c = cat.Id
+        );
+        insert q;
+
+        template = [
+            SELECT Id FROM Form_Template__c WHERE Id = :template.Id
+        ];
+
+        Test.startTest();
+        NeuraFormLogic.updateJSON(
+            new Map<Id, Form_Template__c>{template.Id => template}
+        );
+        Test.stopTest();
+
+        Map<String, List<Form_Template_Snapshot__c>> byType = chunksByType(template.Id);
+        List<Object> questions = (List<Object>) JSON.deserializeUntyped(
+            byType.get('Questions')[0].Payload__c
+        );
+        Map<String, Object> serialized = (Map<String, Object>) questions[0];
+        System.assertEquals('Binding text', serialized.get('Question__c'),
+            'Catalog off → snapshot uses binding fields, not catalog fields');
+    }
+
+    @isTest
+    static void rebuild_catalogOn_serializesCatalogFields() {
+        enableCatalog();
+        Form_Template__c template = makeTemplate();
+        Form_Page__c page = makePage(template.Id);
+        Form_Section__c section = makeSection(template.Id, page.Id);
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-2',
+            Question__c = 'Catalog truth',
+            Type__c = 'Multiple Choice',
+            Value_Set__c = '[{"id":"yes","label":"Yes","value":"yes"}]',
+            Required__c = true
+        );
+        insert cat;
+
+        Form_Question__c q = new Form_Question__c(
+            Form_Template__c = template.Id,
+            Form_Section__c = section.Id,
+            Question__c = 'Stale binding text',
+            Type__c = 'Text',
+            Required__c = false,
+            Form_Question_Catalog__c = cat.Id
+        );
+        insert q;
+
+        template = [SELECT Id FROM Form_Template__c WHERE Id = :template.Id];
+
+        Test.startTest();
+        NeuraFormLogic.updateJSON(
+            new Map<Id, Form_Template__c>{template.Id => template}
+        );
+        Test.stopTest();
+
+        Map<String, List<Form_Template_Snapshot__c>> byType = chunksByType(template.Id);
+        Map<String, Object> serialized = (Map<String, Object>) ((List<Object>)
+            JSON.deserializeUntyped(byType.get('Questions')[0].Payload__c))[0];
+
+        System.assertEquals('Catalog truth', serialized.get('Question__c'),
+            'Catalog on → snapshot resolves Question__c through the catalog');
+        System.assertEquals('Multiple Choice', serialized.get('Type__c'),
+            'Catalog on → Type__c comes from catalog');
+        System.assertEquals(true, serialized.get('Required__c'),
+            'Catalog on → Required__c comes from catalog');
+        System.assert(!serialized.containsKey('Form_Question_Catalog__c'),
+            'Catalog lookup field should be stripped from renderer payload');
+        System.assert(!serialized.containsKey('Override_Question__c'),
+            'Override fields should be stripped from renderer payload');
+    }
+
+    @isTest
+    static void rebuild_catalogOn_overrideQuestionWins() {
+        enableCatalog();
+        Form_Template__c template = makeTemplate();
+        Form_Page__c page = makePage(template.Id);
+        Form_Section__c section = makeSection(template.Id, page.Id);
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-3',
+            Question__c = 'Catalog default question', Type__c = 'Text'
+        );
+        insert cat;
+
+        Form_Question__c q = new Form_Question__c(
+            Form_Template__c = template.Id,
+            Form_Section__c = section.Id,
+            Form_Question_Catalog__c = cat.Id,
+            Override_Question__c = 'Per-binding override wins'
+        );
+        insert q;
+
+        template = [SELECT Id FROM Form_Template__c WHERE Id = :template.Id];
+
+        Test.startTest();
+        NeuraFormLogic.updateJSON(
+            new Map<Id, Form_Template__c>{template.Id => template}
+        );
+        Test.stopTest();
+
+        Map<String, List<Form_Template_Snapshot__c>> byType = chunksByType(template.Id);
+        Map<String, Object> serialized = (Map<String, Object>) ((List<Object>)
+            JSON.deserializeUntyped(byType.get('Questions')[0].Payload__c))[0];
+
+        System.assertEquals('Per-binding override wins', serialized.get('Question__c'),
+            'Override_Question__c should take precedence over catalog Question__c');
+    }
+
+    @isTest
+    static void rebuild_catalogOn_overrideRequiredHonoredAndInheritFalls() {
+        enableCatalog();
+        Form_Template__c template = makeTemplate();
+        Form_Page__c page = makePage(template.Id);
+        Form_Section__c section = makeSection(template.Id, page.Id);
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-4',
+            Question__c = 'Required test', Type__c = 'Text', Required__c = true
+        );
+        insert cat;
+
+        // Override = 'No' should flip to false
+        Form_Question__c qOverrideNo = new Form_Question__c(
+            Form_Template__c = template.Id, Form_Section__c = section.Id,
+            Form_Question_Catalog__c = cat.Id, Override_Required__c = 'No'
+        );
+        // Override = 'Inherit' should keep catalog (true)
+        Form_Question__c qInherit = new Form_Question__c(
+            Form_Template__c = template.Id, Form_Section__c = section.Id,
+            Form_Question_Catalog__c = cat.Id, Override_Required__c = 'Inherit'
+        );
+        insert new List<Form_Question__c>{qOverrideNo, qInherit};
+
+        template = [SELECT Id FROM Form_Template__c WHERE Id = :template.Id];
+
+        Test.startTest();
+        NeuraFormLogic.updateJSON(
+            new Map<Id, Form_Template__c>{template.Id => template}
+        );
+        Test.stopTest();
+
+        Map<String, List<Form_Template_Snapshot__c>> byType = chunksByType(template.Id);
+        List<Object> questions = (List<Object>) JSON.deserializeUntyped(
+            byType.get('Questions')[0].Payload__c
+        );
+
+        // Look up each by Id since order isn't guaranteed
+        Map<String, Boolean> requiredById = new Map<String, Boolean>();
+        for (Object o : questions) {
+            Map<String, Object> m = (Map<String, Object>) o;
+            requiredById.put((String) m.get('Id'), (Boolean) m.get('Required__c'));
+        }
+        System.assertEquals(false, requiredById.get(qOverrideNo.Id),
+            'Override_Required__c=No should override catalog true to false');
+        System.assertEquals(true, requiredById.get(qInherit.Id),
+            'Override_Required__c=Inherit should keep catalog Required__c=true');
+    }
+
+    @isTest
+    static void rebuild_catalogOn_nullCatalogRefFallsBackToBinding() {
+        // Binding with no catalog ref (mid-migration state): should serialize
+        // using the binding's own fields, not crash.
+        enableCatalog();
+        Form_Template__c template = makeTemplate();
+        Form_Page__c page = makePage(template.Id);
+        Form_Section__c section = makeSection(template.Id, page.Id);
+
+        Form_Question__c q = new Form_Question__c(
+            Form_Template__c = template.Id,
+            Form_Section__c = section.Id,
+            Question__c = 'Unlinked binding text',
+            Type__c = 'Text'
+            // No Form_Question_Catalog__c set
+        );
+        insert q;
+
+        template = [SELECT Id FROM Form_Template__c WHERE Id = :template.Id];
+
+        Test.startTest();
+        NeuraFormLogic.updateJSON(
+            new Map<Id, Form_Template__c>{template.Id => template}
+        );
+        Test.stopTest();
+
+        Map<String, List<Form_Template_Snapshot__c>> byType = chunksByType(template.Id);
+        Map<String, Object> serialized = (Map<String, Object>) ((List<Object>)
+            JSON.deserializeUntyped(byType.get('Questions')[0].Payload__c))[0];
+
+        System.assertEquals('Unlinked binding text', serialized.get('Question__c'),
+            'Null catalog ref should fall back to binding fields');
+    }
+
     // ----- helpers ---------------------------------------------------------
 
     private static void insertConfig(Boolean v2Enabled, Boolean triggerEnabled) {
@@ -250,6 +467,14 @@ private class NeuraFormSnapshotV2Test {
         FieldForms_Configuration__c cfg = new FieldForms_Configuration__c();
         cfg.Snapshot_V2_Enabled__c = v2Enabled;
         cfg.Disable_Form_Template_JSON_Trigger__c = !triggerEnabled;
+        insert cfg;
+    }
+
+    private static void enableCatalog() {
+        FieldForms_Configuration__c cfg = new FieldForms_Configuration__c();
+        cfg.Snapshot_V2_Enabled__c = true;
+        cfg.Question_Catalog_Enabled__c = true;
+        cfg.Disable_Form_Template_JSON_Trigger__c = false;
         insert cfg;
     }
 
