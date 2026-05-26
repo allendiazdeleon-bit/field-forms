@@ -856,18 +856,24 @@ export default class NeuraFormMobile extends LightningElement {
     @track exceptionModalFindingSeverity = '';
     @track exceptionModalPolicy = 'Allow';
 
-    handleFindingClick({ detail }) {
-        // TODO Wave 42 — scroll the source question into view by walking
-        // the form pages for a question matching detail.externalReference,
-        // then page-jump + DOM scrollIntoView on the question element.
-        console.log('findingclick (todo: scroll-to-question)', detail);
+    handleFindingClick(/* { detail } */) {
+        // The renderer handles the page-jump + scroll-to-question in
+        // Wave 42a. Nothing for the parent to do here — kept as an
+        // explicit hook for future analytics / deep-link behavior.
     }
 
-    handleFindingAddPhoto({ detail }) {
-        // TODO Wave 42 — open the file picker / camera flow for the
-        // finding's Form_Answer__c, then write Photo_Attached__c through
-        // the same uploader pipeline the question-level photo uses.
-        console.log('findingaddphoto (todo: open photo capture)', detail);
+    handleFindingAddPhoto(/* { detail } */) {
+        // The renderer already page-jumped + scrolled the question into
+        // view (Wave 42b). Direct the tech to the question's existing
+        // camera button rather than opening a separate dialog — keeps the
+        // photo lineage (ContentDocumentLink → Form_Answer__c) intact and
+        // avoids a second upload path. Full auto-open requires question-
+        // level @api plumbing and is a follow-up.
+        this.messageObj = {
+            message: 'Tap the camera icon on the highlighted question to attach a photo.',
+            variant: MESSAGE_VARIANT.INFO,
+            isClosable: true
+        };
     }
 
     handleFindingMarkException({ detail }) {

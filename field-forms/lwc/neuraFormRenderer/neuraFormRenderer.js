@@ -192,6 +192,27 @@ export default class NeuraFormRenderer extends LightningElement {
 	}
 
 	handleFindingAddPhoto(event) {
+		// Page-jump + scroll the source question into view so the tech
+		// only needs to tap the question's existing camera button — full
+		// auto-open of the photo dialog requires question-level @api
+		// plumbing and is deferred. The parent shows a directive toast
+		// after the event bubbles.
+		const ref = event?.detail?.externalReference;
+		const hit = ref ? this._findQuestionLocation(ref) : null;
+		if (hit) {
+			this._inReview = false;
+			if (hit.pageIndex !== this.currentPageIndex) {
+				this.currentPageIndex = hit.pageIndex;
+				this.currentPage = { ...this._formObject.pages[hit.pageIndex] };
+				this.currentPageTitle = this.pageTitleList[hit.pageIndex];
+			}
+			Promise.resolve().then(() => {
+				const page = this.refs?.formPage;
+				if (page && typeof page.scrollToQuestion === 'function') {
+					page.scrollToQuestion(hit.questionId);
+				}
+			});
+		}
 		this.dispatchEvent(
 			new CustomEvent('findingaddphoto', {
 				detail: event.detail,
