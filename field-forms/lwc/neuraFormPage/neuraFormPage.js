@@ -58,6 +58,23 @@ export default class NeuraFormPage extends LightningElement {
 		});
 	}
 
+	/**
+	 * Pillar 5 — propagate the findings-panel scroll request to the section
+	 * that owns the target question. Stops at the first match (questions are
+	 * unique across sections within a page). Returns true on hit so the
+	 * renderer can decide whether to retry on the next page render.
+	 */
+	@api scrollToQuestion(questionId) {
+		if (!questionId) return false;
+		const allSections = this.template.querySelectorAll('c-neura-form-section');
+		for (const section of allSections) {
+			if (typeof section.scrollToQuestion === 'function') {
+				if (section.scrollToQuestion(questionId)) return true;
+			}
+		}
+		return false;
+	}
+
 	handleOverlayStateChange(event) {
 		this.isOverlayActive = event.detail;
 	}

@@ -32,6 +32,13 @@
     gap: var(--neura-space-md) var(--neura-space-md);
 }
 
+/* Pillar 5 — when the findings panel scrolls a question into view, the
+   sticky form header would otherwise sit over the top of it. scroll-
+   margin-top reserves enough room for the header chrome. */
+[data-question-id] {
+    scroll-margin-top: 6rem;
+}
+
 .form-section__error {
     margin: var(--neura-space-lg);
     padding: var(--neura-space-md) var(--neura-space-lg);

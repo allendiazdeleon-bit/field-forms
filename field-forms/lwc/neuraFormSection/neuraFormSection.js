@@ -32,6 +32,23 @@ export default class NeuraFormSection extends LightningElement {
 		});
 	}
 
+	/**
+	 * Pillar 5 — scroll a specific question into view when the tech taps it
+	 * from the findings panel. Returns true if the question lives in this
+	 * section so the page can stop iterating. Uses scrollIntoView with
+	 * smooth behavior; CSS scroll-margin-top on the wrapper handles the
+	 * sticky header overlap.
+	 */
+	@api scrollToQuestion(questionId) {
+		if (!questionId) return false;
+		const el = this.template.querySelector(
+			`[data-question-id="${questionId}"]`
+		);
+		if (!el) return false;
+		el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		return true;
+	}
+
 	formQuestions;
 
 	get showTitle() {

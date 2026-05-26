@@ -143,6 +143,29 @@ export default class NeuraFormRenderer extends LightningElement {
 	   flows — we bubble + compose so it can listen from anywhere up the
 	   tree. handle* names match the panel's event payloads. */
 	handleFindingClick(event) {
+		// Page-jump to the page that owns the flagged question, then
+		// scroll the question wrapper into view via the page → section
+		// @api chain. Sticky header overlap is handled by the section's
+		// CSS scroll-margin-top.
+		const ref = event?.detail?.externalReference;
+		const hit = ref ? this._findQuestionLocation(ref) : null;
+		if (hit) {
+			this._inReview = false;
+			if (hit.pageIndex !== this.currentPageIndex) {
+				this.currentPageIndex = hit.pageIndex;
+				this.currentPage = { ...this._formObject.pages[hit.pageIndex] };
+				this.currentPageTitle = this.pageTitleList[hit.pageIndex];
+			}
+			// Wait one microtask for the page-change reactivity to flush
+			// before asking the page to scroll — without this the queried
+			// question wrapper may not be in the DOM yet.
+			Promise.resolve().then(() => {
+				const page = this.refs?.formPage;
+				if (page && typeof page.scrollToQuestion === 'function') {
+					page.scrollToQuestion(hit.questionId);
+				}
+			});
+		}
 		this.dispatchEvent(
 			new CustomEvent('findingclick', {
 				detail: event.detail,
@@ -150,6 +173,22 @@ export default class NeuraFormRenderer extends LightningElement {
 				composed: true
 			})
 		);
+	}
+
+	_findQuestionLocation(externalRef) {
+		const pages = this._formObject?.pages || [];
+		for (let i = 0; i < pages.length; i++) {
+			const sections = pages[i]?.sections || [];
+			for (const section of sections) {
+				const questions = section?.questions || [];
+				for (const q of questions) {
+					if (q?.External_Reference__c === externalRef) {
+						return { pageIndex: i, questionId: q.Id };
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	handleFindingAddPhoto(event) {
