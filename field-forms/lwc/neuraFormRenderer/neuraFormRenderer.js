@@ -46,6 +46,7 @@ import {
 } from './dictationHelpers';
 import { resolveFieldPath as _resolveFieldPathImpl } from './pathResolver';
 import { collectMissingRequiredLabels as _collectMissingRequiredImpl } from './validationHelpers';
+import { findQuestionLocation } from './findingsHelpers';
 
 import { reduceError } from 'c/nfCommonUtility';
 
@@ -148,7 +149,7 @@ export default class NeuraFormRenderer extends LightningElement {
 		// @api chain. Sticky header overlap is handled by the section's
 		// CSS scroll-margin-top.
 		const ref = event?.detail?.externalReference;
-		const hit = ref ? this._findQuestionLocation(ref) : null;
+		const hit = ref ? findQuestionLocation(this._formObject, ref) : null;
 		if (hit) {
 			this._inReview = false;
 			if (hit.pageIndex !== this.currentPageIndex) {
@@ -175,22 +176,6 @@ export default class NeuraFormRenderer extends LightningElement {
 		);
 	}
 
-	_findQuestionLocation(externalRef) {
-		const pages = this._formObject?.pages || [];
-		for (let i = 0; i < pages.length; i++) {
-			const sections = pages[i]?.sections || [];
-			for (const section of sections) {
-				const questions = section?.questions || [];
-				for (const q of questions) {
-					if (q?.External_Reference__c === externalRef) {
-						return { pageIndex: i, questionId: q.Id };
-					}
-				}
-			}
-		}
-		return null;
-	}
-
 	handleFindingAddPhoto(event) {
 		// Page-jump + scroll the source question into view so the tech
 		// only needs to tap the question's existing camera button — full
@@ -198,7 +183,7 @@ export default class NeuraFormRenderer extends LightningElement {
 		// plumbing and is deferred. The parent shows a directive toast
 		// after the event bubbles.
 		const ref = event?.detail?.externalReference;
-		const hit = ref ? this._findQuestionLocation(ref) : null;
+		const hit = ref ? findQuestionLocation(this._formObject, ref) : null;
 		if (hit) {
 			this._inReview = false;
 			if (hit.pageIndex !== this.currentPageIndex) {
