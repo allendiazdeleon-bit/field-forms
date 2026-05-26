@@ -1,0 +1,25 @@
+<template>
+    <div class={badgeClass} role="group" aria-label={stateLabel}>
+        <template if:true={hasLabel}>
+            <span class="score-badge__label">{label}</span>
+        </template>
+
+        <span class="score-badge__icon">
+            <lightning-icon
+                icon-name={iconName}
+                variant={iconVariant}
+                size="x-small"
+                alternative-text={stateLabel}>
+            </lightning-icon>
+        </span>
+
+        <span class="score-badge__numbers">
+            <span class="score-badge__score">{scoreLabel}</span>
+            <span class="score-badge__percent">({percentLabel})</span>
+        </span>
+
+        <div class="score-badge__bar" aria-hidden="true">
+            <div class="score-badge__bar-fill" lwc:ref="fill"></div>
+        </div>
+    </div>
+</template>
