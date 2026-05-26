@@ -457,4 +457,206 @@ private class NeuraFormBuilderControllerTest {
         System.assertEquals(3, catalogIds.size(),
             'Each binding should link to its own (unique) catalog entry');
     }
+
+    // ----- Wave 35.8a: binding-count + sync-on-update tests ----------------
+
+    @isTest
+    static void testGetFormDetails_catalogOn_returnsCatalogBindingCounts() {
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Question__c binding = [
+            SELECT Id FROM Form_Question__c WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-binding-count-1',
+            Question__c = 'Catalog text', Type__c = 'Text'
+        );
+        insert cat;
+        binding.Form_Question_Catalog__c = cat.Id;
+        update binding;
+
+        Test.startTest();
+        neuraFormBuilderController.FormWrapper result =
+            neuraFormBuilderController.getFormDetails(ft.Id);
+        Test.stopTest();
+
+        System.assertNotEquals(null, result.catalogBindingCounts,
+            'catalogBindingCounts should be populated when the flag is on');
+        System.assertEquals(1, result.catalogBindingCounts.get(cat.Id),
+            'Single binding catalog should report count of 1');
+    }
+
+    @isTest
+    static void testGetFormDetails_catalogOff_omitsBindingCounts() {
+        // Without the flag, no need to compute binding counts.
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+
+        Test.startTest();
+        neuraFormBuilderController.FormWrapper result =
+            neuraFormBuilderController.getFormDetails(ft.Id);
+        Test.stopTest();
+
+        System.assertEquals(null, result.catalogBindingCounts,
+            'catalogBindingCounts should be null when the catalog flag is off');
+    }
+
+    @isTest
+    static void testGetFormDetails_catalogOn_sharedCatalogShowsCountAboveOne() {
+        // Two bindings pointing to the same catalog entry; the count
+        // should reflect both, including ones in other templates.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+
+        Form_Question_Catalog__c sharedCat = new Form_Question_Catalog__c(
+            External_Reference__c = 'shared-binding-count',
+            Question__c = 'Shared question', Type__c = 'Text'
+        );
+        insert sharedCat;
+
+        Form_Question__c b1 = [
+            SELECT Id FROM Form_Question__c WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+        b1.Form_Question_Catalog__c = sharedCat.Id;
+        update b1;
+
+        // Second template + binding referencing the same catalog.
+        Form_Template__c ft2 = new Form_Template__c(Name = 'Second template');
+        insert ft2;
+        Form_Question__c b2 = new Form_Question__c(
+            Form_Template__c = ft2.Id,
+            Form_Question_Catalog__c = sharedCat.Id,
+            Question__c = 'Stale binding text', Type__c = 'Text'
+        );
+        insert b2;
+
+        Test.startTest();
+        neuraFormBuilderController.FormWrapper result =
+            neuraFormBuilderController.getFormDetails(ft.Id);
+        Test.stopTest();
+
+        System.assertEquals(2, result.catalogBindingCounts.get(sharedCat.Id),
+            'Catalog shared by 2 bindings (across templates) should report count of 2');
+    }
+
+    @isTest
+    static void testProcessQuestionRecords_exclusiveSyncsToCatalogOnUpdate() {
+        // Binding has exclusive catalog (count == 1), no override.
+        // Updating the binding's Question__c should propagate to catalog.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Question__c b = [
+            SELECT Id FROM Form_Question__c WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-exclusive-sync',
+            Question__c = 'Original catalog text', Type__c = 'Text'
+        );
+        insert cat;
+        b.Form_Question_Catalog__c = cat.Id;
+        update b;
+
+        // Now admin edits the binding's Question__c.
+        b.Question__c = 'Edited via builder';
+
+        Test.startTest();
+        neuraFormBuilderController.processQuestionRecords(
+            new List<Form_Question__c>(),
+            new List<Form_Question__c>{b},
+            new List<Id>()
+        );
+        Test.stopTest();
+
+        Form_Question_Catalog__c after = [
+            SELECT Question__c FROM Form_Question_Catalog__c WHERE Id = :cat.Id
+        ];
+        System.assertEquals('Edited via builder', after.Question__c,
+            'Edit on exclusive-catalog binding should sync to the catalog');
+    }
+
+    @isTest
+    static void testProcessQuestionRecords_sharedCatalogDoesNotSync() {
+        // Binding is one of two pointing at the same catalog (count == 2).
+        // The sync path should leave the catalog untouched.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-shared-no-sync',
+            Question__c = 'Pristine catalog text', Type__c = 'Text'
+        );
+        insert cat;
+
+        Form_Question__c b1 = [
+            SELECT Id FROM Form_Question__c WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+        b1.Form_Question_Catalog__c = cat.Id;
+        update b1;
+
+        Form_Template__c ft2 = new Form_Template__c(Name = 'Second template');
+        insert ft2;
+        Form_Question__c b2 = new Form_Question__c(
+            Form_Template__c = ft2.Id,
+            Form_Question_Catalog__c = cat.Id,
+            Question__c = 'Second binding text', Type__c = 'Text'
+        );
+        insert b2;
+
+        // Admin updates b1's content.
+        b1.Question__c = 'Attempt to mutate shared catalog';
+
+        Test.startTest();
+        neuraFormBuilderController.processQuestionRecords(
+            new List<Form_Question__c>(),
+            new List<Form_Question__c>{b1},
+            new List<Id>()
+        );
+        Test.stopTest();
+
+        Form_Question_Catalog__c after = [
+            SELECT Question__c FROM Form_Question_Catalog__c WHERE Id = :cat.Id
+        ];
+        System.assertEquals('Pristine catalog text', after.Question__c,
+            'Shared catalog should not be mutated when admin edits one of many bindings');
+    }
+
+    @isTest
+    static void testProcessQuestionRecords_overrideBlocksSync() {
+        // Binding has exclusive catalog (count == 1) BUT also has an
+        // Override_Question__c set. The sync should NOT happen because
+        // the override is the explicit per-template channel.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Question__c b = [
+            SELECT Id FROM Form_Question__c WHERE Form_Template__c = :ft.Id LIMIT 1
+        ];
+
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            External_Reference__c = 'cat-override-blocks-sync',
+            Question__c = 'Catalog default', Type__c = 'Text'
+        );
+        insert cat;
+        b.Form_Question_Catalog__c = cat.Id;
+        b.Override_Question__c = 'Override text';
+        update b;
+
+        // Now admin edits the binding's Question__c (legacy field).
+        // Override is set so the sync should be skipped.
+        b.Question__c = 'Stale binding edit';
+
+        Test.startTest();
+        neuraFormBuilderController.processQuestionRecords(
+            new List<Form_Question__c>(),
+            new List<Form_Question__c>{b},
+            new List<Id>()
+        );
+        Test.stopTest();
+
+        Form_Question_Catalog__c after = [
+            SELECT Question__c FROM Form_Question_Catalog__c WHERE Id = :cat.Id
+        ];
+        System.assertEquals('Catalog default', after.Question__c,
+            'Override on the binding should prevent Question__c from syncing to catalog');
+    }
 }

@@ -161,6 +161,50 @@ describe('neuraFormCatalogProvenance — action buttons (visibility)', () => {
     });
 });
 
+describe('neuraFormCatalogProvenance — exclusive catalog (Wave 35.8a)', () => {
+    function findButton(el, label) {
+        return Array.from(
+            el.shadowRoot.querySelectorAll('lightning-button')
+        ).find((b) => b.label === label) || null;
+    }
+
+    test('exclusive entry hides "Override in this template"', async () => {
+        // _exclusiveCatalogEntry=true means count==1; admin should
+        // just edit Question__c directly (no need to override).
+        const el = await mount({
+            attributes: {
+                Form_Question_Catalog__c: 'a01000000ABCDEFGHI',
+                _exclusiveCatalogEntry: true
+            }
+        });
+        expect(findButton(el, 'Override in this template')).toBeNull();
+        expect(findButton(el, 'Open catalog entry')).not.toBeNull();
+    });
+
+    test('shared entry still shows "Override in this template"', async () => {
+        const el = await mount({
+            attributes: {
+                Form_Question_Catalog__c: 'a01000000ABCDEFGHI',
+                _exclusiveCatalogEntry: false
+            }
+        });
+        expect(findButton(el, 'Override in this template')).not.toBeNull();
+    });
+
+    test('exclusive + already overridden → still show Revert', async () => {
+        // Edge case: admin overrode an exclusive entry. Revert still
+        // makes sense even though the override path was unusual.
+        const el = await mount({
+            attributes: {
+                Form_Question_Catalog__c: 'a01000000ABCDEFGHI',
+                _exclusiveCatalogEntry: true,
+                Override_Question__c: 'Edge case override'
+            }
+        });
+        expect(findButton(el, 'Revert to catalog default')).not.toBeNull();
+    });
+});
+
 describe('neuraFormCatalogProvenance — action button events', () => {
     test('handleRequestOverride fires requestoverride event with field detail', async () => {
         const el = await mount({

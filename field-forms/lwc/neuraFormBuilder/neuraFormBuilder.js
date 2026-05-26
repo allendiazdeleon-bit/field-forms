@@ -330,7 +330,11 @@ export default class NeuraFormBuilder extends LightningElement {
         let form = data.formTemplate;
         let pages = this.organizePages(data.pages);
         let sections = this.organizeSections(data.sections);
-        let questions = this.organizeQuestions(data.questions);
+        // Pillar 2 / Wave 35.8a: data.catalogBindingCounts is a Map<Id, Integer>
+        // when the catalog feature flag is on, null otherwise. Forwarded
+        // into organizeQuestions which attaches _exclusiveCatalogEntry to
+        // each binding's attributes.
+        let questions = this.organizeQuestions(data.questions, data.catalogBindingCounts);
 
         
 
@@ -419,17 +423,33 @@ export default class NeuraFormBuilder extends LightningElement {
 
     /**
      * Organizes an array of questions.
+     *
      * @param {Array} questions - The array of questions to be organized.
+     * @param {Object} catalogBindingCounts - Pillar 2 / Wave 35.8a:
+     *     a map of catalogId → number of bindings referencing that
+     *     catalog entry across the org. Used to derive the synthetic
+     *     `_exclusiveCatalogEntry` attribute on each binding. Null /
+     *     undefined when the catalog feature flag is off (the controller
+     *     returns no counts in that case).
      * @returns {Array} - The organized array of questions.
      */
-    organizeQuestions(questions) {
-        return questions.map(question => ({
-            id: question.Id,
-            type: question[FIELDS.Form_Question__c.Type.fieldApiName], 
-            // UNUSED: title: question[FIELDS.Form_Question__c.Title.fieldApiName],
-            Order__c: question[FIELDS.Form_Question__c.Order.fieldApiName],
-            attributes: question
-        }));
+    organizeQuestions(questions, catalogBindingCounts) {
+        return questions.map(question => {
+            const catalogId = question.Form_Question_Catalog__c;
+            const count = catalogBindingCounts && catalogId
+                ? catalogBindingCounts[catalogId]
+                : null;
+            // Exclusive when exactly one binding (this one) references
+            // the catalog entry. Drives "edit directly vs Override CTA"
+            // in neuraFormBuilderAttributes + neuraFormCatalogProvenance.
+            const exclusive = count === 1;
+            return {
+                id: question.Id,
+                type: question[FIELDS.Form_Question__c.Type.fieldApiName],
+                Order__c: question[FIELDS.Form_Question__c.Order.fieldApiName],
+                attributes: { ...question, _exclusiveCatalogEntry: exclusive }
+            };
+        });
     }
 
     /**

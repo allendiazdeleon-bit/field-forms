@@ -131,9 +131,18 @@ export default class NeuraFormCatalogProvenance extends NavigationMixin(Lightnin
         }));
     }
 
+    // Wave 35.8a: exclusive catalog (only this binding uses it) — no
+    // override button needed because edits flow directly to the catalog.
+    get isExclusiveCatalogEntry() {
+        return Boolean(this.attributes && this.attributes._exclusiveCatalogEntry);
+    }
+
     // Convenience getters used by the template's conditional rendering.
+    // "Override in this template" only makes sense when the catalog is
+    // shared (>1 binding); on exclusive entries the admin just edits
+    // the Question__c input directly.
     get showOverrideButton() {
-        return this.hasCatalogLink && !this.hasQuestionOverride;
+        return this.hasCatalogLink && !this.hasQuestionOverride && !this.isExclusiveCatalogEntry;
     }
     get showRevertButton() {
         return this.hasQuestionOverride;

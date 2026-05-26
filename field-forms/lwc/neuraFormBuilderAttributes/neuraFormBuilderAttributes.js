@@ -169,20 +169,39 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
         return Boolean(this.selection?.attributes?.Override_Question__c);
     }
 
-    // Mode 3: show the editable override input.
-    get showOverrideQuestionInput() {
-        return this.hasCatalogLink && this.hasQuestionOverride;
+    // Wave 35.8a: exclusive when the catalog entry has only this binding
+    // pointing at it (count == 1). The flag is computed server-side and
+    // stamped onto the binding's attributes by neuraFormBuilder's
+    // organizeQuestions. Exclusive bindings treat the input as editable
+    // Question__c — edits flow back to the catalog via the controller's
+    // sync on update. Shared bindings (count > 1) keep the read-only
+    // inherited treatment that requires an explicit Override click.
+    get isExclusiveCatalogEntry() {
+        return Boolean(this.selection?.attributes?._exclusiveCatalogEntry);
     }
 
-    // Mode 2: show the resolved value as read-only, with the override CTA
-    // surfaced via the provenance badge above.
-    get showInheritedQuestionReadOnly() {
-        return this.hasCatalogLink && !this.hasQuestionOverride;
-    }
-
-    // Mode 1: legacy editable input. Used when catalog isn't in play.
+    // Mode 1: legacy editable input. Used when catalog isn't in play at all.
     get showLegacyQuestionInput() {
         return !this.hasCatalogLink;
+    }
+
+    // Mode 2: read-only resolved value. Shared catalog, no override.
+    // Admin must click "Override in this template" to edit.
+    get showInheritedQuestionReadOnly() {
+        return this.hasCatalogLink && !this.hasQuestionOverride && !this.isExclusiveCatalogEntry;
+    }
+
+    // Mode 3: editable Question__c on an exclusive catalog entry. Edits
+    // sync back to the catalog via the controller's
+    // syncExclusiveCatalogContentOnUpdate path. No Override click needed.
+    get showExclusiveEditableInput() {
+        return this.hasCatalogLink && !this.hasQuestionOverride && this.isExclusiveCatalogEntry;
+    }
+
+    // Mode 4: editable Override_Question__c — admin explicitly overrode.
+    // Works for both exclusive and shared (admin chose to override).
+    get showOverrideQuestionInput() {
+        return this.hasCatalogLink && this.hasQuestionOverride;
     }
 
     get overrideQuestionFieldApiName() {

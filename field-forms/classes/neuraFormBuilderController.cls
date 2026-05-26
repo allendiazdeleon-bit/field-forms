@@ -93,11 +93,42 @@ public with sharing class neuraFormBuilderController {
         // field names; the Override_*/Form_Question_Catalog__c fields stay
         // on the wire so a future LWC pass can show provenance badges
         // without another Apex roundtrip.
+        FormWrapper wrapper = new FormWrapper(ft, pages, formattedSections, formattedQuestions);
         if (isCatalogEnabled()) {
             resolveQuestionContentThroughCatalog(formattedQuestions);
+            // Wave 35.8a: also return binding counts per catalog so the LWC
+            // knows whether each binding's catalog is exclusive (count == 1)
+            // or shared (count > 1). Drives binding-count-aware editing in
+            // neuraFormBuilderAttributes.
+            wrapper.catalogBindingCounts = computeCatalogBindingCounts(formattedQuestions);
         }
+        return wrapper;
+    }
 
-        return new FormWrapper(ft, pages, formattedSections, formattedQuestions);
+    /**
+     * Pillar 2 / Wave 35.8a: count how many Form_Question__c bindings
+     * reference each catalog entry in the given question set. Used by the
+     * LWC to drive the "exclusive vs shared" editing UX. Returns the count
+     * across the ENTIRE org (not just this template) — sharing a catalog
+     * entry with a binding in another template still counts as shared.
+     */
+    @TestVisible
+    private static Map<Id, Integer> computeCatalogBindingCounts(List<Form_Question__c> bindings) {
+        Set<Id> catalogIds = new Set<Id>();
+        for (Form_Question__c b : bindings) {
+            if (b.Form_Question_Catalog__c != null) catalogIds.add(b.Form_Question_Catalog__c);
+        }
+        Map<Id, Integer> counts = new Map<Id, Integer>();
+        if (catalogIds.isEmpty()) return counts;
+        for (AggregateResult ar : [
+            SELECT Form_Question_Catalog__c cat, COUNT(Id) cnt
+            FROM Form_Question__c
+            WHERE Form_Question_Catalog__c IN :catalogIds
+            GROUP BY Form_Question_Catalog__c
+        ]) {
+            counts.put((Id) ar.get('cat'), (Integer) ar.get('cnt'));
+        }
+        return counts;
     }
 
     /**
@@ -283,12 +314,21 @@ public with sharing class neuraFormBuilderController {
     public static List<Form_Question__c> processQuestionRecords(List<Form_Question__c> toCreate, List<Form_Question__c> toUpdate, List<Id> toDelete){
         // Pillar 2: when the catalog is enabled, every new binding gets a
         // freshly-minted Form_Question_Catalog__c. Inserted BEFORE the
-        // binding so the binding can be linked to it. Without this, new
-        // questions created in the builder silently bypass the catalog
-        // model — a real workflow gap surfaced after Wave 35.7. See
-        // docs/phase-2-pillar-2-question-catalog.md "Builder UI impact".
+        // binding so the binding can be linked to it.
         if (isCatalogEnabled() && toCreate != null && !toCreate.isEmpty()) {
             autoCreateCatalogForNewBindings(toCreate);
+        }
+        // Pillar 2 / Wave 35.8a: when admin updates a binding whose
+        // catalog is exclusively used (binding count == 1) and no
+        // override is active, sync the binding's content fields back to
+        // the catalog. Keeps the catalog as "the truth" instead of
+        // drifting behind the binding. Without this, edits on
+        // freshly-created (bindingCount=1) questions would live only on
+        // the binding while the catalog stays empty — if a second
+        // template later adopts the catalog entry, there's nothing
+        // useful there.
+        if (isCatalogEnabled() && toUpdate != null && !toUpdate.isEmpty()) {
+            syncExclusiveCatalogContentOnUpdate(toUpdate);
         }
         return (List<Form_Question__c>) processFormUpdate(toCreate, toUpdate, toDelete);
     }
@@ -359,6 +399,68 @@ public with sharing class neuraFormBuilderController {
             + String.valueOf(Math.abs(Crypto.getRandomLong())).left(8);
     }
 
+    /**
+     * Wave 35.8a: for each binding update where the binding's catalog
+     * entry has exactly one binding pointing at it (this one) AND no
+     * per-template override is active, copy content fields from the
+     * binding to the catalog. Skipped silently when the catalog is
+     * shared (>1 binding) or when an override exists on this binding
+     * (override fields are the explicit "per-template content" channel
+     * and should not flow back to the catalog).
+     */
+    @TestVisible
+    private static void syncExclusiveCatalogContentOnUpdate(List<Form_Question__c> updates) {
+        // Collect catalog ids referenced by the update set.
+        Set<Id> catalogIds = new Set<Id>();
+        for (Form_Question__c b : updates) {
+            if (b.Form_Question_Catalog__c != null) catalogIds.add(b.Form_Question_Catalog__c);
+        }
+        if (catalogIds.isEmpty()) return;
+
+        // One SOQL to count bindings per catalog across the org.
+        Map<Id, Integer> counts = new Map<Id, Integer>();
+        for (AggregateResult ar : [
+            SELECT Form_Question_Catalog__c cat, COUNT(Id) cnt
+            FROM Form_Question__c
+            WHERE Form_Question_Catalog__c IN :catalogIds
+            GROUP BY Form_Question_Catalog__c
+        ]) {
+            counts.put((Id) ar.get('cat'), (Integer) ar.get('cnt'));
+        }
+
+        // Build catalog updates for exclusively-bound bindings without
+        // overrides. Use the same CATALOG_CONTENT_FIELDS list as the
+        // read-side resolver so what flows out matches what flows in.
+        List<Form_Question_Catalog__c> toSync = new List<Form_Question_Catalog__c>();
+        for (Form_Question__c b : updates) {
+            if (b.Form_Question_Catalog__c == null) continue;
+            Integer cnt = counts.get(b.Form_Question_Catalog__c);
+            if (cnt == null || cnt != 1) continue;
+            // If admin explicitly set an override, that's the per-template
+            // truth — don't propagate the binding's Question__c back to
+            // the catalog. Defensive read via populatedFieldsAsMap because
+            // the in-memory SObject may not have these fields queried
+            // (e.g. minimal test SObjects). Treating absent-from-map as
+            // "no override" is correct: the override fields default null.
+            Map<String, Object> populated = b.getPopulatedFieldsAsMap();
+            Object overrideQ = populated.get('Override_Question__c');
+            String overrideReq = (String) populated.get('Override_Required__c');
+            if (overrideQ != null) continue;
+            if (overrideReq != null && overrideReq != 'Inherit') continue;
+
+            Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+                Id = b.Form_Question_Catalog__c
+            );
+            for (String f : CATALOG_CONTENT_FIELDS) {
+                if (populated.containsKey(f)) {
+                    cat.put(f, populated.get(f));
+                }
+            }
+            toSync.add(cat);
+        }
+        if (!toSync.isEmpty()) update toSync;
+    }
+
     public static void deleteRecordsFromList(List<Id> toDeleteIds){
         // allOrNone=false so partial-success reporting actually works; with
         // allOrNone=true, any failure throws DmlException and the per-result
@@ -393,6 +495,13 @@ public with sharing class neuraFormBuilderController {
         public List<Form_Section__c> sections;
         @AuraEnabled
         public List<Form_Question__c> questions;
+        // Pillar 2: catalog binding count keyed by catalog Id. The LWC
+        // reads this to decide whether the question editor should be
+        // editable (count == 1, exclusive use) or read-only-with-Override
+        // (count > 1, shared). Populated only when Question_Catalog_Enabled__c
+        // is on; otherwise null.
+        @AuraEnabled
+        public Map<Id, Integer> catalogBindingCounts;
 
         public FormWrapper(Form_Template__c formTemplate, List<Form_Page__c> pages, List<Form_Section__c> sections, List<Form_Question__c> questions){
             this.formTemplate = formTemplate;

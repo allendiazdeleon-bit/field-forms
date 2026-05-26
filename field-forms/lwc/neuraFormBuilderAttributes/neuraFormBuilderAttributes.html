@@ -55,6 +55,13 @@
                     <template if:true={showLegacyQuestionInput}>
                         <lightning-input-field onchange={handleAttributeChange} field-name={questionFieldApiName} value={questionFieldValue}> </lightning-input-field>
                     </template>
+                    <template if:true={showExclusiveEditableInput}>
+                        <!-- Wave 35.8a: exclusive catalog entry (count=1).
+                             Input edits Question__c directly; controller
+                             syncs to the catalog on save. No Override click
+                             required for the common new-question case. -->
+                        <lightning-input-field onchange={handleAttributeChange} field-name={questionFieldApiName} value={questionFieldValue}> </lightning-input-field>
+                    </template>
                     <template if:true={showInheritedQuestionReadOnly}>
                         <div class="slds-form-element slds-form-element_readonly">
                             <span class="slds-form-element__label">Question (inherited from catalog)</span>
