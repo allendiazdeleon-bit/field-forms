@@ -37,6 +37,11 @@
             </lightning-record-edit-form>
         </template>
         <template if:true={isQuestion}>
+            <!-- Pillar 2 catalog provenance: shows whether this binding is
+                 linked to a catalog entry and whether per-binding overrides
+                 are in effect. Read-only in v1; action buttons (override /
+                 revert / open catalog entry) are a future wave. -->
+            <c-neura-form-catalog-provenance selection={selection}></c-neura-form-catalog-provenance>
             <lightning-record-edit-form object-api-name={formQuestionApiName}>
                 <lightning-messages></lightning-messages>
                 <div lwc:if={isNotDisplayText}>
