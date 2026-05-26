@@ -1,0 +1,4 @@
+# Agent worktrees (git-linked working copies created by background agents).
+# These appear under the project root but are independent repos with their
+# own staged changes; SF must NOT see them as duplicate source.
+.claude/worktrees/**

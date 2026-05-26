@@ -436,9 +436,58 @@ public with sharing class neuraFormExportController {
      * Returns an ImportResult (not raw templates) so the LWC can surface
      * created/updated counts and any non-fatal warnings (e.g. condition
      * references that couldn't be resolved).
+     *
+     * As of Pillar 3 (Wave 36), this method delegates to
+     * NeuraFormImportPipeline by default. The pipeline runs the Field
+     * Forms adapter (NeuraFormFieldFormsAdapter) → NeuraFormImporter,
+     * which produces catalog-of-one entries for every imported question
+     * so subsequent edits go through the catalog. The legacy direct
+     * path remains available via importTemplatesLegacy() and is the
+     * implementation behind importTemplatesAsNew (which still needs
+     * the regenerate-external-refs hook the pipeline doesn't yet have).
      */
     @AuraEnabled(cacheable=false)
     public static ImportResult importTemplates(String jsonContent) {
+        if (String.isBlank(jsonContent)) {
+            AuraHandledException e = new AuraHandledException('Import payload was empty.');
+            e.setMessage('Import payload was empty.');
+            throw e;
+        }
+        try {
+            NeuraFormImportPipeline.PipelineResult pr =
+                NeuraFormImportPipeline.importSource(jsonContent, null, null);
+            ImportResult r = new ImportResult();
+            r.templates = pr.templates;
+            r.createdCount = pr.createdCount;
+            r.updatedCount = pr.updatedCount;
+            r.warnings = pr.warnings != null ? pr.warnings : new List<String>();
+            return r;
+        } catch (NeuraFormImporter.AdapterException ae) {
+            // Adapter / IR validation failure. Surface the message
+            // verbatim so admins see "Template is missing
+            // External_Reference__c" rather than a generic exception.
+            AuraHandledException ahe = new AuraHandledException(ae.getMessage());
+            ahe.setMessage(ae.getMessage());
+            throw ahe;
+        } catch (AuraHandledException ahe) {
+            throw ahe;
+        } catch (Exception e) {
+            AuraHandledException ahe = new AuraHandledException(
+                'Import failed and was rolled back: ' + e.getMessage()
+            );
+            ahe.setMessage('Import failed and was rolled back: ' + e.getMessage());
+            throw ahe;
+        }
+    }
+
+    /**
+     * Legacy direct importer kept as a fallback for the "import as new"
+     * variant (regenerates External_Reference__c on every record so the
+     * upsert creates fresh rows). The adapter pipeline doesn't yet
+     * implement that mode; once it does, this can be deprecated.
+     */
+    @TestVisible
+    private static ImportResult importTemplatesLegacy(String jsonContent) {
         return importTemplatesInternal(jsonContent, /* importAsNew */ false);
     }
 

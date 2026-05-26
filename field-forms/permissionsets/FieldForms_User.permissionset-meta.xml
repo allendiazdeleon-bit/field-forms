@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <classAccesses>
+        <apexClass>NeuraFormFieldFormsAdapter</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormIR</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormImportPipeline</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormImporter</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>NeuraFormLinkedFormProvisioner</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -22,6 +38,10 @@
     </classAccesses>
     <classAccesses>
         <apexClass>NeuraFormSnapshotV2</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormSourceAdapter</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -436,6 +456,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Form_Section__c.Padding__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Form_Section__c.Policy_Text__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

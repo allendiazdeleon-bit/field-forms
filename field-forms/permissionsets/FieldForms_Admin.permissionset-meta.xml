@@ -9,6 +9,22 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>NeuraFormFieldFormsAdapter</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormIR</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormImportPipeline</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormImporter</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>NeuraFormLinkedFormProvisioner</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -34,6 +50,10 @@
     </classAccesses>
     <classAccesses>
         <apexClass>NeuraFormSnapshotV2</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormSourceAdapter</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
@@ -431,6 +451,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Form_Section__c.Padding__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Section__c.Policy_Text__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
