@@ -1,0 +1,111 @@
+<template>
+    <section class={rootClass}>
+        <!-- Always-visible handle. Tap toggles expansion (unless the parent
+             pinned forceExpanded). The summary line carries the redundant
+             icon + text signal so color-blind users see the state too. -->
+        <button
+            type="button"
+            class="findings-panel__handle"
+            aria-expanded={isExpanded}
+            onclick={handleToggle}>
+            <span class="findings-panel__handle-grip" aria-hidden="true"></span>
+            <lightning-icon
+                icon-name={summaryIcon}
+                variant={summaryIconVariant}
+                size="x-small"
+                alternative-text="Findings status">
+            </lightning-icon>
+            <span class="findings-panel__summary">{summaryText}</span>
+        </button>
+
+        <template if:true={isExpanded}>
+            <div class="findings-panel__body" role="region" aria-label="Findings">
+                <template if:true={isEmpty}>
+                    <div class="findings-panel__empty">
+                        <lightning-icon
+                            icon-name="utility:check"
+                            variant="success"
+                            size="large"
+                            alternative-text="No findings">
+                        </lightning-icon>
+                        <p class="findings-panel__empty-title">No open findings</p>
+                        <p class="findings-panel__empty-body">
+                            Findings appear here when an answer fails a pass
+                            criterion.
+                        </p>
+                    </div>
+                </template>
+
+                <template if:false={isEmpty}>
+                    <ul class="findings-panel__list">
+                        <template for:each={openFindings} for:item="f">
+                            <li key={f.rowKey} class={f.severityClass}>
+                                <button
+                                    type="button"
+                                    class="finding-card__header"
+                                    data-finding-id={f.Id}
+                                    data-external-reference={f.External_Reference__c}
+                                    onclick={handleFindingClick}>
+                                    <span class="finding-card__severity">
+                                        {f.severityLabel}{f.blocksLabel}
+                                    </span>
+                                    <span class="finding-card__title">{f.Name}</span>
+                                    <template if:true={f.sectionName}>
+                                        <span class="finding-card__section">
+                                            Section: {f.sectionName}
+                                        </span>
+                                    </template>
+                                </button>
+
+                                <div class="finding-card__actions">
+                                    <template if:true={f.showAddPhoto}>
+                                        <button
+                                            type="button"
+                                            class="finding-card__action finding-card__action--primary"
+                                            data-finding-id={f.Id}
+                                            onclick={handleAddPhoto}>
+                                            <lightning-icon
+                                                icon-name="utility:photo"
+                                                size="xx-small"
+                                                alternative-text="">
+                                            </lightning-icon>
+                                            <span>Add photo</span>
+                                        </button>
+                                    </template>
+                                    <template if:true={f.photoSatisfied}>
+                                        <span class="finding-card__pill finding-card__pill--ok">
+                                            <lightning-icon
+                                                icon-name="utility:check"
+                                                size="xx-small"
+                                                alternative-text="">
+                                            </lightning-icon>
+                                            Photo attached
+                                        </span>
+                                    </template>
+                                    <template if:true={f.canMarkException}>
+                                        <button
+                                            type="button"
+                                            class="finding-card__action"
+                                            data-finding-id={f.Id}
+                                            onclick={handleMarkException}>
+                                            Mark exception
+                                        </button>
+                                    </template>
+                                    <template if:true={f.Exception_Reason__c}>
+                                        <span class="finding-card__pill finding-card__pill--exception">
+                                            Exception: {f.Exception_Reason__c}
+                                        </span>
+                                    </template>
+                                </div>
+
+                                <template if:true={f.hasNotes}>
+                                    <p class="finding-card__notes">{f.Notes__c}</p>
+                                </template>
+                            </li>
+                        </template>
+                    </ul>
+                </template>
+            </div>
+        </template>
+    </section>
+</template>
