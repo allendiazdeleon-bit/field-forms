@@ -19,14 +19,24 @@
                                 </p>
                             </div>
                             <div class="slds-col slds-no-flex">
-                                <lightning-button
-                                    variant="base"
-                                    label="Open"
-                                    icon-name="utility:new_window"
-                                    icon-position="right"
-                                    data-id={match.id}
-                                    onclick={handleOpenMatch}>
-                                </lightning-button>
+                                <lightning-button-group>
+                                    <lightning-button
+                                        variant="base"
+                                        label="Open"
+                                        icon-name="utility:new_window"
+                                        icon-position="right"
+                                        data-id={match.id}
+                                        onclick={handleOpenMatch}>
+                                    </lightning-button>
+                                    <lightning-button
+                                        variant="brand"
+                                        label="Use this"
+                                        icon-name="utility:check"
+                                        icon-position="left"
+                                        data-id={match.id}
+                                        onclick={handleUseMatch}>
+                                    </lightning-button>
+                                </lightning-button-group>
                             </div>
                         </div>
                     </li>

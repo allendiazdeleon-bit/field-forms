@@ -147,7 +147,7 @@
                         </span>
                         <span slot="content">
                             <template if:true={selection}>
-                                <c-neura-form-builder-attributes onupdate={handleUpdateToFormSetting} selection={selection}></c-neura-form-builder-attributes>
+                                <c-neura-form-builder-attributes onupdate={handleUpdateToFormSetting} selection={selection} form-template-id={recordId}></c-neura-form-builder-attributes>
                                 <!--<c-neura-form-criteria-builder onupdate={handleUpdateToFormSetting} selection={selection}></c-neura-form-criteria-builder>-->
                             </template>
                         </span>

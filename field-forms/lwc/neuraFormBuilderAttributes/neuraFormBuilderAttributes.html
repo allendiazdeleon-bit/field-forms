@@ -64,8 +64,15 @@
                         <!-- Wave 35.9b: SOSL-backed "did you mean..." hint.
                              Surfaces near-duplicate catalog entries the
                              admin might want to use instead of creating
-                             one. Hidden when no matches; debounced. -->
-                        <c-neura-form-catalog-similar question-text={questionFieldValue}></c-neura-form-catalog-similar>
+                             one. Hidden when no matches; debounced.
+                             The "Use this" action on each match fires
+                             useentry → handleUseCatalogEntry below. -->
+                        <c-neura-form-catalog-similar
+                            question-text={questionFieldValue}
+                            form-template-id={formTemplateId}
+                            current-catalog-id={currentCatalogId}
+                            onuseentry={handleUseCatalogEntry}>
+                        </c-neura-form-catalog-similar>
                     </template>
                     <template if:true={showInheritedQuestionReadOnly}>
                         <div class="slds-form-element slds-form-element_readonly">

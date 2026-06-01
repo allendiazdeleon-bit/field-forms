@@ -40,27 +40,52 @@ public with sharing class neuraFormBuilderController {
      * usage count (binding count across the org) so the LWC can show
      * "used in N templates" alongside each suggestion.
      *
+     * Wave 35.9b: results are filtered by the template's Scope__c so
+     * admins only see catalog entries their template can use.
+     * Universal (Scope__c = null) entries are always visible. The
+     * client further filters out the binding's own catalog row and
+     * any byte-identical text matches so the panel never suggests
+     * a no-op adoption.
+     *
      * Returns an empty list when the input is blank, too short
      * (<3 chars) to be a meaningful search, or when the catalog
      * feature flag is off. Marked cacheable=true so the LWC's wire
      * adapter can debounce naturally — the LDS cache absorbs repeated
-     * lookups for the same text.
+     * lookups for the same text. formTemplateId becomes part of the
+     * cache key, so two templates with different scopes don't share
+     * cached results.
      */
     @AuraEnabled(cacheable=true)
-    public static List<CatalogMatch> findSimilarCatalogEntries(String text, Integer limitN) {
+    public static List<CatalogMatch> findSimilarCatalogEntries(String text, Integer limitN, Id formTemplateId) {
         List<CatalogMatch> out = new List<CatalogMatch>();
         if (!isCatalogEnabled()) return out;
         if (String.isBlank(text) || text.trim().length() < 3) return out;
         Integer maxResults = (limitN != null && limitN > 0) ? limitN : 5;
 
+        // Wave 35.9b: resolve the template's scope so SOSL only returns
+        // catalog entries the template is allowed to consume. Unscoped
+        // (Scope__c = null) entries are universal and always visible;
+        // scoped entries match only when the template shares the scope.
+        // Templates without a scope still see all unscoped entries.
+        String templateScope = null;
+        if (formTemplateId != null) {
+            List<Form_Template__c> tpls = [
+                SELECT Scope__c FROM Form_Template__c
+                WHERE Id = :formTemplateId LIMIT 1
+            ];
+            if (!tpls.isEmpty()) templateScope = tpls[0].Scope__c;
+        }
+
         // SOSL: token search across all fields, ranked by Salesforce's
         // built-in relevance scoring (stemming + token weighting).
         // RETURNING clause limits to catalog with the fields the LWC
-        // needs; the LIMIT shape is mandatory in SOSL.
+        // needs; the LIMIT shape is mandatory in SOSL. The WHERE clause
+        // applies the scope filter inside RETURNING.
         List<List<SObject>> raw = [
             FIND :text IN ALL FIELDS
             RETURNING Form_Question_Catalog__c(
-                Id, Question__c, Type__c, Tags__c, External_Reference__c
+                Id, Question__c, Type__c, Tags__c, External_Reference__c, Scope__c
+                WHERE Scope__c = null OR Scope__c = :templateScope
                 LIMIT :maxResults
             )
         ];
@@ -137,7 +162,7 @@ public with sharing class neuraFormBuilderController {
         // LIMIT 1 + list assignment so an unknown / soft-deleted Id returns
         // null instead of throwing QueryException at the client.
         List<Form_Template__c> templates = [
-            SELECT Id, Name, Indicator_Type__c
+            SELECT Id, Name, Indicator_Type__c, Scope__c
             FROM Form_Template__c
             WHERE Id = :formTemplateId
             LIMIT 1

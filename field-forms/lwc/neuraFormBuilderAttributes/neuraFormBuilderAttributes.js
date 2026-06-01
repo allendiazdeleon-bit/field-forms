@@ -1,11 +1,13 @@
 import { LightningElement, api, wire } from 'lwc';
+import LightningConfirm from 'lightning/confirm';
 import getAllAttributes from '@salesforce/apex/neuraFormBuilderController.getAllAttributes';
 
 import { FIELDS, OBJECTS } from 'c/neuraFormSchemaUtils';
 
 export default class NeuraFormBuilderAttributes extends LightningElement {
-    
+
     @api selection;
+    @api formTemplateId;
     //objectApiName = OBJECTS.Form_Section__c.objectApiName;
     groupedAttributes = {};
     
@@ -230,6 +232,76 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
      */
     handleRevert() {
         this.sendChangeUpdate(null, 'Override_Question__c');
+    }
+
+    /**
+     * The catalog id this binding currently points at, forwarded to
+     * the similarity panel so it can suppress the self-reference
+     * row (the binding's own auto-created catalog will SOSL-match
+     * whatever the admin types, since Wave 35.8a syncs binding text
+     * back to the catalog — that's noise we don't want to show).
+     */
+    get currentCatalogId() {
+        return this.selection?.attributes?.Form_Question_Catalog__c || null;
+    }
+
+    /**
+     * Wave 35.9b: similarity panel fires this when the admin clicks
+     * "Use this" on a suggested catalog match. The binding re-points
+     * its Form_Question_Catalog__c to the chosen entry; the next save
+     * persists the new link. We also flip _exclusiveCatalogEntry to
+     * false in the local selection so the parent template immediately
+     * dismounts the similarity panel and switches the question input
+     * into the read-only "inherited from catalog" mode. Without that
+     * local flip, post-click keystrokes would leak into Question__c
+     * and either be discarded by the read-overlay on next load or —
+     * worse — be synced back to the now-shared catalog by
+     * syncExclusiveCatalogContentOnUpdate if the count hasn't yet been
+     * refreshed.
+     *
+     * When the chosen entry's Type__c differs from the binding's
+     * current type, confirm with the admin first since type changes
+     * can invalidate conditions, value sets, and scoring on this
+     * question, and adopting commonly turns a private auto-catalog
+     * into a shared one (edits ripple across templates).
+     */
+    async handleUseCatalogEntry(event) {
+        const detail = event?.detail || {};
+        const newCatalogId = detail.catalogId;
+        if (!newCatalogId) return;
+
+        const currentType = this.selection?.attributes?.[FIELDS.Form_Question__c.Type.fieldApiName];
+        const newType = detail.type;
+        if (currentType && newType && currentType !== newType) {
+            const ok = await LightningConfirm.open({
+                label: 'Change question type?',
+                message:
+                    `This catalog entry is a ${newType} question; this binding is currently ${currentType}. ` +
+                    'Adopting it will change the question type, which may invalidate conditions, value sets, or ' +
+                    'scoring configured on this question. The catalog entry may also be shared with other templates — ' +
+                    'future content changes will affect all of them.',
+                theme: 'warning',
+                variant: 'header'
+            });
+            if (!ok) return;
+        }
+
+        const newSelection = JSON.parse(JSON.stringify(this.selection));
+        const previousValue = newSelection.attributes.Form_Question_Catalog__c;
+        newSelection.attributes.Form_Question_Catalog__c = newCatalogId;
+        newSelection.attributes._exclusiveCatalogEntry = false;
+        this.dispatchEvent(
+            new CustomEvent('update', {
+                detail: {
+                    newSelection,
+                    editedField: {
+                        field: 'Form_Question_Catalog__c',
+                        previousValue,
+                        newValue: newCatalogId
+                    }
+                }
+            })
+        );
     }
 
     handleAttributeChange(event) {

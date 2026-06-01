@@ -15,11 +15,21 @@ import findSimilar from '@salesforce/apex/neuraFormBuilderController.findSimilar
  * one extra-light debounce here is enough to avoid spamming as the
  * admin walks the keyboard.
  *
- * Read-only in v1: each result has an "Open" button that navigates to
- * the catalog record. Admins can decide whether to abandon their
- * new question and use the existing entry by inspecting it directly.
- * A future wave adds a "Use this catalog entry instead" action that
- * re-points the binding without leaving the builder.
+ * Each result exposes two actions:
+ *   - "Open" → navigates to the catalog record (inspect before
+ *      adopting).
+ *   - "Use this" → fires a `useentry` event that the parent handles
+ *      by re-pointing the binding's Form_Question_Catalog__c to the
+ *      chosen entry (Wave 35.9b).
+ *
+ * Filter rules applied client-side after the SOSL round-trip:
+ *   - Scope filter is applied server-side via the templateScope
+ *     parameter on findSimilarCatalogEntries.
+ *   - The binding's currently-linked catalog Id (currentCatalogId)
+ *     is suppressed — no point suggesting "adopt yourself".
+ *   - Any match whose questionText is byte-identical (case-
+ *     insensitive, trimmed) to the typed text is suppressed — the
+ *     adoption would be a no-op for the user.
  *
  * See docs/phase-2-pillar-2-question-catalog.md "Operating at scale".
  */
@@ -33,6 +43,9 @@ export default class NeuraFormCatalogSimilar extends NavigationMixin(LightningEl
     isLoading = false;
     error;
     _timer;
+
+    @api formTemplateId;
+    @api currentCatalogId;
 
     @api
     get questionText() {
@@ -61,8 +74,12 @@ export default class NeuraFormCatalogSimilar extends NavigationMixin(LightningEl
     async runSearch(text) {
         this.isLoading = true;
         try {
-            const result = await findSimilar({ text, limitN: SEARCH_LIMIT });
-            this.matches = result || [];
+            const result = await findSimilar({
+                text,
+                limitN: SEARCH_LIMIT,
+                formTemplateId: this.formTemplateId
+            });
+            this.matches = this.applyClientFilters(result || [], text);
             this.error = null;
         } catch (e) {
             // Surface the message but don't blow up the builder.
@@ -73,6 +90,16 @@ export default class NeuraFormCatalogSimilar extends NavigationMixin(LightningEl
         } finally {
             this.isLoading = false;
         }
+    }
+
+    applyClientFilters(rows, text) {
+        const typed = (text || '').trim().toLowerCase();
+        return rows.filter((m) => {
+            if (this.currentCatalogId && m.id === this.currentCatalogId) return false;
+            const candidate = (m.questionText || '').trim().toLowerCase();
+            if (candidate && candidate === typed) return false;
+            return true;
+        });
     }
 
     get hasMatches() {
@@ -116,5 +143,21 @@ export default class NeuraFormCatalogSimilar extends NavigationMixin(LightningEl
                 actionName: 'view'
             }
         });
+    }
+
+    handleUseMatch(event) {
+        const id = event.currentTarget.dataset.id;
+        if (!id) return;
+        const match = this.matches.find((m) => m.id === id);
+        if (!match) return;
+        this.dispatchEvent(
+            new CustomEvent('useentry', {
+                detail: {
+                    catalogId: match.id,
+                    type: match.type,
+                    questionText: match.questionText
+                }
+            })
+        );
     }
 }

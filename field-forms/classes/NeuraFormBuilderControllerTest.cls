@@ -636,7 +636,7 @@ private class NeuraFormBuilderControllerTest {
 
         Test.startTest();
         List<neuraFormBuilderController.CatalogMatch> matches =
-            neuraFormBuilderController.findSimilarCatalogEntries('Enter the date', 5);
+            neuraFormBuilderController.findSimilarCatalogEntries('Enter the date', 5, null);
         Test.stopTest();
 
         System.assertEquals(0, matches.size(),
@@ -656,11 +656,11 @@ private class NeuraFormBuilderControllerTest {
 
         Test.startTest();
         List<neuraFormBuilderController.CatalogMatch> matchesNull =
-            neuraFormBuilderController.findSimilarCatalogEntries(null, 5);
+            neuraFormBuilderController.findSimilarCatalogEntries(null, 5, null);
         List<neuraFormBuilderController.CatalogMatch> matchesEmpty =
-            neuraFormBuilderController.findSimilarCatalogEntries('', 5);
+            neuraFormBuilderController.findSimilarCatalogEntries('', 5, null);
         List<neuraFormBuilderController.CatalogMatch> matchesShort =
-            neuraFormBuilderController.findSimilarCatalogEntries('ab', 5);
+            neuraFormBuilderController.findSimilarCatalogEntries('ab', 5, null);
         Test.stopTest();
 
         System.assertEquals(0, matchesNull.size());
@@ -685,7 +685,7 @@ private class NeuraFormBuilderControllerTest {
 
         Test.startTest();
         List<neuraFormBuilderController.CatalogMatch> matches =
-            neuraFormBuilderController.findSimilarCatalogEntries('Enter the date', 5);
+            neuraFormBuilderController.findSimilarCatalogEntries('Enter the date', 5, null);
         Test.stopTest();
 
         System.assertEquals(1, matches.size(), 'One match expected');
@@ -722,12 +722,147 @@ private class NeuraFormBuilderControllerTest {
 
         Test.startTest();
         List<neuraFormBuilderController.CatalogMatch> matches =
-            neuraFormBuilderController.findSimilarCatalogEntries('Reused', 5);
+            neuraFormBuilderController.findSimilarCatalogEntries('Reused', 5, null);
         Test.stopTest();
 
         System.assertEquals(1, matches.size());
         System.assertEquals(1, matches[0].usageCount,
             'usageCount should reflect the number of bindings referencing the catalog');
+    }
+
+    // ----- Wave 35.9b: scope filter + pre-linked binding -------------------
+
+    @isTest
+    static void testFindSimilarCatalogEntries_scopeFilter() {
+        // A template scoped to 'chain-A' should see entries with
+        // Scope__c = null AND entries with Scope__c = 'chain-A', but
+        // not entries with Scope__c = 'chain-B'.
+        enableCatalog();
+        Form_Template__c scopedTemplate = new Form_Template__c(
+            Name = 'Chain A Template',
+            Scope__c = 'chain-A'
+        );
+        insert scopedTemplate;
+
+        Form_Question_Catalog__c universal = new Form_Question_Catalog__c(
+            External_Reference__c = 'scope-test-universal',
+            Question__c = 'Universal question about date',
+            Type__c = 'Date'
+        );
+        Form_Question_Catalog__c chainA = new Form_Question_Catalog__c(
+            External_Reference__c = 'scope-test-chain-a',
+            Question__c = 'Chain-A scoped date question',
+            Type__c = 'Date',
+            Scope__c = 'chain-A'
+        );
+        Form_Question_Catalog__c chainB = new Form_Question_Catalog__c(
+            External_Reference__c = 'scope-test-chain-b',
+            Question__c = 'Chain-B scoped date question',
+            Type__c = 'Date',
+            Scope__c = 'chain-B'
+        );
+        insert new List<Form_Question_Catalog__c>{ universal, chainA, chainB };
+
+        // SOSL returns all three; the scope WHERE clause filters chain-B
+        // out before results reach the caller.
+        Test.setFixedSearchResults(new Id[]{ universal.Id, chainA.Id, chainB.Id });
+
+        Test.startTest();
+        List<neuraFormBuilderController.CatalogMatch> matches =
+            neuraFormBuilderController.findSimilarCatalogEntries('date question', 5, scopedTemplate.Id);
+        Test.stopTest();
+
+        Set<Id> returned = new Set<Id>();
+        for (neuraFormBuilderController.CatalogMatch m : matches) returned.add(m.id);
+        System.assert(returned.contains(universal.Id),
+            'Universal (null-scoped) entry should be visible to scoped template');
+        System.assert(returned.contains(chainA.Id),
+            'Matching-scope entry should be visible');
+        System.assert(!returned.contains(chainB.Id),
+            'Out-of-scope entry should be filtered out');
+    }
+
+    @isTest
+    static void testFindSimilarCatalogEntries_unscopedTemplateSeesUniversalOnly() {
+        // A template with Scope__c = null sees only null-scoped entries.
+        // Any scoped entry is by definition not "universal" so should
+        // not appear when the template has no scope to match.
+        enableCatalog();
+        Form_Template__c unscoped = [SELECT Id FROM Form_Template__c LIMIT 1];
+
+        Form_Question_Catalog__c universal = new Form_Question_Catalog__c(
+            External_Reference__c = 'scope-unscoped-universal',
+            Question__c = 'Service universal',
+            Type__c = 'Text'
+        );
+        Form_Question_Catalog__c chainA = new Form_Question_Catalog__c(
+            External_Reference__c = 'scope-unscoped-chain-a',
+            Question__c = 'Service chain-A',
+            Type__c = 'Text',
+            Scope__c = 'chain-A'
+        );
+        insert new List<Form_Question_Catalog__c>{ universal, chainA };
+
+        Test.setFixedSearchResults(new Id[]{ universal.Id, chainA.Id });
+
+        Test.startTest();
+        List<neuraFormBuilderController.CatalogMatch> matches =
+            neuraFormBuilderController.findSimilarCatalogEntries('Service', 5, unscoped.Id);
+        Test.stopTest();
+
+        Set<Id> returned = new Set<Id>();
+        for (neuraFormBuilderController.CatalogMatch m : matches) returned.add(m.id);
+        System.assert(returned.contains(universal.Id));
+        System.assert(!returned.contains(chainA.Id),
+            'Unscoped template should not see scoped entries');
+    }
+
+    @isTest
+    static void testProcessQuestionRecords_preLinkedBindingSkipsAutoCreate() {
+        // Wave 35.9b adoption flow: a brand-new Form_Question__c
+        // inserted with Form_Question_Catalog__c already set must NOT
+        // trigger autoCreateCatalogForNewBindings — otherwise adopting
+        // an existing catalog entry would silently spawn a duplicate.
+        enableCatalog();
+        Form_Template__c ft = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Page__c page = [SELECT Id FROM Form_Page__c WHERE Form_Template__c = :ft.Id LIMIT 1];
+        Form_Section__c section = [SELECT Id FROM Form_Section__c WHERE Form_Template__c = :ft.Id LIMIT 1];
+
+        Form_Question_Catalog__c existing = new Form_Question_Catalog__c(
+            External_Reference__c = 'prelink-existing-cat',
+            Question__c = 'Existing catalog',
+            Type__c = 'Text'
+        );
+        insert existing;
+
+        Integer catalogCountBefore = [SELECT COUNT() FROM Form_Question_Catalog__c];
+
+        Form_Question__c newBinding = new Form_Question__c(
+            Order__c = 99,
+            Form_Template__c = ft.Id,
+            Form_Section__c = section.Id,
+            Form_Page__c = page.Id,
+            Form_Question_Catalog__c = existing.Id
+        );
+
+        Test.startTest();
+        neuraFormBuilderController.processQuestionRecords(
+            new List<Form_Question__c>{ newBinding },
+            new List<Form_Question__c>(),
+            new List<Id>()
+        );
+        Test.stopTest();
+
+        Integer catalogCountAfter = [SELECT COUNT() FROM Form_Question_Catalog__c];
+        System.assertEquals(catalogCountBefore, catalogCountAfter,
+            'Pre-linked binding must not spawn a new catalog entry');
+
+        Form_Question__c saved = [
+            SELECT Form_Question_Catalog__c FROM Form_Question__c
+            WHERE Id = :newBinding.Id
+        ];
+        System.assertEquals(existing.Id, saved.Form_Question_Catalog__c,
+            'Pre-linked binding should retain its catalog reference after insert');
     }
 
     @isTest

@@ -213,7 +213,7 @@ All mean the same thing; analytics, reuse, and scoring fragment.
 
 | Control | Surface | When it fires | v1 vs deferred |
 |---|---|---|---|
-| Type-ahead similarity at create | Builder add-question modal | Admin types question text → SOSL search the catalog → "Did you mean…?" hints | v1 — closes the loop at the boundary where drift starts |
+| Type-ahead similarity at create | Builder add-question modal | Admin types question text → SOSL search the catalog → "Did you mean…?" hints with a one-click "Use this" action that re-points the binding to the chosen catalog entry. Results are scope-filtered (template's `Scope__c`) and suppress the binding's own row + byte-identical text matches. | ✅ shipped (Wave 35.9b) |
 | Mass-add staging UI | New surface | Power user pastes/uploads N candidate questions → each pre-matched against catalog → admin reviews and bulk-inserts only what's truly new | Deferred — Pillar 3 adapter framework also covers mass-add from external sources |
 | Merge workflow | Catalog browser | Admin selects N near-duplicates → picks canonical → bindings re-point → losers deleted | Deferred — surgical cleanup, after-the-fact |
 
@@ -471,8 +471,8 @@ independently deployable and reversible.
 | 35.6 | Page layout for catalog records | ✅ shipped |
 | 35.7 | In-place override / revert flow + correctness fix | ✅ shipped |
 | **35.8** | **Auto-create catalog from builder + binding-count-aware editing** | next |
-| 35.9 | Type-ahead similarity at create (SOSL) | pending |
-| 35.10 | `Scope__c` field + read-side filtering | pending |
+| 35.9 | Type-ahead similarity at create (SOSL) + "Use this" adoption action + scope filter on similarity results + self/exact-text suppression | ✅ shipped |
+| 35.10 | `Scope__c` field + read-side filtering across `getFormDetails` question reads + `NeuraFormSnapshotV2` | pending (similarity-side filter shipped early in 35.9) |
 | 35.11 | Mass-add staging UI | pending |
 | 35.12 | Merge workflow (catalog dedupe) | pending |
 

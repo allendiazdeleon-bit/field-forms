@@ -59,13 +59,18 @@ describe('neuraFormCatalogSimilar — query gating', () => {
         jest.useFakeTimers();
         findSimilar.mockResolvedValue([]);
         const el = mount();
+        el.formTemplateId = 'a01000000ABCTPLT1';
 
         el.questionText = 'date';
         jest.runAllTimers();
         await Promise.resolve();
 
         expect(findSimilar).toHaveBeenCalledTimes(1);
-        expect(findSimilar).toHaveBeenCalledWith({ text: 'date', limitN: 5 });
+        expect(findSimilar).toHaveBeenCalledWith({
+            text: 'date',
+            limitN: 5,
+            formTemplateId: 'a01000000ABCTPLT1'
+        });
     });
 
     test('rapid keystrokes collapse to a single search (debounce)', async () => {
@@ -157,6 +162,104 @@ describe('neuraFormCatalogSimilar — rendering matches', () => {
         await Promise.resolve();
 
         expect(el.shadowRoot.querySelector('li')).toBeNull();
+    });
+});
+
+describe('neuraFormCatalogSimilar — Wave 35.9b adopt action', () => {
+    test('"Use this" click fires useentry with the match payload', async () => {
+        jest.useFakeTimers();
+        findSimilar.mockResolvedValue([
+            {
+                id: 'a01000000USETHIS1',
+                questionText: 'Adopt me',
+                type: 'Currency',
+                tags: '',
+                externalReference: 'cat-use',
+                usageCount: 3
+            }
+        ]);
+        const el = mount();
+        const handler = jest.fn();
+        el.addEventListener('useentry', handler);
+
+        el.questionText = 'Adopt';
+        jest.runAllTimers();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // Find the "Use this" button — there's also an "Open" button in
+        // the same row, so target by label.
+        const buttons = el.shadowRoot.querySelectorAll('lightning-button');
+        const useBtn = Array.from(buttons).find((b) => b.label === 'Use this');
+        expect(useBtn).toBeDefined();
+        useBtn.click();
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler.mock.calls[0][0].detail).toEqual({
+            catalogId: 'a01000000USETHIS1',
+            type: 'Currency',
+            questionText: 'Adopt me'
+        });
+    });
+});
+
+describe('neuraFormCatalogSimilar — suppression filters', () => {
+    test('suppresses the binding\'s own currently-linked catalog (self-reference)', async () => {
+        jest.useFakeTimers();
+        findSimilar.mockResolvedValue([
+            {
+                id: 'a01000000SELFREFX',
+                questionText: 'My own catalog row',
+                type: 'Text',
+                usageCount: 1
+            },
+            {
+                id: 'a01000000OTHERONE',
+                questionText: 'A different entry',
+                type: 'Text',
+                usageCount: 4
+            }
+        ]);
+        const el = mount();
+        el.currentCatalogId = 'a01000000SELFREFX';
+
+        el.questionText = 'something';
+        jest.runAllTimers();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const items = el.shadowRoot.querySelectorAll('li');
+        expect(items.length).toBe(1);
+        expect(items[0].textContent).toContain('A different entry');
+    });
+
+    test('suppresses byte-identical text matches (case-insensitive, trimmed)', async () => {
+        jest.useFakeTimers();
+        findSimilar.mockResolvedValue([
+            {
+                id: 'a01000000EXACTONE',
+                questionText: 'Enter the date of last service',
+                type: 'Date',
+                usageCount: 2
+            },
+            {
+                id: 'a01000000NEARDUPE',
+                questionText: 'Enter date of last service',
+                type: 'Date',
+                usageCount: 1
+            }
+        ]);
+        const el = mount();
+        // Typed text matches the first row exactly (case/whitespace
+        // differences are normalized).
+        el.questionText = '  ENTER THE DATE OF LAST SERVICE  ';
+        jest.runAllTimers();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const items = el.shadowRoot.querySelectorAll('li');
+        expect(items.length).toBe(1);
+        expect(items[0].textContent).toContain('Enter date of last service');
     });
 });
 
