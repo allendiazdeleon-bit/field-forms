@@ -30,10 +30,7 @@
         <connector>
             <targetReference>Create_Linked_Forms</targetReference>
         </connector>
-        <filterFormula>OR(
-    AND(ISNEW(), NOT(ISBLANK({!$Record.WorkTypeId}))),
-    AND(NOT(ISNEW()), {!$Record__Prior.WorkTypeId} != {!$Record.WorkTypeId}, NOT(ISBLANK({!$Record.WorkTypeId})))
-)</filterFormula>
+        <filterFormula>NOT(ISBLANK({!$Record.WorkTypeId}))</filterFormula>
         <object>WorkOrder</object>
         <recordTriggerType>CreateAndUpdate</recordTriggerType>
         <triggerType>RecordAfterSave</triggerType>

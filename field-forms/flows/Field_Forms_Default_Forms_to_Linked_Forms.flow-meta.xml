@@ -77,6 +77,12 @@ Outputs: createdCount, skippedExistingCount, errors.</description>
         <locationX>50</locationX>
         <locationY>350</locationY>
         <inputAssignments>
+            <field>ParentId</field>
+            <value>
+                <elementReference>recordId</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
             <field>Title</field>
             <value>
                 <stringValue>NeuraFormLinkedFormProvisioner fault</stringValue>

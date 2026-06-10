@@ -35,8 +35,15 @@ public with sharing class NeuraFormLinkedFormProvisioner {
         @InvocableVariable(label='Parent Record Id' description='WorkOrder, WorkOrderLineItem, or ServiceAppointment Id.' required=true)
         public Id recordId;
 
+        // String, not Id: when a record-triggered flow passes a BLANK
+        // $Record.WorkTypeId, it marshals an empty string — assigning ''
+        // to an Id-typed invocable variable throws "Invalid id:" before
+        // the method body ever runs, faulting the flow for exactly the
+        // WOLI-inherits-parent-WorkType case this action exists to serve.
+        // Normalized (blank -> null, validated to Id) at the top of
+        // provisionLinkedForms.
         @InvocableVariable(label='Work Type Id' description='Work Type used to look up Default_Forms. For WOLIs, may be left null and we will read it from the parent WorkOrder.')
-        public Id workTypeId;
+        public String workTypeId;
 
         @InvocableVariable(label='Default Status' description='Linked_Form Status to assign on create. Defaults to "Not Started".')
         public String defaultStatus;
@@ -65,6 +72,23 @@ public with sharing class NeuraFormLinkedFormProvisioner {
         }
 
         try {
+            // Normalize the flow-marshaled workTypeId: blank -> null, and
+            // validate non-blank values are real Ids so a malformed flow
+            // input surfaces as a per-request error, not an exception.
+            for (Integer i = 0; i < requests.size(); i++) {
+                Request req = requests.get(i);
+                if (String.isBlank(req.workTypeId)) {
+                    req.workTypeId = null;
+                } else {
+                    try {
+                        req.workTypeId = String.valueOf(Id.valueOf(req.workTypeId));
+                    } catch (System.StringException e) {
+                        results.get(i).errors.add('Invalid Work Type Id: ' + req.workTypeId);
+                        req.workTypeId = null;
+                    }
+                }
+            }
+
             // Resolve missing WorkType for WOLIs by reading from the parent
             // WorkOrder. Done up front so the Default_Form SOQL has every
             // WorkType Id in one query.

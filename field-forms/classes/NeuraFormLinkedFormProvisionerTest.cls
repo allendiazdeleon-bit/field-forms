@@ -32,6 +32,10 @@ private class NeuraFormLinkedFormProvisionerTest {
         return df;
     }
 
+    // Direct-invocable tests insert the WorkOrder WITHOUT a WorkTypeId and
+    // pass workTypeId in the Request instead: the Work Order record-triggered
+    // flow provisions on create when a WorkType is present, which would make
+    // the direct call under test an idempotent no-op (created=0).
     private static WorkOrder buildWorkOrder(Id workTypeId) {
         WorkOrder wo = new WorkOrder(WorkTypeId = workTypeId);
         insert wo;
@@ -44,7 +48,7 @@ private class NeuraFormLinkedFormProvisionerTest {
         Form_Template__c t2 = buildTemplate('T2');
         buildDefaultForm(wt.Id, t1.Id);
         buildDefaultForm(wt.Id, t2.Id);
-        WorkOrder wo = buildWorkOrder(wt.Id);
+        WorkOrder wo = buildWorkOrder(null);
 
         NeuraFormLinkedFormProvisioner.Request req = new NeuraFormLinkedFormProvisioner.Request();
         req.recordId = wo.Id;
@@ -68,7 +72,7 @@ private class NeuraFormLinkedFormProvisionerTest {
         WorkType wt = buildWorkType();
         Form_Template__c t = buildTemplate('T');
         buildDefaultForm(wt.Id, t.Id);
-        WorkOrder wo = buildWorkOrder(wt.Id);
+        WorkOrder wo = buildWorkOrder(null);
 
         NeuraFormLinkedFormProvisioner.Request req = new NeuraFormLinkedFormProvisioner.Request();
         req.recordId = wo.Id;
@@ -100,7 +104,7 @@ private class NeuraFormLinkedFormProvisionerTest {
 
         List<WorkOrder> wos = new List<WorkOrder>();
         for (Integer i = 0; i < 50; i++) {
-            wos.add(new WorkOrder(WorkTypeId = wt.Id));
+            wos.add(new WorkOrder()); // no WorkTypeId: keep the WO flow out
         }
         insert wos;
 
@@ -136,15 +140,21 @@ private class NeuraFormLinkedFormProvisionerTest {
         Form_Template__c t = buildTemplate('T');
         buildDefaultForm(wt.Id, t.Id);
         WorkOrder wo = buildWorkOrder(wt.Id);
-        // The WOLI itself has no WorkTypeId set; we expect the provisioner
-        // to inherit it from the parent WorkOrder.
+        // The WOLI itself has no WorkTypeId; the WOLI flow fires on create
+        // and the provisioner inherits the WorkType from the parent WO.
+        // (This end-to-end path was dead until the flow entry formula was
+        // fixed — ISNEW() isn't a flow-formula function.)
         WorkOrderLineItem woli = new WorkOrderLineItem(
             WorkOrderId = wo.Id,
-            // WOLI requires a Product2 OR LineItemNumber; minimal valid shape.
             Description = 'Test WOLI'
         );
         insert woli;
 
+        System.assertEquals(1,
+            [SELECT COUNT() FROM Linked_Form__c WHERE Work_Order_Line_Item__c = :woli.Id],
+            'The WOLI flow + parent-WorkType fallback should provision on create');
+
+        // A direct re-invocation must be idempotent, not duplicate.
         NeuraFormLinkedFormProvisioner.Request req = new NeuraFormLinkedFormProvisioner.Request();
         req.recordId = woli.Id;
         // workTypeId intentionally null - inheritance path.
@@ -156,8 +166,11 @@ private class NeuraFormLinkedFormProvisionerTest {
             );
         Test.stopTest();
 
-        System.assertEquals(1, results[0].createdCount,
-            'WOLI without explicit WorkTypeId should inherit from parent WO');
+        System.assertEquals(0, results[0].createdCount);
+        System.assertEquals(1, results[0].skippedExistingCount,
+            'Re-running on an already-provisioned WOLI skips, never duplicates');
+        System.assertEquals(1,
+            [SELECT COUNT() FROM Linked_Form__c WHERE Work_Order_Line_Item__c = :woli.Id]);
     }
 
     @isTest static void unsupportedParentPrefixReturnsError() {
@@ -202,7 +215,7 @@ private class NeuraFormLinkedFormProvisionerTest {
         WorkType wt = buildWorkType();
         Form_Template__c t = buildTemplate('T');
         buildDefaultForm(wt.Id, t.Id);
-        WorkOrder wo = buildWorkOrder(wt.Id);
+        WorkOrder wo = buildWorkOrder(null);
 
         NeuraFormLinkedFormProvisioner.Request req = new NeuraFormLinkedFormProvisioner.Request();
         req.recordId = wo.Id;
