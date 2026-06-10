@@ -16,6 +16,15 @@
         <enabled>true</enabled>
     </classAccesses>
     <objectPermissions>
+        <object>Form_Template__c</object>
+        <allowRead>true</allowRead>
+        <allowCreate>true</allowCreate>
+        <allowEdit>true</allowEdit>
+        <allowDelete>false</allowDelete>
+        <viewAllRecords>true</viewAllRecords>
+        <modifyAllRecords>false</modifyAllRecords>
+    </objectPermissions>
+    <objectPermissions>
         <object>WorkType</object>
         <allowRead>true</allowRead>
         <allowCreate>false</allowCreate>
@@ -84,16 +93,6 @@
     <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Locale__c</field><readable>true</readable></fieldPermissions>
     <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Active__c</field><readable>true</readable></fieldPermissions>
     <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Output_Template_Html__c</field><readable>true</readable></fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Default_Form__c.Form_Template__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Default_Form__c.Work_Type__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
     <tabSettings>
         <tab>Default_Form__c</tab>
         <visibility>Visible</visibility>
