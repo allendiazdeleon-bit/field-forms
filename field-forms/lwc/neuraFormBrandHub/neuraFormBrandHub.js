@@ -16,7 +16,12 @@ import { LightningElement, api, wire } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import { refreshApex } from '@salesforce/apex';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { loadScript } from 'lightning/platformResourceLoader';
+import JSZIP_RESOURCE from '@salesforce/resourceUrl/jszip';
+import PDFJS_RESOURCE from '@salesforce/resourceUrl/pdfjs';
+import PDFJS_WORKER_RESOURCE from '@salesforce/resourceUrl/pdfjsworker';
 import { reduceError } from 'c/nfCommonUtility';
+import { extractDocumentText, requiredLibFor, DocExtractionError } from './docTextExtractor';
 
 import getBrandContext from '@salesforce/apex/NeuraFormBrandController.getBrandContext';
 import setAccountScope from '@salesforce/apex/NeuraFormBrandController.setAccountScope';
@@ -356,7 +361,68 @@ export default class NeuraFormBrandHub extends NavigationMixin(LightningElement)
         this._pendingModalFocus = true;
         this.docText = '';
         this.docContext = '';
+        this.docFileName = '';
+        this.extracting = false;
         this.showDocModal = true;
+    }
+
+    // ----- file upload -> client-side text extraction -----------------------
+    // The customer hands over a PDF/Word audit form; the admin uploads it
+    // here and the extracted text lands in the textarea below as an
+    // EDITABLE preview — same review-then-draft pipeline, the paste path
+    // stays as the fallback for anything we can't extract (scans, .doc).
+    docFileName = '';
+    extracting = false;
+    _libsLoaded = {};
+
+    get docFileLabel() {
+        return this.docFileName ? `Loaded: ${this.docFileName}` : '';
+    }
+
+    async _ensureLib(name) {
+        if (this._libsLoaded[name]) return;
+        if (name === 'jszip') {
+            await loadScript(this, JSZIP_RESOURCE);
+        } else if (name === 'pdfjs') {
+            await loadScript(this, PDFJS_RESOURCE);
+            // pdf.js refuses to run without a worker source; point it at
+            // the vendored worker (same-origin static resource).
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_RESOURCE;
+        }
+        this._libsLoaded[name] = true;
+    }
+
+    async handleDocFileChange(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) {
+            this.toastError('File too large', 'Documents over 10 MB need their text pasted instead.');
+            return;
+        }
+        this.extracting = true;
+        try {
+            const lib = requiredLibFor(file.name);
+            if (lib) await this._ensureLib(lib);
+            const result = await extractDocumentText(file, {
+                JSZip: window.JSZip,
+                pdfjsLib: window.pdfjsLib
+            });
+            this.docText = result.text;
+            this.docFileName = file.name;
+            if (result.truncated) {
+                this.toastError(
+                    'Document truncated',
+                    'Only the first ~200,000 characters were kept — review the text below before drafting.'
+                );
+            }
+        } catch (error) {
+            const message = error instanceof DocExtractionError
+                ? error.message
+                : reduceError(error);
+            this.toastError('Could not read document', message);
+        } finally {
+            this.extracting = false;
+        }
     }
     closeDocImport() {
         if (this.docBusy) return;
@@ -372,7 +438,7 @@ export default class NeuraFormBrandHub extends NavigationMixin(LightningElement)
         this.alsoDraftTemplate = event.target.checked;
     }
     get disableDocImport() {
-        return this.docBusy || (this.docText || '').trim().length < 20;
+        return this.docBusy || this.extracting || (this.docText || '').trim().length < 20;
     }
     get docImportLabel() {
         return this.docBusy ? 'Drafting…' : 'Draft form';

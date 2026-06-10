@@ -190,14 +190,32 @@
                 </header>
                 <div class="slds-modal__content slds-p-around_medium">
                     <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
-                        Paste the text of the customer's audit document (Word/PDF). Einstein drafts a
-                        matching form in this brand's scope; you then review and polish it in the builder.
+                        Upload the customer's audit document — PDF, Word (.docx), text, markdown,
+                        CSV, or HTML. The extracted text appears below for review (or paste it
+                        directly); Einstein then drafts a matching form in this brand's scope for
+                        you to polish in the builder.
                     </p>
+                    <lightning-input
+                        type="file"
+                        label="Customer document"
+                        accept=".pdf,.docx,.txt,.md,.csv,.html,.htm"
+                        onchange={handleDocFileChange}
+                        disabled={docBusy}>
+                    </lightning-input>
+                    <template if:true={extracting}>
+                        <div class="slds-m-top_x-small slds-text-color_weak slds-text-body_small">
+                            <lightning-spinner alternative-text="Extracting…" size="small"></lightning-spinner>
+                            Extracting text…
+                        </div>
+                    </template>
+                    <template if:true={docFileLabel}>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">{docFileLabel}</p>
+                    </template>
                     <lightning-textarea
                         label="Document text"
                         value={docText}
-                        placeholder="Paste the extracted document text here…"
-                        class="doc-textarea"
+                        placeholder="Upload a document above, or paste its text here…"
+                        class="doc-textarea slds-m-top_small"
                         onchange={handleDocTextChange}>
                     </lightning-textarea>
                     <lightning-input
