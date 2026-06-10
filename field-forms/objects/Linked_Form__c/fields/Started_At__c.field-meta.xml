@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Started_At__c</fullName>
+    <description>When the inspection moved to In Progress (first stamped by LinkedFormTrigger). With Completed_At__c, powers fill-duration analytics — the ops metric for workload planning and the pencil-whip signal for inspection QC.</description>
+    <externalId>false</externalId>
+    <label>Started At</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

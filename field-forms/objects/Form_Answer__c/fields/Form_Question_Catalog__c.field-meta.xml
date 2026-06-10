@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Form_Question_Catalog__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>Analytics dimension: the stable question identity behind this answer, denormalized from the question's catalog link at save time (FormAnswerAnalyticsTrigger). Form_Question__c is per-template, so answer-grain trends fragment across form versions; the catalog id is what lets Tableau ask "door-seal failures across all forms and years".</description>
+    <externalId>false</externalId>
+    <label>Question Catalog Entry</label>
+    <referenceTo>Form_Question_Catalog__c</referenceTo>
+    <relationshipLabel>Answers</relationshipLabel>
+    <relationshipName>Answers</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>
