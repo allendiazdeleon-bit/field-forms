@@ -35,7 +35,7 @@ import { QUESTION_TYPE_GROUPS } from 'c/neuraFormSchemaUtils';
  *   @param {string} fieldNames.answer    Form_Answer__c.Answer__c
  * @returns {string[]}  Labels of empty-required-visible questions.
  */
-export function collectMissingRequiredLabels(page, questionAnswerMap, fieldNames = {}) {
+export function collectMissingRequired(page, questionAnswerMap, fieldNames = {}) {
     const out = [];
     if (!page || !Array.isArray(page.sections)) return out;
 
@@ -84,8 +84,37 @@ export function collectMissingRequiredLabels(page, questionAnswerMap, fieldNames
                     (questionField && q[questionField]) ||
                     q.Name ||
                     'Unnamed question';
-                out.push(label);
+                out.push({ id: q.Id, label });
             }
+        });
+    });
+    return out;
+}
+
+/** Back-compat label-only view of collectMissingRequired. */
+export function collectMissingRequiredLabels(page, questionAnswerMap, fieldNames = {}) {
+    return collectMissingRequired(page, questionAnswerMap, fieldNames).map((m) => m.label);
+}
+
+/**
+ * Form-wide variant: walks every visible page and returns
+ * [{ id, label, pageIndex, pageTitle }] so the caller can both name the
+ * gaps ("Page 2: Freezer temp") and jump the user to the first one.
+ * Used at FINISH time — page navigation doesn't gate on required fields
+ * (the skip queue's philosophy: answer in whatever order the site
+ * demands; all enforcement concentrates at the point of commitment).
+ */
+export function collectMissingRequiredAcrossPages(pages, questionAnswerMap, fieldNames = {}) {
+    const out = [];
+    if (!Array.isArray(pages)) return out;
+    pages.forEach((page, pageIndex) => {
+        if (!page || page.shouldRender === false) return;
+        const pageTitle =
+            (fieldNames.pageTitle && page[fieldNames.pageTitle]) ||
+            page.Name ||
+            `Page ${pageIndex + 1}`;
+        collectMissingRequired(page, questionAnswerMap, fieldNames).forEach((m) => {
+            out.push({ ...m, pageIndex, pageTitle });
         });
     });
     return out;

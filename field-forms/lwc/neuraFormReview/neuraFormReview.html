@@ -60,6 +60,16 @@
                             <div class={row.valueClass}>
                                 {row.value}
                             </div>
+                            <template if:true={row.hasThumbnails}>
+                                <div class="review-row__thumbs">
+                                    <template for:each={row.thumbnails} for:item="thumb">
+                                        <img key={thumb.key} src={thumb.src} alt={thumb.alt} class="review-row__thumb" loading="lazy"/>
+                                    </template>
+                                    <template if:true={row.hasThumbnailOverflow}>
+                                        <span class="review-row__thumb-more">+{row.thumbnailOverflow}</span>
+                                    </template>
+                                </div>
+                            </template>
                         </li>
                     </template>
                 </ul>

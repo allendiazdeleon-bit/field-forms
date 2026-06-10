@@ -134,3 +134,33 @@ describe('collectMissingRequiredLabels', () => {
         ]);
     });
 });
+
+describe('collectMissingRequiredAcrossPages (finish-time enforcement)', () => {
+    const { collectMissingRequiredAcrossPages } = require('../validationHelpers');
+    const names = {
+        required: 'Required__c',
+        question: 'Question__c',
+        answer: 'Answer__c',
+        type: 'Type__c',
+        pageTitle: 'Title__c'
+    };
+    const q = (id, label, required, type = 'Text') => ({
+        Id: id, Required__c: required, Question__c: label, Type__c: type
+    });
+
+    it('walks every visible page and tags gaps with page location', () => {
+        const pages = [
+            { Title__c: 'Exterior', sections: [{ questions: [q('q1', 'Roof condition', true)] }] },
+            { Title__c: 'Hidden', shouldRender: false, sections: [{ questions: [q('q2', 'Never shown', true)] }] },
+            { Title__c: 'Interior', sections: [{ questions: [q('q3', 'Freezer temp', true), q('q4', 'Notes', false)] }] }
+        ];
+        const answers = new Map([['q1', { Answer__c: 'Good' }]]);
+        const missing = collectMissingRequiredAcrossPages(pages, answers, names);
+        expect(missing).toHaveLength(1);
+        expect(missing[0]).toMatchObject({ id: 'q3', label: 'Freezer temp', pageIndex: 2, pageTitle: 'Interior' });
+    });
+
+    it('returns empty for non-array input', () => {
+        expect(collectMissingRequiredAcrossPages(null, new Map(), names)).toEqual([]);
+    });
+});

@@ -396,3 +396,25 @@
 	gap: var(--neura-space-xs);
 	flex: 0 0 auto;
 }
+
+/* In-page completion counter next to the auto-save badge. */
+.page-progress {
+	font-size: var(--neura-text-sm);
+	color: var(--neura-color-text-muted);
+	white-space: nowrap;
+}
+.form-toolbar__status {
+	display: flex;
+	align-items: center;
+	gap: var(--neura-space-sm);
+}
+
+/* The skip badge is a button now — tapping cycles through the skipped
+   questions instead of leaving the tech to hunt for them. */
+button.skip-queue-badge {
+	cursor: pointer;
+	font: inherit;
+}
+.skip-queue-badge__go {
+	margin-left: var(--neura-space-2xs);
+}

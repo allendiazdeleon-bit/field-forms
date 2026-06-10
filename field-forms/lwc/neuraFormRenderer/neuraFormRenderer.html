@@ -38,6 +38,9 @@
 					<template if:true={autoSaveLabel}>
 						<div class={autoSaveBadgeClass}>{autoSaveLabel}</div>
 					</template>
+					<template if:true={pageAnswerProgress}>
+						<span class="page-progress">{pageAnswerProgress}</span>
+					</template>
 				</div>
 				<div class="form-toolbar__actions">
 					<lightning-button-icon
@@ -103,14 +106,24 @@
 				     queue isn't empty so it doesn't clutter the chrome on
 				     normal-flow forms. -->
 				<template if:true={hasSkipped}>
-					<div class="skip-queue-badge">
+					<button
+						type="button"
+						class="skip-queue-badge"
+						onclick={handleSkipBadgeClick}
+						title="Tap to jump to the next skipped question"
+					>
 						<lightning-icon
 							icon-name="utility:flag"
 							size="x-small"
 							class="skip-queue-badge__icon"
 						></lightning-icon>
 						{skippedBadgeLabel}
-					</div>
+						<lightning-icon
+							icon-name="utility:forward"
+							size="xx-small"
+							class="skip-queue-badge__go"
+						></lightning-icon>
+					</button>
 				</template>
 			</div>
 			<c-neura-form-footer

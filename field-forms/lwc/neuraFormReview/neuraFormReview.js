@@ -125,20 +125,41 @@ export default class NeuraFormReview extends LightningElement {
                 // value in Answer__c (see typeRegistry), so it is NOT in this
                 // list — treating it as file-based marked answered scans as
                 // missing.
+                let thumbnails = [];
+                let thumbnailOverflow = 0;
                 if (!value && answerObj && FILE_TYPES.includes(type)) {
-                    const fileCount = Array.isArray(answerObj.filesData)
-                        ? answerObj.filesData.length : 0;
+                    const filesData = Array.isArray(answerObj.filesData)
+                        ? answerObj.filesData : [];
+                    const fileCount = filesData.length;
                     if (fileCount > 0 || answerObj.Id || answerObj.uploadCompleted) {
                         value = type === 'Signature'
                             ? 'Signed'
                             : (fileCount > 0 ? `${fileCount} file(s) attached` : 'Attached');
                     }
+                    // Visual evidence IS the answer for these types — show the
+                    // captures themselves (this-session files carry dataURLs in
+                    // memory; previously-uploaded files keep the text fallback)
+                    // so "that's the wrong fridge" gets caught BEFORE the
+                    // customer signs, not after.
+                    const withImages = filesData.filter(
+                        (f) => typeof f?.data === 'string' && f.data.startsWith('data:image')
+                    );
+                    thumbnails = withImages.slice(0, 4).map((f, i) => ({
+                        key: `${q.Id}-thumb-${i}`,
+                        src: f.data,
+                        alt: type === 'Signature' ? 'Signature' : `Photo ${i + 1}`
+                    }));
+                    thumbnailOverflow = Math.max(0, withImages.length - thumbnails.length);
                 }
                 out.push({
                     id: q.Id,
                     label: q[FIELDS.Form_Question__c.Question.fieldApiName] || q.Name,
                     value: value || '(no answer)',
                     isMissing: !value,
+                    thumbnails,
+                    hasThumbnails: thumbnails.length > 0,
+                    thumbnailOverflow,
+                    hasThumbnailOverflow: thumbnailOverflow > 0,
                     // Precomputed class — LWC templates can't evaluate
                     // ternaries inline in attribute bindings.
                     valueClass: value

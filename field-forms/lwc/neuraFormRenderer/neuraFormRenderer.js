@@ -44,7 +44,24 @@ import {
 	formatDictationSuccessMessage
 } from './dictationHelpers';
 import { resolveFieldPath as _resolveFieldPathImpl } from './pathResolver';
-import { collectMissingRequiredLabels as _collectMissingRequiredImpl } from './validationHelpers';
+import {
+	collectMissingRequiredLabels as _collectMissingRequiredImpl,
+	collectMissingRequired as _collectMissingRequiredObjImpl,
+	collectMissingRequiredAcrossPages as _collectMissingAcrossPagesImpl
+} from './validationHelpers';
+
+// "Page 2: Freezer temp, Door seal · Page 4: Signature" — group the
+// finish-time gaps by page so the message reads as a route, not a list.
+function summarizeMissingByPage(missing) {
+	const byPage = new Map();
+	missing.forEach((m) => {
+		if (!byPage.has(m.pageTitle)) byPage.set(m.pageTitle, []);
+		byPage.get(m.pageTitle).push(m.label);
+	});
+	return Array.from(byPage.entries())
+		.map(([page, labels]) => `${page}: ${labels.join(', ')}`)
+		.join(' · ');
+}
 import { findQuestionLocation } from './findingsHelpers';
 
 import { reduceError } from 'c/nfCommonUtility';
@@ -699,43 +716,51 @@ export default class NeuraFormRenderer extends LightningElement {
 			return;
 		}
 
-		if (actionType === 'previous' || this.checkValidations()) {
-			const isDeleteSucces = await this.deleteAnswers();
-
-			let isUploadSuccess = false;
-			if (isDeleteSucces) {
-				isUploadSuccess = await this.uploadAnswers();
-			}
-
-			if (isUploadSuccess) {
-				this.updateFormObjectWithNewAnswers();
-
-				console.log('Answers submitted');
-
-				switch (actionType) {
-					case 'previous':
-						await this.changePage(-1);
-						break;
-					case 'next':
-						await this.changePage(1);
-						break;
-					case 'finish':
-						await this.handleFinish();
-						break;
-					default:
-						console.warn('Unhandled action type:', actionType);
+		// Required-answer enforcement happens at FINISH only. Next/Previous
+		// navigate freely — inspections aren't answered in order, and gating
+		// each page fought the skip queue's whole philosophy. Field-format
+		// errors (bad email etc.) still surface inline as the tech types.
+		if (actionType === 'finish') {
+			const missing = this.collectMissingRequiredAcrossPages();
+			const formatsValid = this.checkValidations();
+			if (missing.length || !formatsValid) {
+				const detail = missing.length
+					? 'Please complete: ' + summarizeMissingByPage(missing)
+					: 'Some fields have invalid values — check the highlighted inputs.';
+				this.showToastMessage('Error', detail, 'error');
+				// Land the tech ON the first gap instead of leaving them to
+				// hunt — the single highest-friction moment in the old flow.
+				if (missing.length) {
+					this.jumpToQuestion(missing[0].id, missing[0].pageIndex);
 				}
+				this.dispatchEvent(new CustomEvent('footerclick', { detail: false }));
+				return;
 			}
-		} else {
-			// Collect the labels of required questions that weren't answered so
-			// the user knows which field to fix, instead of the generic
-			// "errors below" message that's useless on mobile when the form is
-			// long enough to scroll.
-			const missing = this.collectMissingRequiredLabels();
-			const detail = missing.length
-				? 'Please complete: ' + missing.join(', ')
-				: 'Some required fields are missing or invalid.';
-			this.showToastMessage('Error', detail, 'error');
+		}
+
+		const isDeleteSucces = await this.deleteAnswers();
+
+		let isUploadSuccess = false;
+		if (isDeleteSucces) {
+			isUploadSuccess = await this.uploadAnswers();
+		}
+
+		if (isUploadSuccess) {
+			this.updateFormObjectWithNewAnswers();
+
+			switch (actionType) {
+				case 'previous':
+					await this.changePage(-1);
+					break;
+				case 'next':
+					await this.changePage(1);
+					break;
+				case 'finish':
+					await this.handleFinish();
+					break;
+				default:
+					console.warn('Unhandled action type:', actionType);
+			}
 		}
 
 		this.dispatchEvent(
@@ -743,6 +768,27 @@ export default class NeuraFormRenderer extends LightningElement {
 				detail: false
 			})
 		);
+	}
+
+	// Form-wide missing-required walk (the per-page variant feeds the
+	// in-page progress counter). Field name resolution stays here because
+	// FIELDS.* is namespace-aware at runtime.
+	collectMissingRequiredAcrossPages() {
+		try {
+			return _collectMissingAcrossPagesImpl(
+				this._formObject?.pages,
+				this.questionAnswerMap,
+				{
+					required: FIELDS.Form_Question__c.Required.fieldApiName,
+					question: FIELDS.Form_Question__c.Question.fieldApiName,
+					answer: AnswerField.fieldApiName,
+					type: FIELDS.Form_Question__c.Type.fieldApiName,
+					pageTitle: FIELDS.Form_Page__c.Title.fieldApiName
+				}
+			);
+		} catch (e) {
+			return [];
+		}
 	}
 
 	// Force a full re-mount of the form template. lightning-input doesn't
@@ -1362,8 +1408,67 @@ export default class NeuraFormRenderer extends LightningElement {
 	@track coaching = null;
 	_coachingController;
 
+	// "12 of 25 answered" for the current page — long pages gave no sense
+	// of how much was left, especially after an interruption. Counts the
+	// same way finish-time validation does (files count by attachment).
+	get pageAnswerProgress() {
+		try {
+			const page = this.currentPage;
+			if (!page || !Array.isArray(page.sections)) return '';
+			const typeField = FIELDS.Form_Question__c.Type.fieldApiName;
+			let total = 0;
+			let answered = 0;
+			page.sections.forEach((section) => {
+				(section.questions || []).forEach((q) => {
+					if (!q || q.shouldRender === false) return;
+					if (q[typeField] === 'Display Text') return;
+					total++;
+					const entry = this.questionAnswerMap.get(q.Id);
+					const saved = q.answers && q.answers[0];
+					const hasValue = (entry && (
+						(entry[AnswerField.fieldApiName] != null && String(entry[AnswerField.fieldApiName]).trim() !== '') ||
+						(Array.isArray(entry.filesData) && entry.filesData.length > 0) ||
+						entry.Id
+					)) || (saved && (
+						(saved[AnswerField.fieldApiName] != null && String(saved[AnswerField.fieldApiName]).trim() !== '') ||
+						saved.Id
+					));
+					if (hasValue) answered++;
+				});
+			});
+			// Reference answerMap so LWC re-evaluates this getter when answers
+			// change (questionAnswerMap is a non-reactive Map).
+			void this.answerMap;
+			return total > 0 ? `${answered} of ${total} answered` : '';
+		} catch (e) {
+			return '';
+		}
+	}
+
 	get hasCoaching() {
 		return this.coaching != null;
+	}
+
+	// Tappable skip badge: cycle through the skipped questions in template
+	// order instead of making the tech hunt for them at the end of a visit.
+	_skipCycleIndex = -1;
+
+	handleSkipBadgeClick() {
+		const skipped = [];
+		(this._formObject?.pages || []).forEach((page, pageIndex) => {
+			if (!page || page.shouldRender === false) return;
+			(page.sections || []).forEach((section) => {
+				(section.questions || []).forEach((q) => {
+					if (q && this._skippedIds.includes(q.Id)) {
+						skipped.push({ id: q.Id, pageIndex });
+					}
+				});
+			});
+		});
+		if (!skipped.length) return;
+		this._skipCycleIndex = (this._skipCycleIndex + 1) % skipped.length;
+		const target = skipped[this._skipCycleIndex];
+		this.jumpToQuestion(target.id, target.pageIndex);
 	}
 
 	maybeCoach(questionId, answerObject) {
@@ -1490,6 +1595,12 @@ export default class NeuraFormRenderer extends LightningElement {
 	// renderer's reactive @track fields + the draftstate CustomEvent
 	// consumed by c-neura-draft-queue-badge in the mobile shell.
 	_handleAutoSaveStateChange(state) {
+		// One short pulse when a save lands — in sunlight the badge is easy
+		// to miss; vibration is the cheapest confirmation that works with
+		// gloves. No-op where unsupported (iOS WKWebView).
+		if (state.status === 'saved' && typeof navigator !== 'undefined' && navigator.vibrate) {
+			navigator.vibrate(15);
+		}
 		this.autoSaveStatus = state.status;
 		this.autoSaveLabel = state.label;
 		this._lastSavedAt = state.lastSavedAt;
