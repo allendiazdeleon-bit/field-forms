@@ -382,6 +382,176 @@ public with sharing class neuraFormBuilderController {
         return summary;
     }
 
+    // ----- Template scoring grid -------------------------------------------
+    // One screen for the whole template's scoring instead of clicking
+    // through forty per-question panels: every binding with inline weight /
+    // severity / failure-policy / pass-rule, saved in one pass. Questions
+    // without a catalog entry are promoted automatically on save — the
+    // catalog stays the source of truth without being a setup chore.
+
+    public class ScoringGridRow {
+        @AuraEnabled public Id questionId;
+        @AuraEnabled public Id catalogId;
+        @AuraEnabled public String questionText;
+        @AuraEnabled public String questionType;
+        @AuraEnabled public String valueSet;
+        @AuraEnabled public Decimal weight;
+        @AuraEnabled public String failureSeverity;
+        @AuraEnabled public Boolean autoFinding = false;
+        @AuraEnabled public Boolean photoRequired = false;
+        @AuraEnabled public String passCriteria;
+    }
+
+    @AuraEnabled(cacheable=false)
+    public static List<ScoringGridRow> getScoringGrid(Id formTemplateId) {
+        List<ScoringGridRow> rows = new List<ScoringGridRow>();
+        if (formTemplateId == null) return rows;
+        for (Form_Question__c q : [
+            SELECT Id, Question__c, Type__c, Value_Set__c,
+                   Form_Question_Catalog__c,
+                   Form_Question_Catalog__r.Question__c,
+                   Form_Question_Catalog__r.Value_Set__c,
+                   Form_Question_Catalog__r.Weight__c,
+                   Form_Question_Catalog__r.Failure_Severity__c,
+                   Form_Question_Catalog__r.Failure_Auto_Finding__c,
+                   Form_Question_Catalog__r.Failure_Photo_Required__c,
+                   Form_Question_Catalog__r.Pass_Criteria__c
+            FROM Form_Question__c
+            WHERE Form_Template__c = :formTemplateId
+              AND Type__c != 'Display Text'
+            ORDER BY Form_Page__r.Order__c ASC, Form_Section__r.Order__c ASC, Order__c ASC
+        ]) {
+            ScoringGridRow row = new ScoringGridRow();
+            row.questionId = q.Id;
+            row.catalogId = q.Form_Question_Catalog__c;
+            row.questionType = q.Type__c;
+            Form_Question_Catalog__c cat = q.Form_Question_Catalog__r;
+            // Catalog content wins when linked (same precedence as the
+            // builder's read-side resolution).
+            row.questionText = cat != null && String.isNotBlank(cat.Question__c)
+                ? cat.Question__c : q.Question__c;
+            row.valueSet = cat != null && String.isNotBlank(cat.Value_Set__c)
+                ? cat.Value_Set__c : q.Value_Set__c;
+            if (cat != null) {
+                row.weight = cat.Weight__c;
+                row.failureSeverity = cat.Failure_Severity__c;
+                row.autoFinding = cat.Failure_Auto_Finding__c == true;
+                row.photoRequired = cat.Failure_Photo_Required__c == true;
+                row.passCriteria = cat.Pass_Criteria__c;
+            }
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    public class ScoringGridSave {
+        @AuraEnabled public Id questionId { get; set; }
+        @AuraEnabled public Decimal weight { get; set; }
+        @AuraEnabled public String failureSeverity { get; set; }
+        @AuraEnabled public Boolean autoFinding { get; set; }
+        @AuraEnabled public Boolean photoRequired { get; set; }
+        @AuraEnabled public String passCriteria { get; set; }
+    }
+
+    /**
+     * Persist grid edits. Bindings without a catalog entry are promoted
+     * first (same content-copy as createCatalogEntryForBinding, bulk), then
+     * every edited row's catalog record is updated in one DML.
+     */
+    @AuraEnabled(cacheable=false)
+    public static List<ScoringGridRow> saveScoringGrid(Id formTemplateId, List<ScoringGridSave> rows) {
+        if (formTemplateId == null || rows == null || rows.isEmpty()) {
+            return getScoringGrid(formTemplateId);
+        }
+        try {
+            Set<Id> questionIds = new Set<Id>();
+            for (ScoringGridSave row : rows) {
+                if (row.questionId != null) questionIds.add(row.questionId);
+            }
+            Map<Id, Id> catalogByQuestion = ensureCatalogEntries(questionIds);
+
+            List<Form_Question_Catalog__c> updates = new List<Form_Question_Catalog__c>();
+            for (ScoringGridSave row : rows) {
+                Id catId = catalogByQuestion.get(row.questionId);
+                if (catId == null) continue;
+                updates.add(new Form_Question_Catalog__c(
+                    Id = catId,
+                    Weight__c = row.weight,
+                    Failure_Severity__c = row.failureSeverity,
+                    Failure_Auto_Finding__c = row.autoFinding == true,
+                    Failure_Photo_Required__c = row.photoRequired == true,
+                    Pass_Criteria__c = row.passCriteria
+                ));
+            }
+            if (!updates.isEmpty()) {
+                SObjectAccessDecision decision = Security.stripInaccessible(
+                    AccessType.UPDATABLE, updates
+                );
+                update decision.getRecords();
+            }
+            return getScoringGrid(formTemplateId);
+        } catch (Exception e) {
+            AuraHandledException ahe = new AuraHandledException(e.getMessage());
+            ahe.setMessage(e.getMessage());
+            throw ahe;
+        }
+    }
+
+    /**
+     * Bulk version of the promote-to-catalog path: returns the catalog Id
+     * for every requested binding, creating entries (content copied via
+     * CATALOG_CONTENT_FIELDS, scoped to the template's brand) where none
+     * exist yet.
+     */
+    private static Map<Id, Id> ensureCatalogEntries(Set<Id> questionIds) {
+        Map<Id, Id> out = new Map<Id, Id>();
+        if (questionIds.isEmpty()) return out;
+        String fieldList = String.join(CATALOG_CONTENT_FIELDS, ', ');
+        List<Form_Question__c> bindings = Database.query(
+            'SELECT Id, Form_Question_Catalog__c, Form_Template__r.Scope__c, '
+            + fieldList
+            + ' FROM Form_Question__c WHERE Id IN :questionIds'
+        );
+
+        List<Form_Question__c> needsCatalog = new List<Form_Question__c>();
+        for (Form_Question__c b : bindings) {
+            if (b.Form_Question_Catalog__c != null) {
+                out.put(b.Id, b.Form_Question_Catalog__c);
+            } else {
+                needsCatalog.add(b);
+            }
+        }
+        if (needsCatalog.isEmpty()) return out;
+
+        List<Form_Question_Catalog__c> catalogs = new List<Form_Question_Catalog__c>();
+        for (Form_Question__c b : needsCatalog) {
+            Form_Question_Catalog__c cat = new Form_Question_Catalog__c();
+            cat.External_Reference__c = 'builder_' + generateExternalRef();
+            cat.Scope__c = b.Form_Template__r != null ? b.Form_Template__r.Scope__c : null;
+            for (String f : CATALOG_CONTENT_FIELDS) {
+                Object val = b.get(f);
+                if (val != null) cat.put(f, val);
+            }
+            catalogs.add(cat);
+        }
+        SObjectAccessDecision decision = Security.stripInaccessible(
+            AccessType.CREATABLE, catalogs
+        );
+        List<SObject> created = decision.getRecords();
+        insert created;
+
+        List<Form_Question__c> links = new List<Form_Question__c>();
+        for (Integer i = 0; i < needsCatalog.size(); i++) {
+            out.put(needsCatalog[i].Id, created[i].Id);
+            links.add(new Form_Question__c(
+                Id = needsCatalog[i].Id,
+                Form_Question_Catalog__c = created[i].Id
+            ));
+        }
+        update links;
+        return out;
+    }
+
     /**
      * Promote an existing, catalog-less binding into its own catalog entry
      * and link it. The scoring panel needs a catalog record to edit

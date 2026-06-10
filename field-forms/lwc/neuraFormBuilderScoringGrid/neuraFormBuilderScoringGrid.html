@@ -1,0 +1,85 @@
+<template>
+    <template if:true={open}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="scoring-grid-title"
+                 class="slds-modal slds-fade-in-open slds-modal_large" onkeydown={handleModalKeydown}>
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                            onclick={close} disabled={saving} title="Close">
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small" variant="inverse"></lightning-icon>
+                    </button>
+                    <h2 id="scoring-grid-title" class="slds-modal__title slds-hyphenate">Scoring — all questions</h2>
+                    <p class="slds-m-top_x-small slds-text-body_small slds-text-color_weak">
+                        Set weights and pass rules for the whole form in one pass. Questions
+                        not yet in the catalog are added automatically when you save.
+                    </p>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium scoring-grid__content">
+                    <template if:true={loading}>
+                        <lightning-spinner alternative-text="Loading questions…" size="medium"></lightning-spinner>
+                    </template>
+                    <template if:false={loading}>
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered scoring-grid__table">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col">Question</th>
+                                    <th scope="col" class="scoring-grid__col-type">Type</th>
+                                    <th scope="col" class="scoring-grid__col-weight">Weight</th>
+                                    <th scope="col" class="scoring-grid__col-rule">Pass rule</th>
+                                    <th scope="col" class="scoring-grid__col-sev">If it fails</th>
+                                    <th scope="col" class="scoring-grid__col-check" title="Auto-create a finding when this question fails">Finding</th>
+                                    <th scope="col" class="scoring-grid__col-check" title="Require a photo on the auto-created finding">Photo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={rows} for:item="row">
+                                    <tr key={row.questionId}>
+                                        <td class="scoring-grid__question" title={row.questionText}>{row.questionText}</td>
+                                        <td class="slds-text-color_weak">{row.questionType}</td>
+                                        <td>
+                                            <lightning-input type="number" variant="label-hidden" label="Weight"
+                                                value={row.weight} data-id={row.questionId}
+                                                onchange={handleWeightChange}></lightning-input>
+                                        </td>
+                                        <td>
+                                            <lightning-combobox variant="label-hidden" label="Pass rule"
+                                                options={row.ruleOptions} value={row.ruleChoice}
+                                                data-id={row.questionId} dropdown-alignment="auto"
+                                                onchange={handleRuleChange}></lightning-combobox>
+                                            <div class="slds-text-body_small slds-text-color_weak">Current: {row.ruleSummary}</div>
+                                        </td>
+                                        <td>
+                                            <lightning-combobox variant="label-hidden" label="Failure severity"
+                                                options={severityOptions} value={row.failureSeverity}
+                                                data-id={row.questionId} dropdown-alignment="auto"
+                                                onchange={handleSeverityChange}></lightning-combobox>
+                                        </td>
+                                        <td class="scoring-grid__center">
+                                            <input type="checkbox" checked={row.autoFinding}
+                                                data-id={row.questionId} aria-label="Auto-create finding on fail"
+                                                onchange={handleAutoFindingChange}/>
+                                        </td>
+                                        <td class="scoring-grid__center">
+                                            <input type="checkbox" checked={row.photoRequired}
+                                                data-id={row.questionId} aria-label="Photo required on finding"
+                                                onchange={handlePhotoChange}/>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </template>
+                </div>
+                <footer class="slds-modal__footer scoring-grid__footer">
+                    <span class={totalClass}>{totalLine}</span>
+                    <span>
+                        <lightning-button label="Close" onclick={close} disabled={saving}></lightning-button>
+                        <lightning-button class="slds-m-left_x-small" variant="brand"
+                            label={saveLabel} disabled={saveDisabled} onclick={handleSave}></lightning-button>
+                    </span>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

@@ -19,6 +19,20 @@
                         <span class="slds-text-body_small">{scoringMismatchText}</span>
                     </div>
                 </template>
+                <div class="slds-m-top_x-small">
+                    <lightning-button
+                        label="Score all questions…"
+                        icon-name="utility:metrics"
+                        icon-position="left"
+                        variant="brand-outline"
+                        onclick={openScoringGrid}>
+                    </lightning-button>
+                </div>
+                <c-neura-form-builder-scoring-grid
+                    form-template-id={formTemplateId}
+                    declared-max-score={declaredMaxScore}
+                    onscoringsaved={handleScoringGridSaved}>
+                </c-neura-form-builder-scoring-grid>
             </template>
         </template>
         

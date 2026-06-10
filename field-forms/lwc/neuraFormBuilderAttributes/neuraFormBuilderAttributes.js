@@ -156,6 +156,26 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
         return `Max Score is ${s.declaredMaxScore} but question weights total ${s.weightSum} — completed inspections will show skewed percentages. Align the weights or the Max Score.`;
     }
 
+    get declaredMaxScore() {
+        return this.scoringSummary?.declaredMaxScore;
+    }
+
+    openScoringGrid() {
+        const grid = this.template.querySelector('c-neura-form-builder-scoring-grid');
+        if (grid) grid.show();
+    }
+
+    handleScoringGridSaved() {
+        // Weights changed — recompute the summary line/warning.
+        this._scoringSummaryLoadedFor = undefined;
+        getScoringSummary({ formTemplateId: this.formTemplateId })
+            .then((summary) => {
+                this.scoringSummary = summary;
+                this._scoringSummaryLoadedFor = this.formTemplateId;
+            })
+            .catch(() => {});
+    }
+
     get isNotForm(){
         return !this.isForm;
     }

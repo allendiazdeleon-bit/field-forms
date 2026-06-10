@@ -1,0 +1,26 @@
+.scoring-grid__content {
+    min-height: 12rem;
+}
+.scoring-grid__table {
+    table-layout: fixed;
+}
+.scoring-grid__question {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.scoring-grid__col-type { width: 8rem; }
+.scoring-grid__col-weight { width: 6rem; }
+.scoring-grid__col-rule { width: 14rem; }
+.scoring-grid__col-sev { width: 9rem; }
+.scoring-grid__col-check { width: 4.5rem; }
+.scoring-grid__center { text-align: center; }
+.scoring-grid__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.scoring-grid__total_mismatch {
+    color: #8a6d00;
+    font-weight: 600;
+}

@@ -948,6 +948,69 @@ private class NeuraFormBuilderControllerTest {
     }
 
     @isTest
+    static void scoringGridSaveAutoPromotesAndPersists() {
+        Form_Template__c tpl = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Question__c q = [SELECT Id, Form_Question_Catalog__c FROM Form_Question__c LIMIT 1];
+        System.assertEquals(null, q.Form_Question_Catalog__c, 'Fixture starts unlinked.');
+
+        List<neuraFormBuilderController.ScoringGridRow> grid =
+            neuraFormBuilderController.getScoringGrid(tpl.Id);
+        System.assertEquals(1, grid.size());
+        System.assertEquals(q.Id, grid[0].questionId);
+        System.assertEquals(null, grid[0].weight, 'Unlinked rows have no scoring yet.');
+
+        neuraFormBuilderController.ScoringGridSave edit =
+            new neuraFormBuilderController.ScoringGridSave();
+        edit.questionId = q.Id;
+        edit.weight = 10;
+        edit.failureSeverity = 'High';
+        edit.autoFinding = true;
+        edit.photoRequired = true;
+        edit.passCriteria = '{"all":[{"resource":"self","operator":"equals","value":"pass"}]}';
+
+        Test.startTest();
+        List<neuraFormBuilderController.ScoringGridRow> after =
+            neuraFormBuilderController.saveScoringGrid(
+                tpl.Id, new List<neuraFormBuilderController.ScoringGridSave>{ edit }
+            );
+        Test.stopTest();
+
+        System.assertEquals(10, after[0].weight);
+        System.assertEquals('High', after[0].failureSeverity);
+        System.assertEquals(true, after[0].autoFinding);
+        System.assertEquals(true, after[0].photoRequired);
+
+        Form_Question__c linked = [
+            SELECT Form_Question_Catalog__r.Weight__c,
+                   Form_Question_Catalog__r.Pass_Criteria__c,
+                   Form_Question_Catalog__r.Question__c
+            FROM Form_Question__c WHERE Id = :q.Id
+        ];
+        System.assertNotEquals(null, linked.Form_Question_Catalog__r,
+            'Saving the grid must auto-promote unlinked bindings to the catalog.');
+        System.assertEquals(10, linked.Form_Question_Catalog__r.Weight__c);
+        System.assert(linked.Form_Question_Catalog__r.Pass_Criteria__c.contains('"equals"'));
+        System.assertEquals('Test Question?', linked.Form_Question_Catalog__r.Question__c,
+            'Promotion copies the binding content.');
+    }
+
+    @isTest
+    static void scoringGridExcludesDisplayText() {
+        Form_Template__c tpl = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Page__c page = [SELECT Id FROM Form_Page__c LIMIT 1];
+        Form_Section__c section = [SELECT Id FROM Form_Section__c LIMIT 1];
+        insert new Form_Question__c(
+            Question__c = 'Just some text', Type__c = 'Display Text',
+            Form_Template__c = tpl.Id, Form_Page__c = page.Id,
+            Form_Section__c = section.Id, Order__c = 2
+        );
+        List<neuraFormBuilderController.ScoringGridRow> grid =
+            neuraFormBuilderController.getScoringGrid(tpl.Id);
+        System.assertEquals(1, grid.size(),
+            'Display Text carries no answer and cannot be scored.');
+    }
+
+    @isTest
     static void createCatalogEntryForBindingIsIdempotent() {
         Form_Question__c q = [SELECT Id FROM Form_Question__c LIMIT 1];
         Id first = neuraFormBuilderController.createCatalogEntryForBinding(q.Id);
