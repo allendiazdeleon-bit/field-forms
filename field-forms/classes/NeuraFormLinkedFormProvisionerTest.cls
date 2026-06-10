@@ -18,7 +18,9 @@ private class NeuraFormLinkedFormProvisionerTest {
     }
 
     private static Form_Template__c buildTemplate(String name) {
-        Form_Template__c t = new Form_Template__c(Name = name);
+        // Status defaults to Draft, and the provisioner (correctly) only
+        // consumes Active templates — fixtures must activate explicitly.
+        Form_Template__c t = new Form_Template__c(Name = name, Status__c = 'Active');
         insert t;
         return t;
     }
