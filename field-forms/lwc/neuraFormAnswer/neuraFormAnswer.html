@@ -28,6 +28,18 @@
 							onchange={handleChange}
 						></lightning-input>
 					</div>
+					<!-- Per-question mic: dictate straight into THIS answer
+					     (appends via handleVoiceTranscript). Hides itself on
+					     platforms without Web Speech — there, the keyboard's
+					     own mic key fills the focused input instead. -->
+					<template if:true={isTextBox}>
+						<div class="slds-col slds-grow-none slds-m-left_xx-small">
+							<c-neura-voice-capture
+								aria-label="Dictate this answer"
+								ontranscript={handleVoiceTranscript}
+							></c-neura-voice-capture>
+						</div>
+					</template>
 				</div>
 			</template>
 
@@ -43,6 +55,12 @@
 							variant="label-hidden"
 							onchange={handleChange}
 						></lightning-textarea>
+					</div>
+					<div class="slds-col slds-grow-none slds-m-left_xx-small">
+						<c-neura-voice-capture
+							aria-label="Dictate this answer"
+							ontranscript={handleVoiceTranscript}
+						></c-neura-voice-capture>
 					</div>
 				</div>
 			</template>

@@ -829,11 +829,20 @@ export default class NeuraFormRenderer extends LightningElement {
 		// (Apex call, applyDictatedAnswer, imperative formPage poke,
 		// toast side effects) stays here because each step touches
 		// reactive state or child refs.
-		const questions = collectDictatableQuestions(this.currentPage, {
+		// Match against EVERY visible page's questions, not just the current
+		// page: real templates open on contact/address pages, and a tech who
+		// dictates observations there used to get zero matches even though
+		// the right questions exist two pages later. Answers land in the
+		// data layer form-wide; the current page also gets the imperative
+		// DOM update below.
+		const fieldNames = {
 			type: FIELDS.Form_Question__c.Type.fieldApiName,
 			valueSet: FIELDS.Form_Question__c.ValueSet.fieldApiName,
 			question: FIELDS.Form_Question__c.Question.fieldApiName
-		});
+		};
+		const questions = (this._formObject?.pages || [])
+			.filter((page) => page && page.shouldRender !== false)
+			.flatMap((page) => collectDictatableQuestions(page, fieldNames));
 
 		try {
 			const result = await mapTranscriptToQuestions({ transcript, questions });
@@ -856,6 +865,11 @@ export default class NeuraFormRenderer extends LightningElement {
 			const dictMap = {};
 			mappings.forEach((m) => { dictMap[m.questionId] = m.value; });
 			this.refs.formPage?.applyDictation?.(dictMap);
+
+			// Answers mapped to OTHER pages live only in the answer map until
+			// those pages render; sync them into the form object now so page
+			// navigation and the review screen see them immediately.
+			this.syncAllAnswersToFormObject();
 
 			this.showToastMessage(
 				'Info',
