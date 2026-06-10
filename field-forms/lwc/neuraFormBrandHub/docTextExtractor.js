@@ -50,14 +50,26 @@ function readAs(file, mode) {
 
 async function extractPdf(file, pdfjsLib) {
     const buffer = await readAs(file, 'buffer');
-    const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
+    // Lightning's security membrane (LWS/Locker) hardening, all three
+    // load-bearing:
+    //   - Uint8Array, not the raw ArrayBuffer: the proxied buffer fails
+    //     pdf.js's instanceof check and it goes down a wrong branch that
+    //     dies with "String.prototype.split called on null or undefined".
+    //   - isEvalSupported false: font code paths use eval, which the
+    //     sandbox blocks mid-parse.
+    //   - disableFontFace: we only want text, never rendered glyphs.
+    const doc = await pdfjsLib.getDocument({
+        data: new Uint8Array(buffer),
+        isEvalSupported: false,
+        disableFontFace: true
+    }).promise;
     const pages = [];
     for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
         const content = await page.getTextContent();
         // Join items with spaces; double-newline between pages so section
         // boundaries survive into the LLM prompt.
-        pages.push(content.items.map((item) => item.str).join(' '));
+        pages.push(content.items.map((item) => item.str || '').join(' '));
     }
     return pages.join('\n\n');
 }
@@ -104,7 +116,8 @@ async function extractHtml(file) {
  * @throws {DocExtractionError} with a user-displayable message.
  */
 export async function extractDocumentText(file, libs = {}) {
-    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const fileName = (file && file.name) || '';
+    const ext = (fileName.split('.').pop() || '').toLowerCase();
     let raw;
     if (ext === 'pdf') {
         if (!libs.pdfjsLib) throw new DocExtractionError('PDF library not loaded.');
@@ -126,7 +139,7 @@ export async function extractDocumentText(file, libs = {}) {
 
 /** Which static-resource library an extension needs (null = none). */
 export function requiredLibFor(fileName) {
-    const ext = (fileName.split('.').pop() || '').toLowerCase();
+    const ext = ((fileName || '').split('.').pop() || '').toLowerCase();
     if (ext === 'pdf') return 'pdfjs';
     if (ext === 'docx') return 'jszip';
     return null;

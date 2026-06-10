@@ -416,6 +416,10 @@ export default class NeuraFormBrandHub extends NavigationMixin(LightningElement)
                 );
             }
         } catch (error) {
+            // Full error to the console — extraction failures inside the
+            // vendored libs surface as cryptic one-liners in the toast and
+            // the stack is what actually identifies them.
+            console.error('Document extraction failed', error);
             const message = error instanceof DocExtractionError
                 ? error.message
                 : reduceError(error);
