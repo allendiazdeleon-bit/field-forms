@@ -119,7 +119,8 @@ if ([SELECT COUNT() FROM Form_Page__c WHERE Form_Template__c = :tpl.Id] == 0) {
     List<Form_Section__c> sections = new List<Form_Section__c>();
     for (Integer i = 0; i < pages.size(); i++) {
         sections.add(new Form_Section__c(Name = pageTitles[i], Title__c = pageTitles[i],
-            Show_Title__c = true, Order__c = 1, Form_Page__c = pages[i].Id, Form_Template__c = tpl.Id));
+            Show_Title__c = true, Order__c = 1, Columns__c = '1',
+            Form_Page__c = pages[i].Id, Form_Template__c = tpl.Id));
     }
     insert sections;
 
@@ -162,6 +163,7 @@ if ([SELECT COUNT() FROM Form_Page__c WHERE Form_Template__c = :tpl.Id] == 0) {
         Order__c = 1, Type__c = 'Text Area', Question__c = 'Overall comments'));
     qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[3].Id, Form_Section__c = sections[3].Id,
         Order__c = 2, Type__c = 'Signature', Question__c = 'Store manager signature', Required__c = true));
+    for (Form_Question__c q : qs) q.Column__c = '1';
     insert qs;
 
     // The vignette-1 beat: follow-up appears only when the seal fails.
