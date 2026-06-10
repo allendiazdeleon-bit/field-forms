@@ -1230,6 +1230,27 @@ export default class NeuraFormRenderer extends LightningElement {
 		this.completeFinish({ summary: event?.detail?.summary });
 	}
 
+	// Submit guard's "Save draft": leave the inspection In Progress and hand
+	// the tech back to the job list. Answers are already persisted by the
+	// auto-save pipeline — this is an exit gesture, not a save gesture.
+	// (Both this and viewfindings re-dispatched from the review screen with
+	// NO upstream listener until now — visibly dead buttons on the most
+	// important screen in the app.)
+	handleReviewSaveDraft() {
+		this._inReview = false;
+		this.dispatchEvent(new CustomEvent('returnhome', {
+			bubbles: true,
+			composed: true
+		}));
+	}
+
+	// Submit guard's "View findings" (blocking state): the findings panel
+	// lives on the form view, so route back there — the panel is mounted
+	// sticky at the bottom for the tech to work the blockers.
+	handleReviewViewFindings() {
+		this._inReview = false;
+	}
+
 	/**
 	 * Changes the current page index and updates the current page based on the given delta.
 	 * @param {number} delta - The change in page index.

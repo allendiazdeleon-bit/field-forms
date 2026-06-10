@@ -576,6 +576,11 @@ public with sharing class NeuraFormMobileController {
      */
     @TestVisible
     private static String invokeModelsAPI(String systemPrompt, String userPrompt) {
+        // Respect the org's AI opt-in — dictation mapping and the review
+        // summary were hitting the Models API regardless of the
+        // Enable_AI_Features__c gate (same miss the anomaly path had).
+        // Blank routes both callers to their heuristic fallbacks.
+        if (!NeuraFormLLMService.isEnabled()) return null;
         return NeuraFormLLMService.chat(systemPrompt, userPrompt);
     }
 

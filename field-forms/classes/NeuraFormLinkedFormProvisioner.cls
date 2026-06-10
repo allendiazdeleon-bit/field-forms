@@ -105,11 +105,18 @@ public with sharing class NeuraFormLinkedFormProvisioner {
             }
 
             // SOQL 1: all Default_Forms for every WorkType in this batch.
+            // Lifecycle enforcement lives HERE: the brand hub's Draft ->
+            // Active -> Retired story promises that Draft templates don't
+            // reach techs until activated — this filter is what makes that
+            // true. Null status passes for templates that predate the
+            // Status__c field.
             Map<Id, List<Default_Form__c>> defaultsByWorkType = new Map<Id, List<Default_Form__c>>();
             for (Default_Form__c df : [
                 SELECT Id, Work_Type__c, Form_Template__c
                 FROM Default_Form__c
                 WHERE Work_Type__c IN :workTypeIds
+                  AND (Form_Template__r.Status__c = 'Active'
+                       OR Form_Template__r.Status__c = null)
                 WITH SECURITY_ENFORCED
             ]) {
                 if (!defaultsByWorkType.containsKey(df.Work_Type__c)) {

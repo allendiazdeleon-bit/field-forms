@@ -173,6 +173,40 @@ private class NeuraFormLinkedFormProvisionerTest {
             [SELECT COUNT() FROM Linked_Form__c WHERE Work_Order_Line_Item__c = :woli.Id]);
     }
 
+    @isTest static void draftAndRetiredTemplatesDoNotProvision() {
+        WorkType wt = buildWorkType();
+        Form_Template__c draft = buildTemplate('Draft T');
+        draft.Status__c = 'Draft';
+        Form_Template__c retired = buildTemplate('Retired T');
+        retired.Status__c = 'Retired';
+        Form_Template__c active = buildTemplate('Active T');
+        active.Status__c = 'Active';
+        update new List<Form_Template__c>{ draft, retired, active };
+        buildDefaultForm(wt.Id, draft.Id);
+        buildDefaultForm(wt.Id, retired.Id);
+        buildDefaultForm(wt.Id, active.Id);
+        WorkOrder wo = buildWorkOrder(null);
+
+        NeuraFormLinkedFormProvisioner.Request req = new NeuraFormLinkedFormProvisioner.Request();
+        req.recordId = wo.Id;
+        req.workTypeId = wt.Id;
+
+        Test.startTest();
+        List<NeuraFormLinkedFormProvisioner.Result> results =
+            NeuraFormLinkedFormProvisioner.provisionLinkedForms(
+                new List<NeuraFormLinkedFormProvisioner.Request>{ req }
+            );
+        Test.stopTest();
+
+        System.assertEquals(1, results[0].createdCount,
+            'Only the Active template provisions — Draft/Retired stay off techs\' phones, as the brand hub lifecycle promises.');
+        List<Linked_Form__c> created = [
+            SELECT Form_Template__c FROM Linked_Form__c WHERE Work_Order__c = :wo.Id
+        ];
+        System.assertEquals(1, created.size());
+        System.assertEquals(active.Id, created[0].Form_Template__c);
+    }
+
     @isTest static void unsupportedParentPrefixReturnsError() {
         // Account Id starts with 001, not one of our supported prefixes.
         Account a = new Account(Name = 'Test');
