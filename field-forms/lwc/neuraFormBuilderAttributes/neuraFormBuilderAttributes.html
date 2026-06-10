@@ -8,6 +8,18 @@
                     <lightning-input-field key={setting.label} onchange={handleAttributeChange} field-name={setting.label} value={setting.value}> </lightning-input-field>
                 </template>
             </lightning-record-edit-form>
+            <!-- Scoring sanity check: weights-vs-Max-Score drift was invisible
+                 until completed inspections showed skewed percentages. -->
+            <template if:true={showScoringSummary}>
+                <div class="slds-m-top_small slds-text-body_small slds-text-color_weak">
+                    {scoringSummaryText}
+                </div>
+                <template if:true={scoringMismatch}>
+                    <div class="slds-m-top_x-small slds-scoped-notification slds-scoped-notification_light slds-theme_warning slds-p-around_x-small" role="alert">
+                        <span class="slds-text-body_small">{scoringMismatchText}</span>
+                    </div>
+                </template>
+            </template>
         </template>
         
         <template if:true={isPage}>
@@ -44,7 +56,8 @@
             <c-neura-form-catalog-provenance
                 selection={selection}
                 onrequestoverride={handleRequestOverride}
-                onrevert={handleRevert}>
+                onrevert={handleRevert}
+                oncreatecatalog={handleCreateCatalog}>
             </c-neura-form-catalog-provenance>
             <lightning-record-edit-form object-api-name={formQuestionApiName}>
                 <lightning-messages></lightning-messages>

@@ -1,3 +1,13 @@
 .actionButtons {
     --lwc-buttonColorBorderPrimary : transparent;
 }
+/* Conditional-visibility chip — same treatment as the question card. */
+.conditional-badge {
+    display: inline-flex;
+    align-items: center;
+    margin: 4px 4px 0;
+    background: #eef4ff;
+    color: #014486;
+    border: 1px solid #aacbff;
+    font-size: 0.6875rem;
+}

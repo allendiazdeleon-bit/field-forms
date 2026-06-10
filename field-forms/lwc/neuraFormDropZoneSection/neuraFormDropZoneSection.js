@@ -1,5 +1,6 @@
 import { LightningElement, api, track } from 'lwc';
 import { FIELDS } from 'c/neuraFormSchemaUtils';
+import { countConditionRules } from 'c/neuraFormUtils';
 
 export default class NeuraFormDropZoneSection extends LightningElement {
     @api section;
@@ -70,6 +71,22 @@ export default class NeuraFormDropZoneSection extends LightningElement {
             event.preventDefault();
             this.handleClick(event);
         }
+    }
+
+    // Conditional-visibility badge — see neuraFormDropZoneQuestion.
+    get conditionRuleCount() {
+        return countConditionRules(
+            this.section?.attributes?.[FIELDS.Form_Section__c.Conditions.fieldApiName]
+        );
+    }
+
+    get isConditional() {
+        return this.conditionRuleCount > 0;
+    }
+
+    get conditionalBadgeLabel() {
+        const n = this.conditionRuleCount;
+        return `Conditional · ${n} rule${n === 1 ? '' : 's'}`;
     }
 
     get sectionAriaLabel() {

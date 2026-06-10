@@ -131,6 +131,36 @@ export default class NeuraFormCatalogProvenance extends NavigationMixin(Lightnin
         }));
     }
 
+    /**
+     * "Create catalog entry" — for saved bindings with no catalog link
+     * (imports, clones of unmatched questions, AI drafts). Scoring config
+     * lives on the catalog entry, so without this gesture those questions
+     * were permanently unscoreable: the scoring panel's directive pointed
+     * at a button that didn't exist. The parent calls the Apex promote
+     * action and adopts the returned catalog Id. Only offered for
+     * bindings that exist as records — unsaved questions get their
+     * catalog automatically on first save.
+     */
+    @api
+    handleCreateCatalog() {
+        if (this.hasCatalogLink || !this.isSavedBinding) return;
+        this.dispatchEvent(new CustomEvent('createcatalog', {
+            detail: { questionId: this.selection.id }
+        }));
+    }
+
+    get isSavedBinding() {
+        // Builder selections carry the record Id as selection.id once
+        // saved; unsaved drag-drops have a synthetic UUID (no prefix
+        // match against an 15/18-char Id shape).
+        const id = this.selection && this.selection.id;
+        return typeof id === 'string' && /^[a-zA-Z0-9]{15}([a-zA-Z0-9]{3})?$/.test(id) && !id.includes('-');
+    }
+
+    get showCreateCatalogButton() {
+        return !this.hasCatalogLink && this.isSavedBinding;
+    }
+
     // Wave 35.8a: exclusive catalog (only this binding uses it) — no
     // override button needed because edits flow directly to the catalog.
     get isExclusiveCatalogEntry() {

@@ -1,4 +1,6 @@
 import { LightningElement, api } from 'lwc';
+import { FIELDS } from 'c/neuraFormSchemaUtils';
+import { countConditionRules } from 'c/neuraFormUtils';
 
 export default class NeuraFormDropZoneQuestion extends LightningElement {
     @api component;
@@ -6,6 +8,24 @@ export default class NeuraFormDropZoneQuestion extends LightningElement {
 
     isHovered = false;
     isClicked = false;
+
+    // Conditional-visibility badge: authored rules were invisible on the
+    // canvas — the only way to know an element was conditional was to
+    // click it and scroll the attributes panel.
+    get conditionRuleCount() {
+        return countConditionRules(
+            this.component?.attributes?.[FIELDS.Form_Question__c.Conditions.fieldApiName]
+        );
+    }
+
+    get isConditional() {
+        return this.conditionRuleCount > 0;
+    }
+
+    get conditionalBadgeLabel() {
+        const n = this.conditionRuleCount;
+        return `Conditional · ${n} rule${n === 1 ? '' : 's'}`;
+    }
 
     get questionFormatObject(){
         let questionFormatObject = {};

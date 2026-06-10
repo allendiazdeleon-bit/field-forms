@@ -1,5 +1,6 @@
 import { LightningElement, api } from 'lwc';
 import { FIELDS } from 'c/neuraFormSchemaUtils';
+import { countConditionRules } from 'c/neuraFormUtils';
 
 export default class NeuraFormBuilderPageItem extends LightningElement {
     @api currentPageId;
@@ -21,6 +22,14 @@ export default class NeuraFormBuilderPageItem extends LightningElement {
     get isCurrentPage(){
         // if matching page id and current page id then return true
         return !this.newPage && this.currentPageId === this.page?.id;
+    }
+
+    // Conditional-visibility marker on the page rail — a page that only
+    // shows under certain answers should be recognizable at a glance.
+    get isConditional() {
+        return countConditionRules(
+            this.page?.attributes?.[FIELDS.Form_Page__c.Conditions.fieldApiName]
+        ) > 0;
     }
 
     get title(){

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Brand_Scoped</fullName>
+    <columns>NAME</columns>
+    <columns>Question__c</columns>
+    <columns>Scope__c</columns>
+    <columns>Type__c</columns>
+    <columns>Weight__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Scope__c</field>
+        <operation>notEqual</operation>
+        <value></value>
+    </filters>
+    <label>Brand-Scoped Entries</label>
+</ListView>

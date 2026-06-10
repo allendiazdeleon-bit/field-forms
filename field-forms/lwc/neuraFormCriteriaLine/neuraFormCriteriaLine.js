@@ -82,58 +82,135 @@ export default class NeuraFormCriteriaLine extends LightningElement {
         { "label": "Is False", "value": "isFalse" }
     ]
 
+    // Keyed by Type__c lowercased. A type missing from this map renders an
+    // EMPTY operator list — the condition becomes unauthorable — so every
+    // registry type that stores an answer must have an entry.
     validOperators = {
-        "checkbox": ["equals", "notEquals"],
+        "calculation": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "checkbox": ["isTrue", "isFalse", "equals", "notEquals"],
+        "checkboxes": ["contains", "equals", "notEquals", "inList", "notInList"],
+        "checklist": ["contains", "equals", "notEquals", "inList", "notInList"],
+        "counter": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "currency": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
         "date": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "date time": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
         "dropdown": ["equals", "notEquals", "inList", "notInList"],
         "email": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
         "file upload": ["equals", "notEquals"],
         "form": ["equals", "notEquals"],
         "geolocation": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
-        "multiple choice": ["equals", "notEquals", "inList", "notInList"],
+        "lookup": ["equals", "notEquals", "contains", "inList", "notInList"],
+        "multiple choice": ["equals", "notEquals", "contains", "inList", "notInList"],
         "number": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "pass fail na": ["equals", "notEquals", "inList", "notInList"],
         "phone": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList"],
-        "radio buttons": ["equals", "notEquals"],
+        "radio buttons": ["equals", "notEquals", "inList", "notInList"],
         "rating": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
+        "repeatable": ["contains", "equals", "notEquals"],
         "scan barcode": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList"],
         "signature": ["isTrue", "isFalse"],
         "slider": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
         "text": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
         "text area": ["equals", "notEquals", "contains", "startsWith", "endsWith", "inList", "notInList", "regex"],
         "time": ["equals", "notEquals", "greaterThan", "lessThan", "greaterThanOrEqual", "lessThanOrEqual", "inList", "notInList"],
-        "toggle": ["equals", "notEquals"]
+        "toggle": ["isTrue", "isFalse", "equals", "notEquals"]
+    }
+
+    // Choice-flavored types whose value should be picked from the
+    // referenced question's own option set rather than typed free-text —
+    // free text here was the #1 source of conditions that never fire
+    // (typo'd or wrong-case option values).
+    static CHOICE_TYPES = ['Dropdown', 'Multiple Choice', 'Radio Buttons', 'Checkboxes', 'Checklist'];
+
+    get referencedQuestion() {
+        const id = this.resource ?? this.condition?.resource;
+        return this.questions.find(q => q.id === id);
+    }
+
+    get referencedQuestionType() {
+        return this.referencedQuestion?.attributes[FIELDS.Form_Question__c.Type.fieldApiName];
     }
 
     get typeFromQuestion() {
-        // get data Type by finding the question in this.questions that equals the resource
-
-        const dataType = this.questions.find(q => q.id === this.resource)?.attributes[FIELDS.Form_Question__c.Type.fieldApiName];
-
         const typeMapping = {
+            'Calculation': 'number',
             'Checkbox': 'text',
+            'Counter': 'number',
+            'Currency': 'number',
             'Date': 'date',
+            'Date Time': 'datetime',
             'Dropdown': 'text',
             'Email': 'email',
-            'File Upload': 'file',
-            'Form': 'text', // default to text as there's no specific form type in lightning-input
-            'Geolocation': 'text', // could be custom input for lat/long
-            'Multiple Choice': 'text', // assuming it's a dropdown
+            'File Upload': 'text',
+            'Geolocation': 'text',
+            'Multiple Choice': 'text',
             'Number': 'number',
-            'Page': 'text', // default to text as there's no specific page type in lightning-input
             'Phone': 'tel',
             'Radio Buttons': 'text',
-            'Rating': 'number', // could be custom stars component
-            'Scan Barcode': 'text', // could be custom input for barcode scanner
-            'Section': 'text', // default to text as there's no specific section type in lightning-input
-            'Signature': 'text', // could be custom input for signature
-            'Slider': 'range',
+            'Rating': 'number',
+            'Scan Barcode': 'text',
+            'Signature': 'text',
+            'Slider': 'number',
             'Text': 'text',
-            'Text Area': 'textarea',
+            'Text Area': 'text',
             'Time': 'time',
             'Toggle': 'text'
         };
 
-        return typeMapping[dataType] || 'text';
+        return typeMapping[this.referencedQuestionType] || 'text';
+    }
+
+    // isTrue/isFalse are complete without a comparison value — showing the
+    // value box invites users to type something that's silently ignored.
+    get isBooleanOperator() {
+        const op = this.operator ?? this.condition?.operator;
+        return op === 'isTrue' || op === 'isFalse';
+    }
+
+    /**
+     * Option list for the value combobox when the referenced question is a
+     * choice type: its own Value_Set__c options (Pass Fail NA has fixed
+     * stored values). Null for free-text types.
+     */
+    get choiceValueOptions() {
+        const type = this.referencedQuestionType;
+        if (type === 'Pass Fail NA') {
+            return [
+                { label: 'Pass', value: 'pass' },
+                { label: 'Fail', value: 'fail' },
+                { label: 'N/A', value: 'na' }
+            ];
+        }
+        if (!NeuraFormCriteriaLine.CHOICE_TYPES.includes(type)) return null;
+        try {
+            const raw = this.referencedQuestion?.attributes[FIELDS.Form_Question__c.ValueSet.fieldApiName];
+            const opts = JSON.parse(raw || '[]');
+            const out = (opts || [])
+                .filter(o => o && (o.value != null || o.label != null))
+                .map(o => ({
+                    label: o.label != null ? o.label : String(o.value),
+                    value: o.value != null ? String(o.value) : o.label
+                }));
+            return out.length ? out : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    get showChoiceValueInput() {
+        return !this.isBooleanOperator && this.choiceValueOptions !== null;
+    }
+
+    get showFreeTextValueInput() {
+        return !this.isBooleanOperator && this.choiceValueOptions === null;
+    }
+
+    // The condition points at a question that no longer exists (deleted, or
+    // an import remap miss). It silently evaluates false forever at runtime
+    // — surface it instead of crashing the summary getter.
+    get isDanglingRef() {
+        const id = this.condition?.resource;
+        return Boolean(id) && !this.questions.some(q => q.id === id);
     }
 
     get sectionDisabled(){
@@ -161,7 +238,12 @@ export default class NeuraFormCriteriaLine extends LightningElement {
     }
 
     get resourceName(){
-        return this.condition.resource ? this.questions.find(q => q.id === this.condition.resource).attributes[FIELDS.Form_Question__c.Question.fieldApiName] : '';
+        if (!this.condition.resource) return '';
+        const q = this.questions.find(item => item.id === this.condition.resource);
+        // Dangling reference (deleted question / failed import remap): the
+        // old unguarded access threw and broke the whole criteria panel.
+        if (!q) return '⚠ Missing question';
+        return q.attributes[FIELDS.Form_Question__c.Question.fieldApiName];
     }
 
     get operaterName(){
@@ -221,6 +303,9 @@ export default class NeuraFormCriteriaLine extends LightningElement {
             const index = event.target.dataset.index;
             const newValue = event.detail.value;
             this.dispatchEvent(new CustomEvent('operatorchange', { detail: { index, value: newValue } }));
+            if ((newValue === 'isTrue' || newValue === 'isFalse') && this.condition?.value) {
+                this.dispatchEvent(new CustomEvent('valuechange', { detail: { index, value: '' } }));
+            }
         } catch (error) {
             this.handleError(error, 'handleOperatorChange');
         }
@@ -310,6 +395,12 @@ export default class NeuraFormCriteriaLine extends LightningElement {
         this.operator = event.detail.value;
         const index = event.target?.dataset?.index;
         this.dispatchUpdateEvent('operatorchange', index, this.operator);
+        // Boolean operators carry no comparison value — clear any leftover
+        // so the stored condition doesn't keep a stale, ignored value.
+        if (this.isBooleanOperator && this.value) {
+            this.value = '';
+            this.dispatchUpdateEvent('valuechange', index, '');
+        }
     }
 
     handleNarrowValueChange(event) {
@@ -409,6 +500,10 @@ export default class NeuraFormCriteriaLine extends LightningElement {
 
                 section.columns.forEach(column => {
                     column.components.forEach(question => {
+                        // Display Text carries no answer — referencing it
+                        // produces a condition that can never evaluate true.
+                        const qType = question.attributes[FIELDS.Form_Question__c.Type.fieldApiName];
+                        if (qType === 'Display Text') return;
                         questions.push({ label: question.attributes[FIELDS.Form_Question__c.Question.fieldApiName], value: question.id, section: section.id });
                     });
                 });

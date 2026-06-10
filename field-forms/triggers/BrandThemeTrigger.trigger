@@ -37,11 +37,11 @@ trigger BrandThemeTrigger on Brand_Theme__c (before insert, before update) {
         String tier = theme.Scope__c + '|' + theme.Form_Template__c;
         Brand_Theme__c clash = activeByTier.get(tier);
         if (clash != null && clash.Id != theme.Id) {
-            String where_ = theme.Form_Template__c != null
+            String tierLabel = theme.Form_Template__c != null
                 ? 'this form template'
                 : (theme.Scope__c != null ? 'scope "' + theme.Scope__c + '"' : 'the org default');
             theme.addError(
-                'An active theme already exists for ' + where_ + ' ("' + clash.Name +
+                'An active theme already exists for ' + tierLabel + ' ("' + clash.Name +
                 '"). Deactivate it first, or edit it instead — two active themes at the ' +
                 'same level make the rendered branding ambiguous.'
             );

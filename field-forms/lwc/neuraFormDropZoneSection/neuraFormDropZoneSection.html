@@ -11,6 +11,12 @@
         aria-label={sectionAriaLabel}
         aria-pressed={isActiveSelection}>
         <div class={sectionClass} draggable="true" ondragstart={handleDragStart} ondragend={handleDragEnd}>
+            <template if:true={isConditional}>
+                <span class="slds-badge conditional-badge" title="This section only shows when its visibility rules are met — click to review them in the panel.">
+                    <lightning-icon icon-name="utility:filterList" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                    {conditionalBadgeLabel}
+                </span>
+            </template>
 
             <template if:true={showTitle}><h2 class="slds-card__header-title"><span class="slds-text-heading_small slds-truncate">{titleText}</span></h2></template>
             <lightning-layout>

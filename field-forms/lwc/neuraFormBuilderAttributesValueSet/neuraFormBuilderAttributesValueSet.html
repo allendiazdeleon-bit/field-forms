@@ -1,32 +1,53 @@
 <template>
     <div class="slds-form-element slds-form-element_stacked">
         <label class="slds-form-element__label">Options</label>
-        <template for:each={valueSet} for:item="item" for:index="index">
-            
-            <div key={item.id} class="slds-grid slds-m-bottom_x-small">
+        <template for:each={rows} for:item="item">
+            <div key={item.id} class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
                 <!-- Custom Icon Picker Component -->
-                <div class="slds-col">
+                <div class="slds-col slds-grow-none">
                     <c-avonni-icon-picker
-                    label="Icon label"
-                    value={item.icon}
-                    variant="label-hidden"
-                    menu-variant="border-inverse"
-                    hide-input-text
-                    data-index={index}
-                    onchange={handleIconChange}
+                        label="Icon label"
+                        value={item.icon}
+                        variant="label-hidden"
+                        menu-variant="border-inverse"
+                        hide-input-text
+                        data-index={item.index}
+                        onchange={handleIconChange}
                     ></c-avonni-icon-picker>
                 </div>
                 <div class="slds-col">
-                    <lightning-input label="Label" value={item.label} data-index={index} onchange={handleInputChange} variant="label-hidden"></lightning-input>
+                    <lightning-input label="Label" placeholder="Label" value={item.label} data-index={item.index} onchange={handleInputChange} variant="label-hidden"></lightning-input>
                 </div>
-    
-                <div class="slds-col">
-                    <lightning-button-icon icon-name="utility:delete"    alternative-text="Delete"   class="slds-m-left_xx-small" title="Delete" data-index={index} onclick={deleteItem}></lightning-button-icon>
+                <template if:true={showValues}>
+                    <div class="slds-col">
+                        <lightning-input label="Stored value" placeholder="Stored value" value={item.value} data-index={item.index} onchange={handleValueChange} variant="label-hidden" field-level-help="Saved answers and visibility conditions reference this value — change with care on live forms."></lightning-input>
+                    </div>
+                </template>
+                <div class="slds-col slds-grow-none slds-grid">
+                    <lightning-button-icon icon-name="utility:up" alternative-text="Move up" title="Move up" data-index={item.index} data-delta="-1" disabled={item.isFirst} onclick={moveItem}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:down" alternative-text="Move down" title="Move down" class="slds-m-left_xx-small" data-index={item.index} data-delta="1" disabled={item.isLast} onclick={moveItem}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:delete" alternative-text="Delete" class="slds-m-left_xx-small" title="Delete" data-index={item.index} onclick={deleteItem}></lightning-button-icon>
                 </div>
             </div>
         </template>
-        <div class="slds-align_absolute-center">
+
+        <template if:true={showBulkAdd}>
+            <lightning-textarea
+                label="Bulk add options"
+                placeholder="One option per line. Use 'Label | value' to store a different value."
+                value={bulkText}
+                onchange={handleBulkTextChange}>
+            </lightning-textarea>
+            <div class="slds-m-top_x-small slds-align_absolute-center">
+                <lightning-button label="Cancel" onclick={toggleBulkAdd}></lightning-button>
+                <lightning-button class="slds-m-left_x-small" variant="brand" label="Add all" onclick={applyBulkAdd}></lightning-button>
+            </div>
+        </template>
+
+        <div class="slds-align_absolute-center slds-m-top_x-small">
             <lightning-button label="Add Option" onclick={addItem}></lightning-button>
+            <lightning-button class="slds-m-left_x-small" label="Bulk add" onclick={toggleBulkAdd}></lightning-button>
+            <lightning-button class="slds-m-left_x-small" variant="base" label={valuesToggleLabel} onclick={toggleValues}></lightning-button>
         </div>
     </div>
 </template>

@@ -1,8 +1,12 @@
 import { LightningElement, api, wire } from 'lwc';
 import LightningConfirm from 'lightning/confirm';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getAllAttributes from '@salesforce/apex/neuraFormBuilderController.getAllAttributes';
+import createCatalogEntryForBinding from '@salesforce/apex/neuraFormBuilderController.createCatalogEntryForBinding';
+import getScoringSummary from '@salesforce/apex/neuraFormBuilderController.getScoringSummary';
 
 import { FIELDS, OBJECTS } from 'c/neuraFormSchemaUtils';
+import { reduceError } from 'c/nfCommonUtility';
 
 export default class NeuraFormBuilderAttributes extends LightningElement {
 
@@ -106,6 +110,50 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
 
     get isForm(){
         return this.selection.type === 'Form';
+    }
+
+    // --- Scoring sanity check (Form panel) ---------------------------------
+    // "Weights sum to X but Max Score is Y" is the most common scoring
+    // misconfiguration; surface it where Max Score is edited. Re-fetched
+    // each time the Form selection is opened (renderedCallback guard).
+    scoringSummary;
+    _scoringSummaryLoadedFor;
+
+    renderedCallback() {
+        if (!this.isForm || !this.formTemplateId) return;
+        if (this._scoringSummaryLoadedFor === this.formTemplateId) return;
+        this._scoringSummaryLoadedFor = this.formTemplateId;
+        getScoringSummary({ formTemplateId: this.formTemplateId })
+            .then((summary) => { this.scoringSummary = summary; })
+            .catch(() => { this.scoringSummary = undefined; });
+    }
+
+    get showScoringSummary() {
+        return this.isForm && this.scoringSummary?.scoringEnabled === true;
+    }
+
+    get scoringSummaryText() {
+        const s = this.scoringSummary;
+        if (!s) return '';
+        let text = `Question weights total ${s.weightSum} across ${s.scoredQuestionCount} scored question(s).`;
+        if (s.unscoredQuestionCount > 0) {
+            text += ` ${s.unscoredQuestionCount} question(s) carry no weight and won't affect the score.`;
+        }
+        return text;
+    }
+
+    get scoringMismatch() {
+        const s = this.scoringSummary;
+        return Boolean(
+            s && s.scoringEnabled && s.declaredMaxScore != null
+            && Number(s.weightSum) !== Number(s.declaredMaxScore)
+        );
+    }
+
+    get scoringMismatchText() {
+        const s = this.scoringSummary;
+        if (!s) return '';
+        return `Max Score is ${s.declaredMaxScore} but question weights total ${s.weightSum} — completed inspections will show skewed percentages. Align the weights or the Max Score.`;
     }
 
     get isNotForm(){
@@ -232,6 +280,49 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
      */
     handleRevert() {
         this.sendChangeUpdate(null, 'Override_Question__c');
+    }
+
+    /**
+     * Provenance badge fires this when the admin clicks "Create catalog
+     * entry" on a saved, catalog-less binding (imports / clones / AI
+     * drafts). Promotes the binding into the catalog server-side, then
+     * adopts the new link locally — exclusive (count = 1 by definition),
+     * so the question input stays directly editable and the scoring
+     * panel mounts immediately.
+     */
+    async handleCreateCatalog(event) {
+        const questionId = event?.detail?.questionId;
+        if (!questionId) return;
+        try {
+            const catalogId = await createCatalogEntryForBinding({ questionId });
+            const newSelection = JSON.parse(JSON.stringify(this.selection));
+            const previousValue = newSelection.attributes.Form_Question_Catalog__c;
+            newSelection.attributes.Form_Question_Catalog__c = catalogId;
+            newSelection.attributes._exclusiveCatalogEntry = true;
+            this.dispatchEvent(
+                new CustomEvent('update', {
+                    detail: {
+                        newSelection,
+                        editedField: {
+                            field: 'Form_Question_Catalog__c',
+                            previousValue,
+                            newValue: catalogId
+                        }
+                    }
+                })
+            );
+            this.dispatchEvent(new ShowToastEvent({
+                title: 'Added to catalog',
+                message: 'Scoring can now be configured on this question.',
+                variant: 'success'
+            }));
+        } catch (error) {
+            this.dispatchEvent(new ShowToastEvent({
+                title: 'Could not create catalog entry',
+                message: reduceError(error),
+                variant: 'error'
+            }));
+        }
     }
 
     /**

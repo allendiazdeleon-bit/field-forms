@@ -24,6 +24,11 @@
                         {title}
                     </span>
                 </template>
+                <template if:true={isConditional}>
+                    <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow" title="This page only shows when its visibility rules are met.">
+                        <lightning-icon icon-name="utility:filterList" size="xx-small" alternative-text="Conditional page"></lightning-icon>
+                    </span>
+                </template>
                 <template if:false={newPage}>
                     <span class="uiImage visualEditorPaletteItemRow flexipageEditorComponentInstanceItemRow">
                         <lightning-button-icon icon-name="utility:chevrondown"  variant="border-filled" alternative-text="Down" title="Down" size="x-small" onclick={handlePageDown}></lightning-button-icon>

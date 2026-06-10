@@ -10,6 +10,12 @@
         class="slds-m-around_xx-small"
         style="z-index: 12">
         <div class={questionClass} draggable="true" ondragstart={handleDragStart} ondragend={handleDragEnd}>
+            <template if:true={isConditional}>
+                <span class="slds-badge conditional-badge" title="This question only shows when its visibility rules are met — click to review them in the panel.">
+                    <lightning-icon icon-name="utility:filterList" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                    {conditionalBadgeLabel}
+                </span>
+            </template>
             <c-neura-form-question form-question={questionFormatObject}></c-neura-form-question>
             <!--<span class="question-label" style={labelStyle}>{component.type}</span>
             <lightning-input type="text" label="Text Box" value={value} variant="label-hidden"></lightning-input>-->
