@@ -88,6 +88,7 @@
         <apexClass>neuraFormExportController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <fieldPermissions><editable>true</editable><field>Account.Region__c</field><readable>true</readable></fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>Form_Answer__c.Answer__c</field>

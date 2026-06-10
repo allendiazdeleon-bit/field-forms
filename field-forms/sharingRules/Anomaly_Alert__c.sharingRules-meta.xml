@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sharingCriteriaRules>
+        <fullName>Active_Alerts_To_Portal</fullName>
+        <accessLevel>Read</accessLevel>
+        <description>Demo-org simplification: alerts have no brand-scope field, so all non-dismissed alerts are shared to portal users. Single-brand portal makes this safe here; a multi-brand org needs a scope field on the alert before this rule is acceptable.</description>
+        <label>Active Alerts to Portal</label>
+        <sharedTo>
+            <allCustomerPortalUsers></allCustomerPortalUsers>
+        </sharedTo>
+        <criteriaItems>
+            <field>Status__c</field>
+            <operation>notEqual</operation>
+            <value>Dismissed</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+</SharingRules>

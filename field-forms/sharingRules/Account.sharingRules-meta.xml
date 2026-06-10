@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sharingCriteriaRules>
+        <fullName>BK_Portfolio_To_Portal</fullName>
+        <accessLevel>Read</accessLevel>
+        <accountSettings>
+            <caseAccessLevel>None</caseAccessLevel>
+            <contactAccessLevel>Read</contactAccessLevel>
+            <opportunityAccessLevel>None</opportunityAccessLevel>
+        </accountSettings>
+        <description>Brand portal users see every location in their brand portfolio. Scope prefix covers store-specific scopes (e.g. BURGER_KING_4421).</description>
+        <label>BK Portfolio to Portal</label>
+        <sharedTo>
+            <allCustomerPortalUsers></allCustomerPortalUsers>
+        </sharedTo>
+        <criteriaItems>
+            <field>Form_Scope__c</field>
+            <operation>startsWith</operation>
+            <value>BURGER_KING</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+</SharingRules>

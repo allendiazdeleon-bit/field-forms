@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sharingCriteriaRules>
+        <fullName>BK_Templates_To_Portal</fullName>
+        <accessLevel>Read</accessLevel>
+        <description>Linked_Form__c and Form_Finding__c are master-detail children of the template, so sharing the brand's templates is what grants portal users read on the brand's inspections and findings.</description>
+        <label>BK Templates to Portal</label>
+        <sharedTo>
+            <allCustomerPortalUsers></allCustomerPortalUsers>
+        </sharedTo>
+        <criteriaItems>
+            <field>Scope__c</field>
+            <operation>startsWith</operation>
+            <value>BURGER_KING</value>
+        </criteriaItems>
+    </sharingCriteriaRules>
+</SharingRules>
