@@ -1,0 +1,17 @@
+/* Compact mode: the trigger sits in the renderer's toolbar row; the
+   panel opens as a right-anchored popover so it doesn't push the form
+   content down or get squeezed by the flex row. */
+.dictation-host_compact {
+    position: relative;
+    display: inline-block;
+}
+
+.dictation-panel_popover {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    width: min(420px, calc(100vw - 2rem));
+    z-index: 30;
+    background: var(--neura-color-surface, #fff);
+    box-shadow: var(--neura-shadow-raised, 0 2px 8px rgba(0, 0, 0, 0.2));
+}

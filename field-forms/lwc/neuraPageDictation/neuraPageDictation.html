@@ -1,15 +1,26 @@
 <template>
-    <div class="slds-m-horizontal_small slds-m-bottom_x-small">
-        <lightning-button
-            label={togglerLabel}
-            icon-name="utility:unmuted"
-            icon-position="left"
-            variant="neutral"
-            onclick={handleToggle}
-        ></lightning-button>
+    <div class={wrapperClass}>
+        <template if:true={compact}>
+            <lightning-button-icon
+                icon-name="utility:unmuted"
+                variant="border-filled"
+                alternative-text={togglerLabel}
+                tooltip="Dictate this page — speak or type once, apply across the page's questions"
+                onclick={handleToggle}
+            ></lightning-button-icon>
+        </template>
+        <template if:false={compact}>
+            <lightning-button
+                label={togglerLabel}
+                icon-name="utility:unmuted"
+                icon-position="left"
+                variant="neutral"
+                onclick={handleToggle}
+            ></lightning-button>
+        </template>
 
         <template if:true={showPanel}>
-            <div class="slds-box slds-box_x-small slds-m-top_x-small">
+            <div class={panelClass}>
                 <p class="slds-text-body_small slds-m-bottom_x-small">
                     Speak naturally about this page (use your keyboard's mic key,
                     or type/paste), then tap Apply. Example:

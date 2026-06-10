@@ -384,9 +384,15 @@
    triggers into one tidy row instead of left-stacked blocks. */
 .form-toolbar {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
+	justify-content: space-between;
 	gap: var(--neura-space-xs);
 	padding: var(--neura-space-sm) var(--neura-space-sm) 0;
 }
-.form-toolbar lightning-button { --sds-c-button-text-color: var(--neura-color-primary); }
+.form-toolbar__status { min-width: 0; }
+.form-toolbar__actions {
+	display: flex;
+	align-items: center;
+	gap: var(--neura-space-xs);
+	flex: 0 0 auto;
+}

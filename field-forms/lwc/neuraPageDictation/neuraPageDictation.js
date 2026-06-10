@@ -1,4 +1,4 @@
-import { LightningElement } from 'lwc';
+import { LightningElement, api } from 'lwc';
 
 /**
  * Page-level dictation panel. Replaces per-field mic buttons with one
@@ -14,8 +14,26 @@ import { LightningElement } from 'lwc';
  * WebViews), the mic also appears as a secondary affordance.
  */
 export default class NeuraPageDictation extends LightningElement {
+    // Compact mode: icon-only trigger and the panel opens as a popover
+    // instead of pushing the page content down. Used by the renderer's
+    // toolbar, where the labeled button + inline panel crowded the chrome
+    // above the form.
+    @api compact = false;
+
     showPanel = false;
     transcriptText = '';
+
+    get wrapperClass() {
+        return this.compact
+            ? 'dictation-host dictation-host_compact'
+            : 'slds-m-horizontal_small slds-m-bottom_x-small';
+    }
+
+    get panelClass() {
+        return this.compact
+            ? 'slds-box slds-box_x-small slds-m-top_x-small dictation-panel_popover'
+            : 'slds-box slds-box_x-small slds-m-top_x-small';
+    }
 
     get isWebSpeechAvailable() {
         return typeof window !== 'undefined' &&

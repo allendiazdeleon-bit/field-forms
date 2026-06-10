@@ -26,28 +26,30 @@
 				form-score-threshold={formScoreThreshold}
 			></c-neura-form-header>
 
-			<!-- Auto-save status badge. Lets the tech see at a glance that
-			     their changes are persisting; "Save failed" alerts to a
-			     connectivity issue without breaking page navigation. -->
-			<template if:true={autoSaveLabel}>
-				<div class={autoSaveBadgeClass}>{autoSaveLabel}</div>
-			</template>
-
-			<!-- Page action toolbar. "Same as last visit" prefills from the
-			     most recent completed Linked_Form; "Dictate this page" expands
-			     a transcript panel. Grouped in a single flex row so they read
-			     as one toolbar instead of left-stacked blocks. -->
+			<!-- Single chrome row: auto-save status on the left, compact
+			     page tools (prefill from last visit, page dictation) on the
+			     right. The previous stacked layout — badge row plus two
+			     labeled buttons — crowded the top of the form on phone
+			     widths; icon triggers with tooltips reclaim that space. -->
 			<div class="form-toolbar">
-				<lightning-button
-					label="Same as last visit"
-					icon-name="utility:copy"
-					icon-position="left"
-					variant="brand-outline"
-					onclick={handlePrefillLastVisit}
-				></lightning-button>
-				<c-neura-page-dictation
-					ondictate={handlePageDictation}
-				></c-neura-page-dictation>
+				<div class="form-toolbar__status">
+					<template if:true={autoSaveLabel}>
+						<div class={autoSaveBadgeClass}>{autoSaveLabel}</div>
+					</template>
+				</div>
+				<div class="form-toolbar__actions">
+					<lightning-button-icon
+						icon-name="utility:copy"
+						variant="border-filled"
+						alternative-text="Same as last visit"
+						tooltip="Copy answers from the last completed visit"
+						onclick={handlePrefillLastVisit}
+					></lightning-button-icon>
+					<c-neura-page-dictation
+						compact
+						ondictate={handlePageDictation}
+					></c-neura-page-dictation>
+				</div>
 			</div>
 
 			<!-- Real-time coaching card (Vignette 3). Appears inline as the

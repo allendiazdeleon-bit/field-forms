@@ -179,6 +179,23 @@ export default class NeuraFormMobile extends LightningElement {
             this.formData = this.transformListDataApex(data || []);
             this.formAdditionalStructuresApex(this.formData);
             this.showSelector = true;
+            // Exactly one open form is the overwhelmingly common case (one
+            // inspection per work order) — skip the one-item selector and
+            // open it directly, saving the tech a tap on every job. The
+            // selector still appears for multiples, for the zero-form empty
+            // state, and once the single form is Completed (so it reads as
+            // "done" instead of reopening). Guarded to first load only —
+            // wire re-emissions must not yank a tech back into a form they
+            // deliberately backed out of.
+            if (!this.listInitialised && !this.showForm) {
+                const openForms = (this.formData || []).filter(
+                    (f) => f?.linkedForm?.Id
+                        && f.linkedForm[FIELDS.Linked_Form__c.Status.fieldApiName] !== 'Completed'
+                );
+                if (openForms.length === 1 && (this.formData || []).length === 1) {
+                    this.handleFormSelected({ detail: openForms[0].Id });
+                }
+            }
             this.listInitialised = true;
         } catch (e) {
             this.setCriticalInlineMessage(reduceError(e), MESSAGE_VARIANT.ERROR);
