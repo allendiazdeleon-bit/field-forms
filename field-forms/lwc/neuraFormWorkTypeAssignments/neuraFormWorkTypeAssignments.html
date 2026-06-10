@@ -1,0 +1,57 @@
+<template>
+    <div class="wta">
+        <label class="slds-form-element__label">Appears on these work types</label>
+        <template if:true={loading}>
+            <lightning-spinner alternative-text="Loading…" size="small"></lightning-spinner>
+        </template>
+
+        <template if:true={hasAssignments}>
+            <div class="wta__pills">
+                <template for:each={assignments} for:item="a">
+                    <lightning-pill
+                        key={a.defaultFormId}
+                        label={a.workTypeName}
+                        data-id={a.defaultFormId}
+                        onremove={handleRemove}>
+                        <lightning-icon icon-name="utility:travel_and_places" alternative-text="Work type"></lightning-icon>
+                    </lightning-pill>
+                </template>
+            </div>
+        </template>
+        <template if:false={hasAssignments}>
+            <p class="slds-text-body_small slds-text-color_weak">{emptyLine}</p>
+        </template>
+
+        <template if:true={showDraftWarning}>
+            <div class="slds-m-top_x-small slds-scoped-notification slds-scoped-notification_light slds-theme_warning slds-p-around_x-small" role="alert">
+                <span class="slds-text-body_small">
+                    This form is {templateStatus} — it won't appear on work orders until it's activated.
+                </span>
+            </div>
+        </template>
+
+        <div class="slds-m-top_x-small wta__search">
+            <lightning-input
+                type="search"
+                label="Add a work type"
+                variant="label-hidden"
+                placeholder="Search work types to add…"
+                value={searchTerm}
+                disabled={busy}
+                onchange={handleSearchChange}>
+            </lightning-input>
+            <template if:true={hasResults}>
+                <ul class="wta__results" role="listbox">
+                    <template for:each={results} for:item="r">
+                        <li key={r.workTypeId}>
+                            <button type="button" class="wta__result" data-id={r.workTypeId} onclick={handleAdd}>
+                                <lightning-icon icon-name="utility:add" size="xx-small" class="slds-m-right_x-small"></lightning-icon>
+                                {r.workTypeName}
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+        </div>
+    </div>
+</template>

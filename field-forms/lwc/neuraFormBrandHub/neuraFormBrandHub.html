@@ -176,6 +176,35 @@
         <div class="slds-backdrop slds-backdrop_open"></div>
     </template>
 
+    <!-- Work-type assignment modal: where does this form show up in the
+         field? Edits Default_Form__c mappings without the raw object tab. -->
+    <template if:true={showWorkTypesModal}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="worktypes-title" class="slds-modal slds-fade-in-open" onkeydown={handleModalKeydown}>
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" onclick={closeWorkTypes} title="Close">
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small" variant="inverse"></lightning-icon>
+                    </button>
+                    <h2 id="worktypes-title" class="slds-modal__title slds-hyphenate">Assign "{workTypeTemplateName}" to work types</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                        Every work order, line item, or service appointment created with one
+                        of these work types automatically gets this form.
+                    </p>
+                    <c-neura-form-work-type-assignments
+                        form-template-id={workTypeTemplateId}
+                        template-status={workTypeTemplateStatus}>
+                    </c-neura-form-work-type-assignments>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Done" variant="brand" onclick={closeWorkTypes}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
     <!-- Import-from-document modal: customer sent a Word/PDF audit form to follow.
          Paste the extracted text; the LLM drafts a Field Forms template in this
          brand's scope for review/polish in the builder. -->

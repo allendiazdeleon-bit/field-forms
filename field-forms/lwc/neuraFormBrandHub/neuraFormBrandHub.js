@@ -39,6 +39,7 @@ const ACTION_CLONE = 'clone';
 const ACTION_ACTIVATE = 'activate';
 const ACTION_DEACTIVATE = 'deactivate';
 const ACTION_RETIRE = 'retire';
+const ACTION_WORK_TYPES = 'worktypes';
 
 const COLUMNS = [
     { label: 'Form Name', fieldName: 'Name', type: 'text', wrapText: true },
@@ -76,6 +77,10 @@ export default class NeuraFormBrandHub extends NavigationMixin(LightningElement)
     showImportModal = false;
     showScopeSetup = false;
     showDocModal = false;
+    showWorkTypesModal = false;
+    workTypeTemplateId;
+    workTypeTemplateName = '';
+    workTypeTemplateStatus;
 
     // --- import-from-document (AI draft) ---
     docText = '';
@@ -157,6 +162,7 @@ export default class NeuraFormBrandHub extends NavigationMixin(LightningElement)
         } else if (tpl.Status__c === 'Draft') {
             actions.push({ label: 'Activate', name: ACTION_ACTIVATE });
         }
+        actions.push({ label: 'Assign to Work Types', name: ACTION_WORK_TYPES });
         actions.push({ label: 'Clone', name: ACTION_CLONE });
         if (tpl.Status__c !== 'Retired') {
             actions.push({ label: 'Retire', name: ACTION_RETIRE });
@@ -199,10 +205,15 @@ export default class NeuraFormBrandHub extends NavigationMixin(LightningElement)
         event.stopPropagation();
         // closeDocImport keeps its own busy no-op guard.
         if (this.showDocModal) { this.closeDocImport(); return; }
+        if (this.showWorkTypesModal) this.closeWorkTypes();
         if (this.showScopeSetup) this.closeScopeSetup();
         if (this.showNewModal) this.closeNew();
         if (this.showCloneModal) this.closeClone();
         if (this.showImportModal) this.closeImport();
+    }
+
+    closeWorkTypes() {
+        this.showWorkTypesModal = false;
     }
 
     // --- scope setup (un-onboarded brand) ----------------------------------
@@ -507,6 +518,12 @@ export default class NeuraFormBrandHub extends NavigationMixin(LightningElement)
                 break;
             case ACTION_RETIRE:
                 await this.changeStatus(row.Id, 'Retired');
+                break;
+            case ACTION_WORK_TYPES:
+                this.workTypeTemplateId = row.Id;
+                this.workTypeTemplateName = row.Name;
+                this.workTypeTemplateStatus = row.Status__c;
+                this.showWorkTypesModal = true;
                 break;
             case ACTION_CLONE:
                 this.cloneName = `${row.Name} (copy)`;

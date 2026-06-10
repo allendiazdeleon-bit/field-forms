@@ -200,6 +200,117 @@ public with sharing class NeuraFormBrandController {
         update decision.getRecords();
     }
 
+    // ----- Work Type assignments (Default_Form__c) --------------------------
+    // "Make this form always appear on X jobs" — surfaced from the brand hub
+    // and the builder's Form panel so admins never need the raw mapping
+    // object's tab.
+
+    public class WorkTypeAssignment {
+        @AuraEnabled public Id defaultFormId;
+        @AuraEnabled public Id workTypeId;
+        @AuraEnabled public String workTypeName;
+    }
+
+    @AuraEnabled(cacheable=false)
+    public static List<WorkTypeAssignment> getWorkTypeAssignments(Id formTemplateId) {
+        List<WorkTypeAssignment> out = new List<WorkTypeAssignment>();
+        if (formTemplateId == null) return out;
+        for (Default_Form__c df : [
+            SELECT Id, Work_Type__c, Work_Type__r.Name
+            FROM Default_Form__c
+            WHERE Form_Template__c = :formTemplateId
+            WITH SECURITY_ENFORCED
+            ORDER BY Work_Type__r.Name ASC
+        ]) {
+            WorkTypeAssignment a = new WorkTypeAssignment();
+            a.defaultFormId = df.Id;
+            a.workTypeId = df.Work_Type__c;
+            a.workTypeName = df.Work_Type__r.Name;
+            out.add(a);
+        }
+        return out;
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static List<WorkTypeAssignment> searchWorkTypes(String searchTerm) {
+        String term = '%' + (searchTerm == null ? '' : String.escapeSingleQuotes(searchTerm)) + '%';
+        List<WorkTypeAssignment> out = new List<WorkTypeAssignment>();
+        for (WorkType wt : [
+            SELECT Id, Name FROM WorkType
+            WHERE Name LIKE :term
+            WITH SECURITY_ENFORCED
+            ORDER BY Name ASC
+            LIMIT 15
+        ]) {
+            WorkTypeAssignment a = new WorkTypeAssignment();
+            a.workTypeId = wt.Id;
+            a.workTypeName = wt.Name;
+            out.add(a);
+        }
+        return out;
+    }
+
+    /** Idempotent: assigning an already-mapped work type returns the
+     *  existing row instead of duplicating the provisioning. */
+    @AuraEnabled
+    public static WorkTypeAssignment assignWorkType(Id formTemplateId, Id workTypeId) {
+        if (formTemplateId == null || workTypeId == null) {
+            throw new AuraHandledException('A form template and a work type are required.');
+        }
+        try {
+            List<Default_Form__c> existing = [
+                SELECT Id, Work_Type__r.Name FROM Default_Form__c
+                WHERE Form_Template__c = :formTemplateId AND Work_Type__c = :workTypeId
+                LIMIT 1
+            ];
+            Default_Form__c df;
+            if (!existing.isEmpty()) {
+                df = existing[0];
+            } else {
+                df = new Default_Form__c(
+                    Form_Template__c = formTemplateId,
+                    Work_Type__c = workTypeId
+                );
+                SObjectAccessDecision decision = Security.stripInaccessible(
+                    AccessType.CREATABLE, new List<Default_Form__c>{ df }
+                );
+                insert decision.getRecords();
+                df = [
+                    SELECT Id, Work_Type__r.Name FROM Default_Form__c
+                    WHERE Id = :decision.getRecords()[0].Id
+                ];
+            }
+            WorkTypeAssignment a = new WorkTypeAssignment();
+            a.defaultFormId = df.Id;
+            a.workTypeId = workTypeId;
+            a.workTypeName = df.Work_Type__r.Name;
+            return a;
+        } catch (AuraHandledException e) {
+            throw e;
+        } catch (Exception e) {
+            AuraHandledException ahe = new AuraHandledException(e.getMessage());
+            ahe.setMessage(e.getMessage());
+            throw ahe;
+        }
+    }
+
+    @AuraEnabled
+    public static void removeWorkTypeAssignment(Id defaultFormId) {
+        if (defaultFormId == null) return;
+        try {
+            if (!Schema.sObjectType.Default_Form__c.isDeletable()) {
+                throw new AuraHandledException('You don\'t have permission to remove form assignments.');
+            }
+            delete [SELECT Id FROM Default_Form__c WHERE Id = :defaultFormId];
+        } catch (AuraHandledException e) {
+            throw e;
+        } catch (Exception e) {
+            AuraHandledException ahe = new AuraHandledException(e.getMessage());
+            ahe.setMessage(e.getMessage());
+            throw ahe;
+        }
+    }
+
     /**
      * Flips a template's lifecycle status (Draft <-> Active, or Retired).
      * Restricted to the known value set so a bad client call can't write junk.

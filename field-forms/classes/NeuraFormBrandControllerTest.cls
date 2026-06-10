@@ -231,6 +231,40 @@ private class NeuraFormBrandControllerTest {
     }
 
     @isTest
+    static void workTypeAssignmentLifecycle() {
+        Form_Template__c tpl = [SELECT Id FROM Form_Template__c LIMIT 1];
+        WorkType wt = new WorkType(Name = 'Quarterly Inspection', EstimatedDuration = 1);
+        insert wt;
+
+        Test.startTest();
+        // Search finds it, assignment creates the mapping…
+        List<NeuraFormBrandController.WorkTypeAssignment> found =
+            NeuraFormBrandController.searchWorkTypes('Quarterly');
+        System.assertEquals(1, found.size());
+
+        NeuraFormBrandController.WorkTypeAssignment a =
+            NeuraFormBrandController.assignWorkType(tpl.Id, wt.Id);
+        System.assertEquals('Quarterly Inspection', a.workTypeName);
+
+        // …idempotently…
+        NeuraFormBrandController.WorkTypeAssignment again =
+            NeuraFormBrandController.assignWorkType(tpl.Id, wt.Id);
+        System.assertEquals(a.defaultFormId, again.defaultFormId,
+            'Re-assigning the same work type must not duplicate the mapping.');
+        System.assertEquals(1, [SELECT COUNT() FROM Default_Form__c WHERE Form_Template__c = :tpl.Id]);
+
+        // …lists it, and removal cleans up.
+        List<NeuraFormBrandController.WorkTypeAssignment> listed =
+            NeuraFormBrandController.getWorkTypeAssignments(tpl.Id);
+        System.assertEquals(1, listed.size());
+
+        NeuraFormBrandController.removeWorkTypeAssignment(a.defaultFormId);
+        Test.stopTest();
+
+        System.assertEquals(0, [SELECT COUNT() FROM Default_Form__c WHERE Form_Template__c = :tpl.Id]);
+    }
+
+    @isTest
     static void assignScopeStampsImportedTemplates() {
         Form_Template__c imported = new Form_Template__c(Name = 'Imported Form');
         insert imported; // null scope, null status (as a fresh import would be)

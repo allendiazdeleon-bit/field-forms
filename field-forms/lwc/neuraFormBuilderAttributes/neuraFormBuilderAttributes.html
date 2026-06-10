@@ -34,6 +34,14 @@
                     onscoringsaved={handleScoringGridSaved}>
                 </c-neura-form-builder-scoring-grid>
             </template>
+            <!-- Where this form shows up in the field: Default_Form__c
+                 mappings, editable right here instead of via the raw
+                 mapping object. -->
+            <div class="slds-m-top_small">
+                <c-neura-form-work-type-assignments
+                    form-template-id={formTemplateId}>
+                </c-neura-form-work-type-assignments>
+            </div>
         </template>
         
         <template if:true={isPage}>
