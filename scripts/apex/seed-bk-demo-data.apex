@@ -97,6 +97,79 @@ for (Form_Question_Catalog__c c : newCats) catByQ.put(c.Question__c, c.Id);
 Id sealCat = catByQ.get(questions[0]);
 List<String> rotating = new List<String>{questions[1], questions[2], questions[3], questions[4], questions[5]};
 
+// Self-only pass rules so the form actually scores (lowercase pass/fail/na).
+List<Form_Question_Catalog__c> critUpdates = new List<Form_Question_Catalog__c>();
+for (Form_Question_Catalog__c c : [SELECT Id, Pass_Criteria__c FROM Form_Question_Catalog__c WHERE Id IN :catByQ.values()]) {
+    if (String.isBlank(c.Pass_Criteria__c)) {
+        critUpdates.add(new Form_Question_Catalog__c(Id = c.Id,
+            Pass_Criteria__c = '{"all":[{"resource":"self","operator":"equals","value":"pass"}]}'));
+    }
+}
+update critUpdates;
+
+// ---- 2b. Template content (pages/sections/questions) — only if empty ----
+if ([SELECT COUNT() FROM Form_Page__c WHERE Form_Template__c = :tpl.Id] == 0) {
+    List<String> pageTitles = new List<String>{'Site Arrival', 'Food Safety', 'Sanitation', 'Sign-Off'};
+    List<Form_Page__c> pages = new List<Form_Page__c>();
+    for (Integer i = 0; i < pageTitles.size(); i++) {
+        pages.add(new Form_Page__c(Name = pageTitles[i], Title__c = pageTitles[i],
+            Order__c = i + 1, Form_Template__c = tpl.Id));
+    }
+    insert pages;
+    List<Form_Section__c> sections = new List<Form_Section__c>();
+    for (Integer i = 0; i < pages.size(); i++) {
+        sections.add(new Form_Section__c(Name = pageTitles[i], Title__c = pageTitles[i],
+            Show_Title__c = true, Order__c = 1, Form_Page__c = pages[i].Id, Form_Template__c = tpl.Id));
+    }
+    insert sections;
+
+    List<Form_Question__c> qs = new List<Form_Question__c>();
+    // Page 1 — Site Arrival
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[0].Id, Form_Section__c = sections[0].Id,
+        Order__c = 1, Type__c = 'Text', Question__c = 'Store number confirmed on arrival', Required__c = true));
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[0].Id, Form_Section__c = sections[0].Id,
+        Order__c = 2, Type__c = 'Text', Question__c = 'Manager on duty', Required__c = true));
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[0].Id, Form_Section__c = sections[0].Id,
+        Order__c = 3, Type__c = 'Pass Fail NA', Question__c = 'Exterior and entry area clean'));
+    // Page 2 — Food Safety
+    Form_Question__c sealQ = new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[1].Id, Form_Section__c = sections[1].Id,
+        Order__c = 1, Type__c = 'Pass Fail NA', Question__c = questions[0], Required__c = true,
+        Include_Photo__c = true, Form_Question_Catalog__c = sealCat);
+    qs.add(sealQ);
+    Form_Question__c sealFollowUp = new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[1].Id, Form_Section__c = sections[1].Id,
+        Order__c = 2, Type__c = 'Text Area',
+        Question__c = 'Describe the seal condition and corrective action taken');
+    qs.add(sealFollowUp);
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[1].Id, Form_Section__c = sections[1].Id,
+        Order__c = 3, Type__c = 'Number', Question__c = 'Freezer temperature reading (°F)',
+        Required__c = true, Min__c = -20, Max__c = 60, Decimal_Places__c = 1));
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[1].Id, Form_Section__c = sections[1].Id,
+        Order__c = 4, Type__c = 'Pass Fail NA', Question__c = questions[4], Form_Question_Catalog__c = catByQ.get(questions[4])));
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[1].Id, Form_Section__c = sections[1].Id,
+        Order__c = 5, Type__c = 'Pass Fail NA', Question__c = questions[2], Form_Question_Catalog__c = catByQ.get(questions[2])));
+    // Page 3 — Sanitation
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[2].Id, Form_Section__c = sections[2].Id,
+        Order__c = 1, Type__c = 'Pass Fail NA', Question__c = questions[1], Form_Question_Catalog__c = catByQ.get(questions[1])));
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[2].Id, Form_Section__c = sections[2].Id,
+        Order__c = 2, Type__c = 'Pass Fail NA', Question__c = questions[5], Include_Photo__c = true,
+        Form_Question_Catalog__c = catByQ.get(questions[5])));
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[2].Id, Form_Section__c = sections[2].Id,
+        Order__c = 3, Type__c = 'Pass Fail NA', Question__c = questions[3], Form_Question_Catalog__c = catByQ.get(questions[3])));
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[2].Id, Form_Section__c = sections[2].Id,
+        Order__c = 4, Type__c = 'Text Area', Question__c = 'Sanitation observations'));
+    // Page 4 — Sign-Off
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[3].Id, Form_Section__c = sections[3].Id,
+        Order__c = 1, Type__c = 'Text Area', Question__c = 'Overall comments'));
+    qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[3].Id, Form_Section__c = sections[3].Id,
+        Order__c = 2, Type__c = 'Signature', Question__c = 'Store manager signature', Required__c = true));
+    insert qs;
+
+    // The vignette-1 beat: follow-up appears only when the seal fails.
+    sealFollowUp.Conditions__c = '{"conditions":[{"id":"seed-cond-1","key":1,"operator":"equals",'
+        + '"resource":"' + sealQ.Id + '","value":"fail"}],"customLogic":"1","typeOfLogic":"AND"}';
+    update sealFollowUp;
+}
+
 // ---- 3. Inspections ----
 List<Date> months = new List<Date>{
     Date.newInstance(2025,12,1), Date.newInstance(2026,1,1), Date.newInstance(2026,2,1),
