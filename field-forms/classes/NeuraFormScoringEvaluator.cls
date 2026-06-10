@@ -76,6 +76,40 @@ public class NeuraFormScoringEvaluator {
     };
 
     /**
+     * Whether the criteria tree references any question OTHER than 'self'.
+     * Cross-question criteria are template-specific (they reference sibling
+     * external refs that only exist in one template's graph) — a SHARED
+     * catalog entry carrying them silently mis-scores every other template
+     * that adopts it. FormQuestionCatalogTrigger uses this to block that
+     * combination at save time. Malformed JSON returns false (the evaluate()
+     * path already treats it as not-evaluable).
+     */
+    public static Boolean referencesNonSelfResources(String passCriteriaJson) {
+        if (String.isBlank(passCriteriaJson)) return false;
+        try {
+            return nodeReferencesNonSelf(JSON.deserializeUntyped(passCriteriaJson));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static Boolean nodeReferencesNonSelf(Object node) {
+        if (node instanceof List<Object>) {
+            for (Object child : (List<Object>) node) {
+                if (nodeReferencesNonSelf(child)) return true;
+            }
+            return false;
+        }
+        if (!(node instanceof Map<String, Object>)) return false;
+        Map<String, Object> m = (Map<String, Object>) node;
+        if (m.containsKey(KEY_ALL) && nodeReferencesNonSelf(m.get(KEY_ALL))) return true;
+        if (m.containsKey(KEY_ANY) && nodeReferencesNonSelf(m.get(KEY_ANY))) return true;
+        if (m.containsKey(KEY_NOT) && nodeReferencesNonSelf(m.get(KEY_NOT))) return true;
+        Object resource = m.get('resource');
+        return resource != null && String.valueOf(resource) != RESOURCE_SELF;
+    }
+
+    /**
      * Top-level entry point. Returns true when the answer value satisfies
      * the criteria JSON, false otherwise. A null / blank Pass_Criteria__c
      * returns null — caller decides what "no criteria" means (the trigger

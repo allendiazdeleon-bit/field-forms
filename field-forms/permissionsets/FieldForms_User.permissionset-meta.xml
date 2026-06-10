@@ -773,6 +773,11 @@
         <field>Linked_Form__c.Work_Order__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Question_Catalog__c.Is_Curated__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>FieldForms User</label>
     <objectPermissions>

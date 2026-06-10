@@ -2,10 +2,9 @@
     <section class="builder-scoring">
         <header class="builder-scoring__header">
             <h3 class="builder-scoring__title">Scoring</h3>
-            <p class="builder-scoring__hint">
-                Scoring fields live on the catalog entry. Changes here
-                apply to every binding referencing this catalog item.
-            </p>
+            <template if:true={hasCatalog}>
+                <p class="builder-scoring__hint">{blastRadiusLine}</p>
+            </template>
         </header>
 
         <template if:false={hasCatalog}>

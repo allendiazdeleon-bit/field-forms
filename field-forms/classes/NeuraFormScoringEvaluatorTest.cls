@@ -295,4 +295,20 @@ private class NeuraFormScoringEvaluatorTest {
         System.assertEquals(true,
             NeuraFormScoringEvaluator.evaluate(j, null, siblings));
     }
+
+    @isTest
+    static void detectsCrossQuestionReferences() {
+        System.assertEquals(false, NeuraFormScoringEvaluator.referencesNonSelfResources(null));
+        System.assertEquals(false, NeuraFormScoringEvaluator.referencesNonSelfResources('not json'));
+        System.assertEquals(false, NeuraFormScoringEvaluator.referencesNonSelfResources(
+            '{"all":[{"resource":"self","operator":"equals","value":"pass"}]}'
+        ));
+        System.assertEquals(true, NeuraFormScoringEvaluator.referencesNonSelfResources(
+            '{"all":[{"resource":"self","operator":"equals","value":"pass"},' +
+            '{"resource":"OTHER_REF","operator":"equals","value":"yes"}]}'
+        ), 'A sibling reference anywhere in the tree counts.');
+        System.assertEquals(true, NeuraFormScoringEvaluator.referencesNonSelfResources(
+            '{"any":[{"not":{"all":[{"resource":"EXT_1","operator":"isTrue"}]}}]}'
+        ), 'Nested all/any/not wrappers are walked.');
+    }
 }

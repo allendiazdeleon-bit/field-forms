@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Curated_Library</fullName>
+    <columns>NAME</columns>
+    <columns>Question__c</columns>
+    <columns>Type__c</columns>
+    <columns>Scope__c</columns>
+    <columns>Weight__c</columns>
+    <columns>LAST_UPDATE</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Is_Curated__c</field>
+        <operation>equals</operation>
+        <value>1</value>
+    </filters>
+    <label>Curated Library</label>
+</ListView>

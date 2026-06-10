@@ -84,6 +84,10 @@ export default class NeuraFormBuilderScoringGrid extends LightningElement {
             autoFinding: r.autoFinding === true,
             photoRequired: r.photoRequired === true,
             passCriteria: r.passCriteria,
+            sharedBindingCount: r.sharedBindingCount || 0,
+            isShared: (r.sharedBindingCount || 0) > 1,
+            sharedLabel: (r.sharedBindingCount || 0) > 1
+                ? `shared ×${r.sharedBindingCount}` : '',
             ruleChoice: KEEP,
             ruleOptions: this._ruleOptionsFor(r),
             ruleSummary: this._summarizeRule(r.passCriteria),

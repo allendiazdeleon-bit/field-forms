@@ -56,6 +56,23 @@ export default class NeuraFormBuilderScoring extends LightningElement {
         return CATALOG_API_NAME;
     }
 
+    // Blast radius, made visible at the edit point: how many bindings
+    // (across all templates) share this catalog entry. Stamped by the
+    // builder's organizeQuestions alongside _exclusiveCatalogEntry.
+    get sharedBindingCount() {
+        return this.selection?.attributes?._catalogBindingCount || 0;
+    }
+
+    get isSharedEntry() {
+        return this.sharedBindingCount > 1;
+    }
+
+    get blastRadiusLine() {
+        return this.isSharedEntry
+            ? `Shared entry — changes here re-score all ${this.sharedBindingCount} questions using it, across templates.`
+            : 'Only this question uses this entry.';
+    }
+
     // ----- Quick pass rules --------------------------------------------------
     // One tap (or one field + a tap) writes the Pass_Criteria__c JSON for
     // the overwhelmingly common single-question rules. Authoring that JSON

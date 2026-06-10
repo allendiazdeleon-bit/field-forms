@@ -447,7 +447,7 @@ export default class NeuraFormBuilder extends LightningElement {
                 id: question.Id,
                 type: question[FIELDS.Form_Question__c.Type.fieldApiName],
                 Order__c: question[FIELDS.Form_Question__c.Order.fieldApiName],
-                attributes: { ...question, _exclusiveCatalogEntry: exclusive }
+                attributes: { ...question, _exclusiveCatalogEntry: exclusive, _catalogBindingCount: count }
             };
         });
     }

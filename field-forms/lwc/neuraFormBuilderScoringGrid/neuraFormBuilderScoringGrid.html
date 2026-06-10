@@ -34,7 +34,12 @@
                             <tbody>
                                 <template for:each={rows} for:item="row">
                                     <tr key={row.questionId}>
-                                        <td class="scoring-grid__question" title={row.questionText}>{row.questionText}</td>
+                                        <td class="scoring-grid__question" title={row.questionText}>
+                                            {row.questionText}
+                                            <template if:true={row.isShared}>
+                                                <span class="slds-badge scoring-grid__shared" title="This entry's scoring is shared across templates — edits here re-score all of them.">{row.sharedLabel}</span>
+                                            </template>
+                                        </td>
                                         <td class="slds-text-color_weak">{row.questionType}</td>
                                         <td>
                                             <lightning-input type="number" variant="label-hidden" label="Weight"

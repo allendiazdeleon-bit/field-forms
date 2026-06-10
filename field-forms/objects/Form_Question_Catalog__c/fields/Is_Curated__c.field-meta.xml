@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Curated__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Separates the deliberate question library from the auto-created scoring shadows. Auto-creation gives every builder question a 1:1 catalog entry purely to hold scoring config (1,346 entries vs 2 shared, June 2026) — those are NOT curated library content. Set automatically when an entry becomes shared (second binding adopts it) and settable by hand for deliberately authored entries. Drives the Curated Library list view and future similarity ranking. Planned scoring-to-binding wave removes the need for shadows entirely.</description>
+    <externalId>false</externalId>
+    <label>Curated Library Entry</label>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

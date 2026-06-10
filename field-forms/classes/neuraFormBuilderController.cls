@@ -400,12 +400,37 @@ public with sharing class neuraFormBuilderController {
         @AuraEnabled public Boolean autoFinding = false;
         @AuraEnabled public Boolean photoRequired = false;
         @AuraEnabled public String passCriteria;
+        @AuraEnabled public Integer sharedBindingCount = 0;
     }
 
     @AuraEnabled(cacheable=false)
     public static List<ScoringGridRow> getScoringGrid(Id formTemplateId) {
         List<ScoringGridRow> rows = new List<ScoringGridRow>();
         if (formTemplateId == null) return rows;
+
+        // Blast-radius signal: how many bindings (org-wide) share each
+        // catalog entry this template uses. Editing a shared entry's
+        // scoring re-scores them all. Two queries — SOQL forbids a
+        // same-object semi-join.
+        Set<Id> templateCatalogIds = new Set<Id>();
+        for (Form_Question__c q : [
+            SELECT Form_Question_Catalog__c FROM Form_Question__c
+            WHERE Form_Template__c = :formTemplateId
+              AND Form_Question_Catalog__c != null
+        ]) {
+            templateCatalogIds.add(q.Form_Question_Catalog__c);
+        }
+        Map<Id, Integer> sharedCounts = new Map<Id, Integer>();
+        if (!templateCatalogIds.isEmpty()) {
+            for (AggregateResult ar : [
+                SELECT Form_Question_Catalog__c cat, COUNT(Id) cnt
+                FROM Form_Question__c
+                WHERE Form_Question_Catalog__c IN :templateCatalogIds
+                GROUP BY Form_Question_Catalog__c
+            ]) {
+                sharedCounts.put((Id) ar.get('cat'), (Integer) ar.get('cnt'));
+            }
+        }
         for (Form_Question__c q : [
             SELECT Id, Question__c, Type__c, Value_Set__c,
                    Form_Question_Catalog__c,
@@ -425,6 +450,8 @@ public with sharing class neuraFormBuilderController {
             row.questionId = q.Id;
             row.catalogId = q.Form_Question_Catalog__c;
             row.questionType = q.Type__c;
+            Integer shared = sharedCounts.get(q.Form_Question_Catalog__c);
+            row.sharedBindingCount = shared == null ? 0 : shared;
             Form_Question_Catalog__c cat = q.Form_Question_Catalog__r;
             // Catalog content wins when linked (same precedence as the
             // builder's read-side resolution).
@@ -703,6 +730,7 @@ public with sharing class neuraFormBuilderController {
         // useful there.
         if (isCatalogEnabled() && toUpdate != null && !toUpdate.isEmpty()) {
             syncExclusiveCatalogContentOnUpdate(toUpdate);
+            markSharedEntriesCurated(toUpdate);
         }
         return (List<Form_Question__c>) processFormUpdate(toCreate, toUpdate, toDelete);
     }
@@ -782,6 +810,42 @@ public with sharing class neuraFormBuilderController {
      * (override fields are the explicit "per-template content" channel
      * and should not flow back to the catalog).
      */
+    /**
+     * An entry adopted by a second binding has crossed from "scoring shadow"
+     * into "shared library content" — flag it curated so the library
+     * surfaces (Curated Library view, future similarity ranking) can
+     * separate deliberate entries from the 1:1 auto-created noise.
+     */
+    @TestVisible
+    private static void markSharedEntriesCurated(List<Form_Question__c> updates) {
+        Set<Id> catalogIds = new Set<Id>();
+        for (Form_Question__c b : updates) {
+            if (b.Form_Question_Catalog__c != null) catalogIds.add(b.Form_Question_Catalog__c);
+        }
+        if (catalogIds.isEmpty()) return;
+
+        Map<Id, Integer> counts = new Map<Id, Integer>();
+        for (AggregateResult ar : [
+            SELECT Form_Question_Catalog__c cat, COUNT(Id) cnt
+            FROM Form_Question__c
+            WHERE Form_Question_Catalog__c IN :catalogIds
+            GROUP BY Form_Question_Catalog__c
+        ]) {
+            counts.put((Id) ar.get('cat'), (Integer) ar.get('cnt'));
+        }
+
+        List<Form_Question_Catalog__c> toCurate = new List<Form_Question_Catalog__c>();
+        for (Form_Question_Catalog__c cat : [
+            SELECT Id FROM Form_Question_Catalog__c
+            WHERE Id IN :catalogIds AND Is_Curated__c = false
+        ]) {
+            if (counts.get(cat.Id) != null && counts.get(cat.Id) > 1) {
+                toCurate.add(new Form_Question_Catalog__c(Id = cat.Id, Is_Curated__c = true));
+            }
+        }
+        if (!toCurate.isEmpty()) update toCurate;
+    }
+
     @TestVisible
     private static void syncExclusiveCatalogContentOnUpdate(List<Form_Question__c> updates) {
         // Collect catalog ids referenced by the update set.

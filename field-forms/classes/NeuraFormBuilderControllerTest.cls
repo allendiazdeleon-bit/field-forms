@@ -1011,6 +1011,50 @@ private class NeuraFormBuilderControllerTest {
     }
 
     @isTest
+    static void sharedEntriesBlockCrossQuestionCriteriaAndAutoCurate() {
+        Form_Template__c tpl = [SELECT Id FROM Form_Template__c LIMIT 1];
+        Form_Question__c q1 = [SELECT Id FROM Form_Question__c LIMIT 1];
+        Id catId = neuraFormBuilderController.createCatalogEntryForBinding(q1.Id);
+
+        // Exclusive entry: cross-question criteria are fine (one template).
+        update new Form_Question_Catalog__c(
+            Id = catId,
+            Pass_Criteria__c = '{"all":[{"resource":"SIBLING_REF","operator":"equals","value":"yes"}]}'
+        );
+
+        // Second binding adopts the entry -> shared.
+        Form_Page__c page = [SELECT Id FROM Form_Page__c LIMIT 1];
+        Form_Section__c section = [SELECT Id FROM Form_Section__c LIMIT 1];
+        Form_Question__c q2 = new Form_Question__c(
+            Question__c = 'Adopter', Type__c = 'Text', Order__c = 9,
+            Form_Template__c = tpl.Id, Form_Page__c = page.Id,
+            Form_Section__c = section.Id, Form_Question_Catalog__c = catId
+        );
+        insert q2;
+        neuraFormBuilderController.markSharedEntriesCurated(new List<Form_Question__c>{ q2 });
+
+        System.assertEquals(true,
+            [SELECT Is_Curated__c FROM Form_Question_Catalog__c WHERE Id = :catId].Is_Curated__c,
+            'Becoming shared promotes the entry from scoring-shadow to curated library content.');
+
+        // Shared entry: re-saving cross-question criteria must be blocked.
+        Database.SaveResult sr = Database.update(new Form_Question_Catalog__c(
+            Id = catId,
+            Pass_Criteria__c = '{"all":[{"resource":"OTHER_REF","operator":"equals","value":"no"}]}'
+        ), false);
+        System.assertEquals(false, sr.isSuccess(),
+            'Cross-question criteria on a shared entry mis-score other templates.');
+        System.assert(sr.getErrors()[0].getMessage().contains('reference other questions'),
+            sr.getErrors()[0].getMessage());
+
+        // Self-only criteria stay editable on shared entries.
+        update new Form_Question_Catalog__c(
+            Id = catId,
+            Pass_Criteria__c = '{"all":[{"resource":"self","operator":"equals","value":"pass"}]}'
+        );
+    }
+
+    @isTest
     static void createCatalogEntryForBindingIsIdempotent() {
         Form_Question__c q = [SELECT Id FROM Form_Question__c LIMIT 1];
         Id first = neuraFormBuilderController.createCatalogEntryForBinding(q.Id);
