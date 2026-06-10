@@ -306,7 +306,7 @@ public with sharing class NeuraFormMobileController {
         try {
             List<MappedAnswer> llm = mapViaModelsAPI(transcript, questions);
             if (llm != null && !llm.isEmpty()) {
-                result.mappings = llm;
+                result.mappings = normalizeMappedAnswers(llm, questions);
                 result.source = 'agentforce';
                 return result;
             }
@@ -322,9 +322,88 @@ public with sharing class NeuraFormMobileController {
             result.diagnostic = 'agentforce_unavailable: ' + detail;
         }
 
-        result.mappings = mapViaHeuristic(transcript, questions);
+        result.mappings = normalizeMappedAnswers(mapViaHeuristic(transcript, questions), questions);
         result.source = 'heuristic';
         return result;
+    }
+
+    private static final Set<String> NUMERIC_TYPES = new Set<String>{
+        'Number', 'Counter', 'Currency', 'Slider', 'Rating'
+    };
+    private static final Set<String> BOOLEAN_TYPES = new Set<String>{
+        'Toggle', 'Checkbox'
+    };
+    private static final Set<String> TRUE_WORDS = new Set<String>{
+        'true', 'yes', 'on', 'checked', 'present', 'observed', 'confirmed', '1'
+    };
+    private static final Set<String> FALSE_WORDS = new Set<String>{
+        'false', 'no', 'off', 'unchecked', 'none', 'absent', 'not observed', '0'
+    };
+
+    /**
+     * Defense behind the prompt: validate every mapped value against its
+     * question's type contract — snap paraphrased choice values onto the
+     * canonical allowedValue, coerce boolean phrasings, extract digits for
+     * numeric types, and DROP anything that still doesn't fit. A silently
+     * wrong answer ("na" on a Toggle, "worn out" against a "Worn" option)
+     * is worse than no answer: the tech trusts what appears filled in.
+     */
+    @TestVisible
+    private static List<MappedAnswer> normalizeMappedAnswers(
+        List<MappedAnswer> mappings, List<QuestionDescriptor> questions
+    ) {
+        Map<String, QuestionDescriptor> byId = new Map<String, QuestionDescriptor>();
+        for (QuestionDescriptor q : questions) byId.put(q.questionId, q);
+
+        List<MappedAnswer> out = new List<MappedAnswer>();
+        for (MappedAnswer m : mappings) {
+            QuestionDescriptor q = byId.get(m.questionId);
+            if (q == null || String.isBlank(m.value)) continue;
+            String value = m.value.trim();
+
+            if (q.allowedValues != null && !q.allowedValues.isEmpty()) {
+                String snapped = snapToAllowedValue(value, q.allowedValues);
+                if (snapped == null) continue;
+                m.value = snapped;
+            } else if (BOOLEAN_TYPES.contains(q.type)) {
+                String lower = value.toLowerCase();
+                if (TRUE_WORDS.contains(lower)) m.value = 'true';
+                else if (FALSE_WORDS.contains(lower)) m.value = 'false';
+                else if (lower.startsWith('no ') || lower.startsWith('not ')) m.value = 'false';
+                else continue;
+            } else if (NUMERIC_TYPES.contains(q.type)) {
+                Matcher num = Pattern.compile('-?\\d+(\\.\\d+)?')
+                    .matcher(value.replaceAll(',', ''));
+                if (!num.find()) continue;
+                m.value = num.group();
+            }
+            out.add(m);
+        }
+        return out;
+    }
+
+    /**
+     * Exact match first, then case-insensitive, then containment either
+     * direction ("worn out" -> "Worn"; "Pass" -> "pass"). Returns the
+     * CANONICAL allowed value, or null when nothing plausibly matches.
+     */
+    @TestVisible
+    private static String snapToAllowedValue(String value, List<String> allowedValues) {
+        String lower = value.toLowerCase();
+        for (String allowed : allowedValues) {
+            if (allowed == value) return allowed;
+        }
+        for (String allowed : allowedValues) {
+            if (allowed != null && allowed.toLowerCase() == lower) return allowed;
+        }
+        for (String allowed : allowedValues) {
+            if (String.isBlank(allowed)) continue;
+            String allowedLower = allowed.toLowerCase();
+            if (lower.contains(allowedLower) || allowedLower.contains(lower)) {
+                return allowed;
+            }
+        }
+        return null;
     }
 
     // Custom exception so the outer catch can distinguish "Models API said
@@ -516,13 +595,27 @@ public with sharing class NeuraFormMobileController {
         }
 
         String systemPrompt =
-            'You map a spoken transcript onto form questions. ' +
-            'Return ONLY a JSON object with a single key "mappings" whose value ' +
-            'is an array of {"questionId":"...","value":"..."}. ' +
-            'For questions with "allowedValues", "value" MUST equal one of those ' +
-            'values exactly (case-sensitive). Omit any question you cannot ' +
-            'confidently answer from the transcript. Do not wrap the JSON in ' +
-            'markdown fences.';
+            'You map a field technician\'s spoken transcript onto inspection form ' +
+            'questions. Return ONLY a JSON object with a single key "mappings" whose ' +
+            'value is an array of {"questionId":"...","value":"..."}. No markdown fences.\n\n' +
+            'VALUE RULES BY QUESTION TYPE — these are hard contracts:\n' +
+            '- Questions with "allowedValues": value MUST be one of those strings, ' +
+            'copied exactly. The transcript will paraphrase ("seal is worn out", ' +
+            '"it failed", "looks good") — choose the closest allowedValue, but output ' +
+            'the allowedValue itself, never the paraphrase.\n' +
+            '- type "Toggle" or "Checkbox": value must be exactly "true" or "false". ' +
+            'Negations count: "no pest activity" / "none observed" means "false".\n' +
+            '- type "Number", "Counter", "Currency", "Slider", "Rating": digits only ' +
+            '("seventy two degrees" -> "72"; "$1,200" -> "1200").\n' +
+            '- type "Date": YYYY-MM-DD. type "Time": HH:MM (24h).\n' +
+            '- type "Text" / "Text Area": the relevant phrase from the transcript, ' +
+            'cleaned up. Narrative observations that fit no specific question belong ' +
+            'in a notes/comments-style Text Area question when one exists.\n\n' +
+            'Map every question the transcript gives evidence for; omit questions ' +
+            'with no evidence. Never guess a value the transcript does not support.\n\n' +
+            'Example: question {"id":"Q1","label":"Door seal status","type":"Dropdown",' +
+            '"allowedValues":["Intact","Worn","Damaged"]} with transcript ' +
+            '"door seal\'s pretty worn out" -> {"questionId":"Q1","value":"Worn"}.';
         String userPrompt =
             'Transcript:\n' + transcript +
             '\n\nQuestions:\n' + JSON.serialize(qSpecs);
