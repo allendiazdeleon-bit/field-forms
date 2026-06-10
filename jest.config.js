@@ -4,7 +4,8 @@ module.exports = {
     ...jestConfig,
     moduleNameMapper: {
         ...jestConfig.moduleNameMapper,
-        '^c/(.+)$': '<rootDir>/field-forms/lwc/$1/$1'
+        '^c/(.+)$': '<rootDir>/field-forms/lwc/$1/$1',
+        '^lightning/focusTrap$': '<rootDir>/jest-mocks/lightning/focusTrap'
     },
     modulePathIgnorePatterns: ['<rootDir>/.localdevserver'],
     collectCoverageFrom: [

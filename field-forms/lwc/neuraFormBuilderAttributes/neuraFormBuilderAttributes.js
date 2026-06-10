@@ -332,6 +332,10 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
      * whatever the admin types, since Wave 35.8a syncs binding text
      * back to the catalog — that's noise we don't want to show).
      */
+    // @api so unit tests can read it directly — same testability pattern
+    // as neuraFormCatalogProvenance's handlers (the sfdx-lwc-jest stubs
+    // don't simulate child-component events/clicks).
+    @api
     get currentCatalogId() {
         return this.selection?.attributes?.Form_Question_Catalog__c || null;
     }
@@ -356,6 +360,7 @@ export default class NeuraFormBuilderAttributes extends LightningElement {
      * question, and adopting commonly turns a private auto-catalog
      * into a shared one (edits ripple across templates).
      */
+    @api
     async handleUseCatalogEntry(event) {
         const detail = event?.detail || {};
         const newCatalogId = detail.catalogId;
