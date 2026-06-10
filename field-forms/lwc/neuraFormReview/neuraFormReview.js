@@ -1,5 +1,8 @@
 import { LightningElement, api, track } from 'lwc';
-import { FIELDS } from 'c/neuraFormSchemaUtils';
+import { FIELDS, QUESTION_TYPE_GROUPS } from 'c/neuraFormSchemaUtils';
+
+const CHOICE_TYPES = QUESTION_TYPE_GROUPS.CHOICE;
+const FILE_TYPES = QUESTION_TYPE_GROUPS.FILE;
 import { reduceError } from 'c/nfCommonUtility';
 import summarizeFormCompletion from '@salesforce/apex/NeuraFormMobileController.summarizeFormCompletion';
 
@@ -75,6 +78,29 @@ export default class NeuraFormReview extends LightningElement {
         }).filter((p) => p.rows.length > 0);
     }
 
+    // Map a stored choice value (or comma-separated values) to the option
+    // label(s) from the question's value set, so the review reads the way the
+    // tech answered. Falls back to the raw value when no label is found.
+    _mapValuesToLabels(question, rawValue) {
+        let opts = [];
+        try {
+            opts = JSON.parse(question[FIELDS.Form_Question__c.ValueSet.fieldApiName] || '[]');
+        } catch (e) {
+            return rawValue;
+        }
+        const labelByValue = {};
+        (opts || []).forEach((o) => {
+            const v = o.value != null ? o.value : o.label;
+            if (v != null) labelByValue[String(v)] = o.label != null ? o.label : v;
+        });
+        return String(rawValue)
+            .split(',')
+            .map((v) => v.trim())
+            .filter((v) => v.length)
+            .map((v) => labelByValue[v] || v)
+            .join(', ');
+    }
+
     _rowsFor(page) {
         const out = [];
         (page.sections || []).forEach((s) => {
@@ -83,9 +109,31 @@ export default class NeuraFormReview extends LightningElement {
                 const type = q[FIELDS.Form_Question__c.Type.fieldApiName];
                 if (type === 'Display Text') return;
                 const answerObj = q.answers?.[0];
-                const value = answerObj
+                let value = answerObj
                     ? answerObj[FIELDS.Form_Answer__c.Answer.fieldApiName]
                     : '';
+                // Choice answers store the option *value*; show the tech the
+                // option *label* they actually picked (handles single + multi
+                // (comma-separated), and value-sets where value !== label).
+                if (value && CHOICE_TYPES.includes(type)) {
+                    value = this._mapValuesToLabels(q, value);
+                }
+                // File/signature answers don't use Answer__c — their data is the
+                // attached file (filesData pre-upload, a ContentVersion after).
+                // Reading Answer__c always yields "(no answer)" for them, so
+                // surface a capture indicator instead. Scan Barcode stores its
+                // value in Answer__c (see typeRegistry), so it is NOT in this
+                // list — treating it as file-based marked answered scans as
+                // missing.
+                if (!value && answerObj && FILE_TYPES.includes(type)) {
+                    const fileCount = Array.isArray(answerObj.filesData)
+                        ? answerObj.filesData.length : 0;
+                    if (fileCount > 0 || answerObj.Id || answerObj.uploadCompleted) {
+                        value = type === 'Signature'
+                            ? 'Signed'
+                            : (fileCount > 0 ? `${fileCount} file(s) attached` : 'Attached');
+                    }
+                }
                 out.push({
                     id: q.Id,
                     label: q[FIELDS.Form_Question__c.Question.fieldApiName] || q.Name,
@@ -160,7 +208,13 @@ export default class NeuraFormReview extends LightningElement {
         }));
     }
 
-    handleSubmit() {
+    handleSubmit(event) {
+        // The scored path arrives here as the submit-guard's own `submit`
+        // event; stop it so only the enriched re-dispatch below reaches the
+        // renderer — otherwise completion fires twice (double DML + 2 PDFs).
+        if (event && typeof event.stopPropagation === 'function') {
+            event.stopPropagation();
+        }
         this.dispatchEvent(new CustomEvent('submit', {
             detail: { summary: this.summary },
             bubbles: true,

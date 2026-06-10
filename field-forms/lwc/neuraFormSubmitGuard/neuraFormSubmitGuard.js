@@ -123,19 +123,19 @@ export default class NeuraFormSubmitGuard extends LightningElement {
     handleSubmit() {
         if (this.isSubmitDisabled) return;
         this.dispatchEvent(
-            new CustomEvent('submit', { bubbles: true, composed: true })
+            new CustomEvent('submit')
         );
     }
 
     handleViewFindings() {
         this.dispatchEvent(
-            new CustomEvent('viewfindings', { bubbles: true, composed: true })
+            new CustomEvent('viewfindings')
         );
     }
 
     handleSaveDraft() {
         this.dispatchEvent(
-            new CustomEvent('savedraft', { bubbles: true, composed: true })
+            new CustomEvent('savedraft')
         );
     }
 }

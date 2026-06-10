@@ -210,10 +210,20 @@ export default class NeuraFormMobile extends LightningElement {
             this.formData = (this.formData || []).map(f =>
                 f?.linkedForm?.Id === fullForm.linkedForm.Id ? fullForm : f
             );
-            this.selectedForm = fullForm;
-            this.showForm = true;
-            this.showSelector = false;
-            this.loadAnswerFiles = this.answersId.length > 0;
+            // On FSL Mobile this wire re-emits while the tech is mid-form
+            // (draft writes refresh the durable store), and the re-emitted
+            // Apex snapshot cannot see the draft queue — re-assigning
+            // selectedForm here would push that stale copy into the open
+            // renderer and visibly wipe in-session answers. Only hand the
+            // result to the renderer on first open.
+            const reEmitForOpenForm = this.showForm &&
+                this.selectedForm?.linkedForm?.Id === fullForm.linkedForm.Id;
+            if (!reEmitForOpenForm) {
+                this.selectedForm = fullForm;
+                this.showForm = true;
+                this.showSelector = false;
+                this.loadAnswerFiles = this.answersId.length > 0;
+            }
         } catch (e) {
             this.setCriticalInlineMessage(reduceError(e), MESSAGE_VARIANT.ERROR);
         } finally {
@@ -1259,7 +1269,12 @@ export default class NeuraFormMobile extends LightningElement {
 
         this.formData = [...tempFormData];
 
-        this.selectedForm = this.formData.find(form => form.Id === this.formId);
+        // Deliberately do NOT re-assign selectedForm: this event is an echo
+        // of the renderer's own working state, and re-setting the prop with
+        // a new identity makes the renderer deep-clone + re-render its page
+        // on every answer change (and, mid-save, can momentarily regress
+        // in-flight answers). The list copy above keeps the selector screen
+        // in sync; the open renderer already owns the live state.
     }
 
     setCriticalInlineMessage(message, variant) {

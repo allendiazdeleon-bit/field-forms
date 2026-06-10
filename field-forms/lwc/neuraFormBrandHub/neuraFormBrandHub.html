@@ -1,0 +1,241 @@
+<template>
+    <lightning-card icon-name="standard:form" title="Brand Forms">
+        <template if:true={hasScope}>
+            <span slot="actions" class="slds-badge slds-m-right_small">Scope: {scope}</span>
+            <lightning-button-group slot="actions">
+                <lightning-button label="New Form" icon-name="utility:add" onclick={openNew}></lightning-button>
+                <lightning-button label="Clone from Template" icon-name="utility:copy" onclick={openClone}></lightning-button>
+                <lightning-button label="Import JSON" icon-name="utility:upload" onclick={openImport}></lightning-button>
+                <lightning-button label="From Document" icon-name="utility:einstein" onclick={openDocImport}></lightning-button>
+            </lightning-button-group>
+        </template>
+
+        <div class="slds-p-horizontal_small slds-p-bottom_small">
+            <template if:true={loading}>
+                <lightning-spinner alternative-text="Working..." size="small"></lightning-spinner>
+            </template>
+
+            <!-- Brand context still resolving: hold the layout instead of
+                 flashing the onboarding prompt at already-onboarded brands -->
+            <template if:true={contextLoading}>
+                <div class="slds-p-around_medium slds-text-align_center">
+                    <lightning-spinner alternative-text="Loading brand…" size="small"></lightning-spinner>
+                </div>
+            </template>
+
+            <!-- Un-onboarded brand: capture the partition key first -->
+            <template if:true={showScopePrompt}>
+                <div class="slds-box slds-theme_shade slds-text-align_center slds-p-around_medium">
+                    <p class="slds-text-heading_small slds-m-bottom_x-small">
+                        Onboard {brandName} for Field Forms
+                    </p>
+                    <p class="slds-text-body_regular slds-text-color_weak slds-m-bottom_small">
+                        Set a brand scope key to start building and importing forms for this
+                        account. The key partitions this brand's forms and question library, and
+                        survives a rebrand (renaming the account won't orphan its forms).
+                    </p>
+                    <lightning-button
+                        variant="brand"
+                        label="Set up brand forms"
+                        icon-name="utility:setup"
+                        onclick={openScopeSetup}>
+                    </lightning-button>
+                </div>
+            </template>
+
+            <!-- Onboarded brand with no forms yet -->
+            <template if:true={showEmptyState}>
+                <div class="slds-illustration slds-illustration_small slds-text-align_center slds-p-around_medium">
+                    <p class="slds-text-body_regular slds-text-color_weak">
+                        No forms for this brand yet. Create a new form, clone an existing template,
+                        or import from JSON to get started.
+                    </p>
+                </div>
+            </template>
+
+            <!-- Forms list -->
+            <template if:true={hasTemplates}>
+                <lightning-datatable
+                    key-field="Id"
+                    data={templates}
+                    columns={columns}
+                    onrowaction={handleRowAction}
+                    hide-checkbox-column
+                    resize-column-disabled>
+                </lightning-datatable>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Scope setup modal -->
+    <template if:true={showScopeSetup}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open" onkeydown={handleModalKeydown}>
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" onclick={closeScopeSetup} title="Close">
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small" variant="inverse"></lightning-icon>
+                    </button>
+                    <h2 id="scope-setup-title" class="slds-modal__title slds-hyphenate">Set brand scope</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-input
+                        label="Brand scope key"
+                        value={scopeDraft}
+                        max-length="80"
+                        field-level-help="Partition key for this brand's forms (e.g. BURGER_KING). Stays stable through a rebrand."
+                        onchange={handleScopeDraftChange}>
+                    </lightning-input>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Cancel" onclick={closeScopeSetup}></lightning-button>
+                    <lightning-button class="slds-m-left_x-small" variant="brand" label="Save" onclick={saveScope}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- New form modal -->
+    <template if:true={showNewModal}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open" onkeydown={handleModalKeydown}>
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" onclick={closeNew} title="Close">
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small" variant="inverse"></lightning-icon>
+                    </button>
+                    <h2 id="new-form-title" class="slds-modal__title slds-hyphenate">New form</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-input
+                        label="Form name"
+                        value={newName}
+                        onchange={handleNewNameChange}>
+                    </lightning-input>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Cancel" onclick={closeNew}></lightning-button>
+                    <lightning-button class="slds-m-left_x-small" variant="brand" label="Create &amp; open builder" onclick={createNew}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- Clone modal -->
+    <template if:true={showCloneModal}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open" onkeydown={handleModalKeydown}>
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" onclick={closeClone} title="Close">
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small" variant="inverse"></lightning-icon>
+                    </button>
+                    <h2 id="clone-title" class="slds-modal__title slds-hyphenate">Clone from template</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-combobox
+                        label="Source template"
+                        placeholder="Select a template"
+                        options={clonableOptions}
+                        value={cloneSourceId}
+                        onchange={handleCloneSourceChange}>
+                    </lightning-combobox>
+                    <lightning-input
+                        class="slds-m-top_small"
+                        label="New form name (optional)"
+                        value={cloneName}
+                        onchange={handleCloneNameChange}>
+                    </lightning-input>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Cancel" onclick={closeClone}></lightning-button>
+                    <lightning-button class="slds-m-left_x-small" variant="brand" label="Clone &amp; open builder" onclick={doClone}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- Import modal: reuses the standalone JSON import component, scoped to this brand -->
+    <template if:true={showImportModal}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open slds-modal_medium" onkeydown={handleModalKeydown}>
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" onclick={closeImport} title="Close">
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small" variant="inverse"></lightning-icon>
+                    </button>
+                    <h2 id="import-title" class="slds-modal__title slds-hyphenate">Import forms for {brandName}</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <c-neura-form-import scope={scope} onimported={handleImported}></c-neura-form-import>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Close" onclick={closeImport}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- Import-from-document modal: customer sent a Word/PDF audit form to follow.
+         Paste the extracted text; the LLM drafts a Field Forms template in this
+         brand's scope for review/polish in the builder. -->
+    <template if:true={showDocModal}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open slds-modal_medium" onkeydown={handleModalKeydown}>
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" onclick={closeDocImport} disabled={docBusy} title="Close">
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small" variant="inverse"></lightning-icon>
+                    </button>
+                    <h2 id="doc-import-title" class="slds-modal__title slds-hyphenate">Draft a form from the customer's document</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                        Paste the text of the customer's audit document (Word/PDF). Einstein drafts a
+                        matching form in this brand's scope; you then review and polish it in the builder.
+                    </p>
+                    <lightning-textarea
+                        label="Document text"
+                        value={docText}
+                        placeholder="Paste the extracted document text here…"
+                        class="doc-textarea"
+                        onchange={handleDocTextChange}>
+                    </lightning-textarea>
+                    <lightning-input
+                        class="slds-m-top_small"
+                        label="Additional context (optional)"
+                        value={docContext}
+                        placeholder="e.g. quick-service restaurant audit"
+                        onchange={handleDocContextChange}>
+                    </lightning-input>
+                    <lightning-input
+                        type="checkbox"
+                        class="slds-m-top_small"
+                        label="Also draft the branded report template from this document"
+                        checked={alsoDraftTemplate}
+                        onchange={handleAlsoTemplateChange}>
+                    </lightning-input>
+                    <template if:true={docBusy}>
+                        <div class="slds-m-top_small slds-text-color_weak slds-text-body_small">
+                            <lightning-spinner alternative-text="Drafting…" size="small"></lightning-spinner>
+                            Einstein is converting the document…
+                        </div>
+                    </template>
+                </div>
+                <footer class="slds-modal__footer">
+                    <!-- Cancel is disabled (not silently no-op) while the LLM
+                         drafts: the two chained callouts can run 30-60s and a
+                         click that visibly does nothing reads as a hang. -->
+                    <lightning-button label="Cancel" onclick={closeDocImport} disabled={docBusy}></lightning-button>
+                    <lightning-button
+                        class="slds-m-left_x-small"
+                        variant="brand"
+                        label={docImportLabel}
+                        disabled={disableDocImport}
+                        onclick={doDocImport}>
+                    </lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

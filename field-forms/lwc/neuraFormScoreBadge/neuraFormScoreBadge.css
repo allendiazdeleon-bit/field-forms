@@ -9,14 +9,14 @@
     gap: 0.5rem;
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
-    background: var(--lwc-colorBackgroundAlt, #f3f3f3);
+    background: var(--neura-color-surface-muted, #f3f3f3);
     font-size: 0.8125rem;
     line-height: 1.25;
 }
 
 .score-badge__label {
     font-weight: 600;
-    color: var(--lwc-colorTextDefault, #181818);
+    color: var(--neura-color-text-primary, #181818);
 }
 
 .score-badge__icon {
@@ -36,16 +36,16 @@
 }
 
 .score-badge__percent {
-    color: var(--lwc-colorTextWeak, #706e6b);
+    color: var(--neura-color-text-muted, #706e6b);
 }
 
 .score-badge__bar {
     width: 100%;
     height: 0.375rem;
-    background: var(--lwc-colorBackground, #fafaf9);
+    background: var(--neura-color-surface-subtle, #fafaf9);
     border-radius: 999px;
     overflow: hidden;
-    border: 1px solid var(--lwc-colorBorder, #dddbda);
+    border: 1px solid var(--neura-color-border, #dddbda);
 }
 
 .score-badge__bar-fill {
@@ -54,15 +54,15 @@
 }
 
 .score-badge--passed .score-badge__bar-fill {
-    background: var(--lwc-colorBackgroundSuccess, #2e844a);
+    background: var(--neura-color-success, #2e844a);
 }
 
 .score-badge--failed .score-badge__bar-fill {
-    background: var(--lwc-colorBackgroundError, #ba0517);
+    background: var(--neura-color-error, #ba0517);
 }
 
 .score-badge--neutral .score-badge__bar-fill {
-    background: var(--lwc-colorBackgroundInverse, #c9c7c5);
+    background: var(--neura-color-border-strong, #c9c7c5);
 }
 
 .score-badge--passed {

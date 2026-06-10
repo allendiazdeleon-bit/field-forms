@@ -64,7 +64,7 @@ export default class NeuraFormAnswer extends LightningElement {
 			this.isRequired &&
 			((this.hasAnswerChanged &&
 				((this.isCheckbox && !this.checkboxValue) ||
-					(this.isFilesRelated && !this.existingFilesData.length) ||
+					(this.isFilesRelated && !this.existingFilesData.length && !this.answerId) ||
 					(!this.isCheckbox && !this.isFilesRelated && !this.answerValue))) ||
 				this.isValueBlank())
 		) {
@@ -98,10 +98,17 @@ export default class NeuraFormAnswer extends LightningElement {
 			) {
 				this.showInlineErrorMessage = true;
 			} else if (this.isDropDown) {
-				this.template
-					.querySelector('lightning-combobox')
-					.setCustomValidity('Complete this field.');
-				this.template.querySelector('lightning-combobox').reportValidity();
+				// A Dropdown with <=6 options renders as choice pills (see
+				// useDropDownPills) — there's no lightning-combobox to
+				// decorate, and dereferencing null here aborted the whole
+				// Next/Finish validation chain and left the footer spinner on.
+				const combobox = this.template.querySelector('lightning-combobox');
+				if (combobox) {
+					combobox.setCustomValidity('Complete this field.');
+					combobox.reportValidity();
+				} else {
+					this.showInlineErrorMessage = true;
+				}
 			}
 		}
 
@@ -230,6 +237,12 @@ export default class NeuraFormAnswer extends LightningElement {
 	resetInlineMessageError() {
 		this.hasAnswerChanged = true;
 		this.showInlineErrorMessage = false;
+		// Null-guard every lookup: the expected element isn't always present
+		// for a given type (e.g. a Dropdown renders as choice-pills when it
+		// has <=6 options, so there's no lightning-combobox). Calling
+		// setCustomValidity on null throws and aborts handleChange BEFORE
+		// dispatchChangeEvent — silently dropping the answer (obj=null).
+		let el = null;
 		if (
 			this.isTextBox ||
 			this.isCheckbox ||
@@ -239,14 +252,15 @@ export default class NeuraFormAnswer extends LightningElement {
 			this.isEmail ||
 			this.isPhone
 		) {
-			this.template.querySelector('lightning-input').setCustomValidity('');
-			this.template.querySelector('lightning-input').reportValidity();
+			el = this.template.querySelector('lightning-input');
 		} else if (this.isTextArea) {
-			this.template.querySelector('lightning-textarea').setCustomValidity('');
-			this.template.querySelector('lightning-textarea').reportValidity();
+			el = this.template.querySelector('lightning-textarea');
 		} else if (this.isDropDown) {
-			this.template.querySelector('lightning-combobox').setCustomValidity('');
-			this.template.querySelector('lightning-combobox').reportValidity();
+			el = this.template.querySelector('lightning-combobox');
+		}
+		if (el) {
+			el.setCustomValidity('');
+			el.reportValidity();
 		}
 	}
 
@@ -303,7 +317,7 @@ export default class NeuraFormAnswer extends LightningElement {
 		return (
 			!this.hasAnswerChanged &&
 			((!this.isFilesRelated && (!this.value || this.value.length === 0)) ||
-				(this.isFilesRelated && this.existingFilesData.length === 0))
+				(this.isFilesRelated && this.existingFilesData.length === 0 && !this.answerId))
 		);
 	}
 

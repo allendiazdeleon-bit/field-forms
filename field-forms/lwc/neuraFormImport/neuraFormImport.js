@@ -1,4 +1,4 @@
-import { LightningElement } from 'lwc';
+import { LightningElement, api } from 'lwc';
 import importTemplates from '@salesforce/apex/neuraFormExportController.importTemplates';
 import importTemplatesAsNew from '@salesforce/apex/neuraFormExportController.importTemplatesAsNew';
 import previewImport from '@salesforce/apex/neuraFormExportController.previewImport';
@@ -13,6 +13,13 @@ import { reduceError } from 'c/nfCommonUtility';
 const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 
 export default class NeuraFormImport extends LightningElement {
+    // Optional brand-scope partition key. When set (e.g. when this component is
+    // hosted inside the brand form-management hub on an Account), a successful
+    // import fires an `imported` event carrying the new template Ids so the
+    // host can stamp them into this brand's Scope__c partition. Left unset on
+    // the standalone Form Export/Import page, where imports stay global.
+    @api scope;
+
     importedTemplates;
     importedTemplateIds = [];
     importWarnings = [];
@@ -200,6 +207,18 @@ export default class NeuraFormImport extends LightningElement {
                     title: 'Imported',
                     message: `${this.importedTemplates.length} template(s) imported successfully.`,
                     variant: 'success'
+                }));
+            }
+
+            // Let a host (the brand hub) react to the import — e.g. stamp the
+            // new templates into its brand scope and refresh its list. Fired
+            // only when something was actually created/updated.
+            if (this.importedTemplateIds.length > 0) {
+                this.dispatchEvent(new CustomEvent('imported', {
+                    detail: {
+                        templateIds: this.importedTemplateIds,
+                        scope: this.scope || null
+                    }
                 }));
             }
         } catch (error) {

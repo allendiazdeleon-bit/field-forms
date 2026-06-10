@@ -20,7 +20,12 @@
     }
     to {
         opacity: 1;
-        transform: translate3d(0, 0, 0);
+        /* `none` (not translate3d(0,0,0)) so animation-fill-mode:both doesn't
+           leave a lingering transform — a non-none transform here makes the
+           page a containing block for the fixed signature bottom sheet, which
+           then gets trapped inside the page area and the sticky header/footer
+           bleed over it. */
+        transform: none;
     }
 }
 

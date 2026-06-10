@@ -18,6 +18,7 @@
  *   architecture change (move to a reactive state container) than is
  *   in scope for this session.
  */
+import { QUESTION_TYPE_GROUPS } from 'c/neuraFormSchemaUtils';
 
 /**
  * Walk the current page's questions and return the user-facing labels
@@ -41,7 +42,12 @@ export function collectMissingRequiredLabels(page, questionAnswerMap, fieldNames
     const requiredField = fieldNames.required;
     const questionField = fieldNames.question;
     const answerField = fieldNames.answer;
+    const typeField = fieldNames.type;
     if (!requiredField || !answerField) return out;
+
+    // File/signature answers don't populate Answer__c — their content is
+    // the attached file. Validate them on file presence, not the text value.
+    const FILE_TYPES = QUESTION_TYPE_GROUPS.FILE;
 
     const getAnswer = (id) => {
         if (!questionAnswerMap || typeof questionAnswerMap.get !== 'function') {
@@ -59,8 +65,21 @@ export function collectMissingRequiredLabels(page, questionAnswerMap, fieldNames
             // submit on something the user can't see.
             if (q.shouldRender === false) return;
             const answer = getAnswer(q.Id);
-            const value = answer && answer[answerField];
-            if (isAnswerEmpty(value)) {
+            const qType = typeField ? q[typeField] : undefined;
+            let empty;
+            if (FILE_TYPES.includes(qType)) {
+                // Answered when a file is attached (pre-upload filesData) or a
+                // saved answer record exists (file lives as a ContentVersion).
+                const hasFile = !!answer && (
+                    (Array.isArray(answer.filesData) && answer.filesData.length > 0) ||
+                    !!answer.Id ||
+                    answer.uploadCompleted === true
+                );
+                empty = !hasFile;
+            } else {
+                empty = isAnswerEmpty(answer && answer[answerField]);
+            }
+            if (empty) {
                 const label =
                     (questionField && q[questionField]) ||
                     q.Name ||

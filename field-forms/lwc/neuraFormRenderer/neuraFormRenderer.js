@@ -1,6 +1,9 @@
 import { LightningElement, api, wire, track } from 'lwc';
 import { updateRecord, getRecord } from 'lightning/uiRecordApi';
+import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 
+import FormAnswerObject from '@salesforce/schema/Form_Answer__c';
+import LinkedFormObject from '@salesforce/schema/Linked_Form__c';
 import AnswerField from '@salesforce/schema/Form_Answer__c.Answer__c';
 import CommentField from '@salesforce/schema/Form_Answer__c.Related_Comment__c';
 import TypeField from '@salesforce/schema/Form_Answer__c.Type__c';
@@ -14,16 +17,12 @@ import LinkedFormPageField from '@salesforce/schema/Linked_Form__c.Current_Page_
 import formFactorPropertyName from '@salesforce/client/formFactor';
 
 import { FIELDS } from 'c/neuraFormSchemaUtils';
-import {
-	OPERATOR_MAP,
-	STRING_LIST_OPERATORS,
-	NEGATION_STRING_LIST_OPERATORS,
-	ELEMENT_TYPE
-} from './constants';
+import { ELEMENT_TYPE } from './constants';
 
 import { saveAnswers, deleteAnswers } from './databaseLayer';
 import { createSwipeController } from './swipeController';
 import { createAutoSaveController } from './autoSaveController';
+import { createCoachingController } from './coachingController';
 import {
 	toggleSkipped,
 	formatSkippedBadgeLabel,
@@ -53,6 +52,24 @@ import { reduceError } from 'c/nfCommonUtility';
 import mapTranscriptToQuestions from '@salesforce/apex/NeuraFormMobileController.mapTranscriptToQuestions';
 import getLastVisitAnswers from '@salesforce/apex/NeuraFormMobileController.getLastVisitAnswers';
 import generatePdfForLinkedForm from '@salesforce/apex/NeuraFormPdfController.generatePdfForLinkedForm';
+import getCoaching from '@salesforce/apex/NeuraFormCoachingController.getCoaching';
+import getThemeForTemplate from '@salesforce/apex/NeuraFormBrandThemeController.getThemeForTemplate';
+
+// Multiply a #rgb/#rrggbb color's channels by `factor` (0..1) to get a
+// darker shade for hover/active states. Theme colors are hex-validated
+// server-side (NeuraFormBrandThemeController); anything unparsable falls
+// back to the input unchanged.
+function shadeHex(hex, factor) {
+	const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex || '');
+	if (!m) return hex;
+	let h = m[1];
+	if (h.length === 3) h = h.replace(/./g, (c) => c + c);
+	const out = [0, 2, 4].map((i) => {
+		const v = Math.round(parseInt(h.slice(i, i + 2), 16) * factor);
+		return Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+	});
+	return `#${out.join('')}`;
+}
 
 export default class NeuraFormRenderer extends LightningElement {
 	// Header Info
@@ -143,29 +160,32 @@ export default class NeuraFormRenderer extends LightningElement {
 	   handles the actual question scroll / photo capture / exception modal
 	   flows — we bubble + compose so it can listen from anywhere up the
 	   tree. handle* names match the panel's event payloads. */
+	/* Page-jump to the page that owns a question, then scroll its wrapper
+	   into view via the page → section @api chain once the page-change
+	   reactivity has flushed (one microtask — earlier and the queried
+	   wrapper isn't in the DOM yet). Sticky header overlap is handled by
+	   the section's CSS scroll-margin-top. Shared by the findings panel
+	   handlers and the coaching card. */
+	jumpToQuestion(questionId, pageIndex) {
+		this._inReview = false;
+		if (pageIndex !== undefined && pageIndex !== this.currentPageIndex) {
+			this.currentPageIndex = pageIndex;
+			this.currentPage = { ...this._formObject.pages[pageIndex] };
+			this.currentPageTitle = this.pageTitleList[pageIndex];
+		}
+		Promise.resolve().then(() => {
+			const page = this.refs?.formPage;
+			if (page && typeof page.scrollToQuestion === 'function') {
+				page.scrollToQuestion(questionId);
+			}
+		});
+	}
+
 	handleFindingClick(event) {
-		// Page-jump to the page that owns the flagged question, then
-		// scroll the question wrapper into view via the page → section
-		// @api chain. Sticky header overlap is handled by the section's
-		// CSS scroll-margin-top.
 		const ref = event?.detail?.externalReference;
 		const hit = ref ? findQuestionLocation(this._formObject, ref) : null;
 		if (hit) {
-			this._inReview = false;
-			if (hit.pageIndex !== this.currentPageIndex) {
-				this.currentPageIndex = hit.pageIndex;
-				this.currentPage = { ...this._formObject.pages[hit.pageIndex] };
-				this.currentPageTitle = this.pageTitleList[hit.pageIndex];
-			}
-			// Wait one microtask for the page-change reactivity to flush
-			// before asking the page to scroll — without this the queried
-			// question wrapper may not be in the DOM yet.
-			Promise.resolve().then(() => {
-				const page = this.refs?.formPage;
-				if (page && typeof page.scrollToQuestion === 'function') {
-					page.scrollToQuestion(hit.questionId);
-				}
-			});
+			this.jumpToQuestion(hit.questionId, hit.pageIndex);
 		}
 		this.dispatchEvent(
 			new CustomEvent('findingclick', {
@@ -185,18 +205,7 @@ export default class NeuraFormRenderer extends LightningElement {
 		const ref = event?.detail?.externalReference;
 		const hit = ref ? findQuestionLocation(this._formObject, ref) : null;
 		if (hit) {
-			this._inReview = false;
-			if (hit.pageIndex !== this.currentPageIndex) {
-				this.currentPageIndex = hit.pageIndex;
-				this.currentPage = { ...this._formObject.pages[hit.pageIndex] };
-				this.currentPageTitle = this.pageTitleList[hit.pageIndex];
-			}
-			Promise.resolve().then(() => {
-				const page = this.refs?.formPage;
-				if (page && typeof page.scrollToQuestion === 'function') {
-					page.scrollToQuestion(hit.questionId);
-				}
-			});
+			this.jumpToQuestion(hit.questionId, hit.pageIndex);
 		}
 		this.dispatchEvent(
 			new CustomEvent('findingaddphoto', {
@@ -225,15 +234,93 @@ export default class NeuraFormRenderer extends LightningElement {
 		return this._formObject;
 	}
 	set formObject(value) {
-		this._formObject = JSON.parse(JSON.stringify(value));
-		if (this.currentPage) {
+		this._formObject = value ? JSON.parse(JSON.stringify(value)) : value;
+		// The parent can re-push this prop mid-session — on FSL Mobile the
+		// wired Apex behind it re-emits snapshots that can't see the draft
+		// queue, and the updateformdata echo re-assigns it on every answer
+		// change. Either way the incoming copy may lack answers captured
+		// this session. questionAnswerMap is the session's source of truth,
+		// so overlay it onto whatever arrived before anything re-renders;
+		// without this, in-flight picklist selections visibly reset and the
+		// review screen reads "(no answer)" on mobile.
+		if (this._formObject && this.questionAnswerMap.size) {
+			this.syncAllAnswersToFormObject();
+			this.rebuildAnswerMap();
+		}
+		if (this.currentPage && this._formObject) {
 			this.currentPage = this._formObject.pages[this.currentPageIndex];
 		}
 	}
 
 	@api recordId;
 
+	// Prime object metadata for the objects this form writes as offline
+	// drafts. createRecord/updateRecord (databaseLayer.js, updateLinkedForm)
+	// require ObjectInfo in the durable store, but those calls are
+	// imperative — invisible to the LWC Offline priming engine's static
+	// analysis. Without these wires a device that hasn't otherwise cached
+	// the metadata fails every save with "Object info for a2w prefix is not
+	// primed into the durable store" (a2w = Form_Answer__c). The wires are
+	// cacheable no-ops on desktop.
+	@wire(getObjectInfo, { objectApiName: FormAnswerObject })
+	formAnswerObjectInfo;
+
+	@wire(getObjectInfo, { objectApiName: LinkedFormObject })
+	linkedFormObjectInfo;
+
 	questionAnswerMap = new Map();
+
+	// --- Brand theming (Vignette 4) -----------------------------------------
+	// Resolve the Brand_Theme for this form (form -> brand -> global) and push
+	// its colors onto the renderer wrapper as CSS custom properties, which
+	// cascade into every child LWC. Fetched once per session, but APPLIED on
+	// every render where the wrapper lacks the properties: the wrapper lives
+	// inside <template if:true={isLoaded}>, so review round-trips, dictation's
+	// forceRerender, and prefill all destroy and recreate it — a fetch-once
+	// latch alone loses the brand colors for the rest of the session.
+	// undefined = not fetched yet; null = resolved to "no theme / unavailable".
+	_brandTheme;
+	_brandThemeFetching = false;
+
+	renderedCallback() {
+		this.applyBrandTheme();
+	}
+
+	async applyBrandTheme() {
+		const templateId = this._formObject?.Id;
+		if (!templateId || this._brandTheme === null) return;
+		if (!this.template.querySelector('.renderer-wrapper')) return;
+		if (this._brandTheme === undefined) {
+			if (this._brandThemeFetching) return;
+			this._brandThemeFetching = true;
+			try {
+				// Imperative Apex fails in the FSL Mobile offline runtime —
+				// there's no supported way to detect it up front (formFactor
+				// is 'Small' on every phone, online included), so one failure
+				// settles the question for the session and the form keeps the
+				// stock palette.
+				const theme = await getThemeForTemplate({ formTemplateId: templateId });
+				this._brandTheme = theme && theme.primaryColor ? theme : null;
+			} catch (e) {
+				this._brandTheme = null;
+			}
+			if (!this._brandTheme) return;
+		}
+		// Re-query: the await above may have crossed a re-render.
+		const wrapper = this.template.querySelector('.renderer-wrapper');
+		if (!wrapper || wrapper.style.getPropertyValue('--neura-color-primary')) return;
+		const primary = this._brandTheme.primaryColor;
+		const secondary = this._brandTheme.secondaryColor || primary;
+		wrapper.style.setProperty('--neura-color-primary', primary);
+		// Hover/active need to differ from base or buttons lose their pressed
+		// affordance; derive shades instead of repeating the brand color.
+		wrapper.style.setProperty('--neura-color-primary-hover', shadeHex(primary, 0.88));
+		wrapper.style.setProperty('--neura-color-primary-active', shadeHex(primary, 0.76));
+		wrapper.style.setProperty(
+			'--neura-color-primary-gradient',
+			`linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`
+		);
+	}
 
 	connectedCallback() {
 		if (this._formObject) {
@@ -417,6 +504,16 @@ export default class NeuraFormRenderer extends LightningElement {
 			this.currentPageIndex = 0;
 		}
 
+		// Clamp the resume index to a valid page. A stale / out-of-range
+		// Current_Page__c (or a form whose pages haven't loaded) would
+		// otherwise leave currentPage undefined and crash
+		// checkCurrentPageToLoadOnLoad() on `.shouldRender`.
+		const pageCount = this._formObject?.pages?.length || 0;
+		if (!(this.currentPageIndex >= 0)) this.currentPageIndex = 0; // NaN/negative
+		if (pageCount && this.currentPageIndex >= pageCount) {
+			this.currentPageIndex = pageCount - 1;
+		}
+
 		this.setupCurrentPage();
 		this.checkCurrentPageToLoadOnLoad();
 		this.updateBooleanQuestionAnswerMap();
@@ -441,6 +538,9 @@ export default class NeuraFormRenderer extends LightningElement {
 	}
 
 	checkCurrentPageToLoadOnLoad() {
+		// Guard: if the page didn't resolve (empty/unloaded pages), bail out
+		// rather than dereference undefined.
+		if (!this.currentPage) return;
 		if (!this.currentPage.shouldRender) {
 			if (this.currentPageIndex !== 0) {
 				this.currentPageIndex--;
@@ -460,10 +560,16 @@ export default class NeuraFormRenderer extends LightningElement {
 	}
 
 	updateBooleanQuestionAnswerMap() {
+		if (!this.currentPage || !this.currentPage.sections) return;
 		this.currentPage.sections.forEach((section) => {
 			const booleanQuestions = this.getBooleanQuestions(section);
 
 			booleanQuestions.forEach((question) => {
+				// Seed only. An existing map entry is this session's truth —
+				// question.answers can be a stale server snapshot (FSL Mobile
+				// drafts are invisible to Apex reads), and overwriting here on
+				// page navigation would revert an in-flight toggle.
+				if (this.questionAnswerMap.has(question.Id)) return;
 				question.answers.forEach((answer) => {
 					const tempAns = {
 						uploadCompleted: true
@@ -653,19 +759,7 @@ export default class NeuraFormRenderer extends LightningElement {
 	// blank inputs for any field the user had already filled in.
 	async forceRerender() {
 		const wasLoaded = this._loaded;
-		const newPages = this._formObject.pages.map((p) => ({
-			...p,
-			sections: (p.sections || []).map((s) => ({
-				...s,
-				questions: (s.questions || []).map((q) => {
-					if (!this.questionAnswerMap.has(q.Id)) return q;
-					const ans = this.questionAnswerMap.get(q.Id);
-					const merged = { ...(q.answers?.[0] || {}), ...ans };
-					return { ...q, answers: [merged] };
-				})
-			}))
-		}));
-		this._formObject = { ...this._formObject, pages: newPages };
+		this.syncAllAnswersToFormObject();
 		this.currentPage = this._formObject.pages[this.currentPageIndex];
 
 		this._loaded = false;
@@ -798,7 +892,8 @@ export default class NeuraFormRenderer extends LightningElement {
 				{
 					required: FIELDS.Form_Question__c.Required.fieldApiName,
 					question: FIELDS.Form_Question__c.Question.fieldApiName,
-					answer: AnswerField.fieldApiName
+					answer: AnswerField.fieldApiName,
+					type: FIELDS.Form_Question__c.Type.fieldApiName
 				}
 			);
 		} catch (e) {
@@ -1019,7 +1114,35 @@ export default class NeuraFormRenderer extends LightningElement {
 			// form object; tech can edit and resubmit.
 			console.warn('Auto-save before review failed:', e);
 		}
+		// Mirror EVERY in-memory answer into the form object before review —
+		// across all pages and regardless of save/uploadCompleted state. The
+		// review + AI summary read answers off the form object; without this,
+		// updateFormObjectWithNewAnswers only syncs the current page and only
+		// for successfully-saved answers, so on mobile (where the offline draft
+		// read lags) the review shows "(no answer)" for everything.
+		this.syncAllAnswersToFormObject();
 		this._inReview = true;
+	}
+
+	// Push the full questionAnswerMap into _formObject.pages[].sections[].
+	// questions[].answers[0] for every page. Same mapping forceRerender uses,
+	// but without the heavy _loaded teardown — we only need the data shape
+	// updated so the review/summary can read it.
+	syncAllAnswersToFormObject() {
+		if (!this._formObject?.pages) return;
+		const newPages = this._formObject.pages.map((p) => ({
+			...p,
+			sections: (p.sections || []).map((s) => ({
+				...s,
+				questions: (s.questions || []).map((q) => {
+					if (!this.questionAnswerMap.has(q.Id)) return q;
+					const ans = this.questionAnswerMap.get(q.Id);
+					const merged = { ...(q.answers?.[0] || {}), ...ans };
+					return { ...q, answers: [merged] };
+				})
+			}))
+		}));
+		this._formObject = { ...this._formObject, pages: newPages };
 	}
 
 	// Final commit. Wired to the review screen's `submit` event.
@@ -1039,39 +1162,58 @@ export default class NeuraFormRenderer extends LightningElement {
 			: null;
 	}
 
-	async completeFinish(opts) {
-		const summaryText = opts?.summary || '';
-		try {
-			// Save the summary to Linked_Form__c.Service_Summary__c so the
-			// PDF, reports, and Chatter posts can all read it.
-			if (summaryText && this.linkedFormId) {
-				await updateRecord({
-					fields: {
-						Id: this.linkedFormId,
-						Service_Summary__c: summaryText
-					}
-				});
-			}
-		} catch (e) {
-			console.warn('Failed to save service summary:', e);
-		}
-		await this.updateLinkedForm('Completed');
-		this._inReview = false;
-		this._completed = true;
+	// Re-entry latch: completion can be triggered twice (double-tap, or a
+	// duplicated submit event) and a second pass means duplicate DML and a
+	// second PDF on the record.
+	_completing = false;
 
-		// Kick off PDF generation. Awaited so the success screen can show
-		// the download link the moment it's ready, but errors don't roll
-		// back the completion.
-		this._pdfGenerationStatus = 'generating';
+	async completeFinish(opts) {
+		if (this._completing || this._completed) return;
+		this._completing = true;
 		try {
-			const docId = await generatePdfForLinkedForm({
-				linkedFormId: this.linkedFormId
-			});
-			this._generatedPdfId = docId;
-			this._pdfGenerationStatus = 'done';
-		} catch (e) {
-			this._pdfGenerationStatus = 'error';
-			this._pdfGenerationError = reduceError(e);
+			const summaryText = opts?.summary || '';
+			try {
+				// Save the summary to Linked_Form__c.Service_Summary__c so the
+				// PDF, reports, and Chatter posts can all read it.
+				if (summaryText && this.linkedFormId) {
+					await updateRecord({
+						fields: {
+							Id: this.linkedFormId,
+							Service_Summary__c: summaryText
+						}
+					});
+				}
+			} catch (e) {
+				console.warn('Failed to save service summary:', e);
+			}
+			try {
+				await this.updateLinkedForm('Completed');
+			} catch (e) {
+				// Stay on the review screen so the tech can retry; the
+				// message event is the mobile-safe feedback channel (toasts
+				// don't display in FSL Mobile).
+				this.showToastMessage('Error', reduceError(e), 'error');
+				return;
+			}
+			this._inReview = false;
+			this._completed = true;
+
+			// Kick off PDF generation. Awaited so the success screen can show
+			// the download link the moment it's ready, but errors don't roll
+			// back the completion.
+			this._pdfGenerationStatus = 'generating';
+			try {
+				const docId = await generatePdfForLinkedForm({
+					linkedFormId: this.linkedFormId
+				});
+				this._generatedPdfId = docId;
+				this._pdfGenerationStatus = 'done';
+			} catch (e) {
+				this._pdfGenerationStatus = 'error';
+				this._pdfGenerationError = reduceError(e);
+			}
+		} finally {
+			this._completing = false;
 		}
 	}
 
@@ -1184,6 +1326,51 @@ export default class NeuraFormRenderer extends LightningElement {
 		// value. Debounced 1500ms so a rapid burst of keystrokes coalesces
 		// into a single save round-trip.
 		this.scheduleAutoSave();
+
+		// Real-time coaching (Vignette 3). Best-effort and online-only: it
+		// asks the server whether this location's prior-visit history warrants
+		// an in-the-flow nudge. Fire-and-forget so it never blocks the answer.
+		this.maybeCoach(questionId, answerObject);
+	}
+
+	// --- Real-time inspector coaching ---------------------------------------
+	// Holds the active coaching card, or null when none is showing. Tracked so
+	// the template re-renders when a nudge arrives or is dismissed. Debounce,
+	// request ordering, and the availability circuit breaker live in
+	// ./coachingController.js (same split as autoSaveController).
+	@track coaching = null;
+	_coachingController;
+
+	get hasCoaching() {
+		return this.coaching != null;
+	}
+
+	maybeCoach(questionId, answerObject) {
+		if (!this.linkedFormId) return;
+		if (!this._coachingController) {
+			this._coachingController = createCoachingController({
+				fetchCoaching: getCoaching,
+				getLinkedFormId: () => this.linkedFormId,
+				onCoaching: (card) => { this.coaching = card; }
+			});
+		}
+		this._coachingController.schedule(
+			questionId,
+			answerObject[AnswerField.fieldApiName]
+		);
+	}
+
+	// Inspector tapped the suggested action. Dismiss the card and scroll the
+	// question back into view so they can act on it.
+	handleCoachingAction() {
+		const questionId = this.coaching?.questionId;
+		this.coaching = null;
+		if (!questionId) return;
+		this.jumpToQuestion(questionId);
+	}
+
+	handleCoachingDismiss() {
+		this.coaching = null;
 	}
 
 	// --- Auto-save -----------------------------------------------------------

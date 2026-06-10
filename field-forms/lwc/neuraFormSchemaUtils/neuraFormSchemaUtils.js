@@ -332,6 +332,20 @@ export const FIELDS = {
     }
 };
 
+// Form_Question__c.Type__c groupings shared by validation (renderer) and the
+// review screen. One list so the two can't drift: 'Scan Barcode' stores its
+// value in Answer__c (see neuraFormAnswer/typeRegistry.js isFilesRelated) and
+// must NOT be treated as file-based — doing so flagged answered scans as
+// missing. There is no 'Photo' Type__c; photos ride along via Include_Photo__c.
+export const QUESTION_TYPE_GROUPS = {
+    // Content is the attached file (filesData pre-upload, ContentVersion
+    // after); Answer__c stays empty, so validate/display on file presence.
+    FILE: ['File Upload', 'Signature'],
+    // Stored value is the option *value*; display surfaces should map it
+    // back to the option label from the question's value set.
+    CHOICE: ['Dropdown', 'Multiple Choice', 'Radio Buttons', 'Checkboxes']
+};
+
 export const OBJECTS = {
     Form_Page__c: FormPageObject,
     Form_Template__c: FormTemplateObject,

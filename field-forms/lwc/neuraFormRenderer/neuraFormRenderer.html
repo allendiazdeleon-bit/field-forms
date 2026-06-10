@@ -33,28 +33,52 @@
 				<div class={autoSaveBadgeClass}>{autoSaveLabel}</div>
 			</template>
 
-			<!-- "Same as last visit" prefill. Pulls the most recent
-			     completed Linked_Form for this asset and copies its
-			     answers in. Routine maintenance forms repeat 70%+ of the
-			     same answers, so this saves a meaningful amount of time. -->
-			<div class="slds-m-horizontal_small slds-m-bottom_x-small">
+			<!-- Page action toolbar. "Same as last visit" prefills from the
+			     most recent completed Linked_Form; "Dictate this page" expands
+			     a transcript panel. Grouped in a single flex row so they read
+			     as one toolbar instead of left-stacked blocks. -->
+			<div class="form-toolbar">
 				<lightning-button
 					label="Same as last visit"
 					icon-name="utility:copy"
 					icon-position="left"
-					variant="neutral"
+					variant="brand-outline"
 					onclick={handlePrefillLastVisit}
 				></lightning-button>
+				<c-neura-page-dictation
+					ondictate={handlePageDictation}
+				></c-neura-page-dictation>
 			</div>
 
-			<!-- Page-level dictation entry. Speaking (or typing) once and
-			     letting the system distribute the transcript across this
-			     page's fields beats tapping a mic on every field. The panel
-			     uses a textarea so it works in FSL Mobile's WebView where
-			     window.SpeechRecognition isn't exposed. -->
-			<c-neura-page-dictation
-				ondictate={handlePageDictation}
-			></c-neura-page-dictation>
+			<!-- Real-time coaching card (Vignette 3). Appears inline as the
+			     inspector answers, surfacing prior-visit anomalies and a
+			     suggested action before they leave the site. -->
+			<template if:true={hasCoaching}>
+				<div class="coaching-card" role="status">
+					<lightning-icon
+						icon-name="utility:einstein"
+						size="small"
+						class="coaching-card__icon"
+					></lightning-icon>
+					<div class="coaching-card__body">
+						<p class="coaching-card__message">{coaching.message}</p>
+						<div class="coaching-card__actions">
+							<template if:true={coaching.actionLabel}>
+								<lightning-button
+									label={coaching.actionLabel}
+									variant="brand"
+									onclick={handleCoachingAction}
+								></lightning-button>
+							</template>
+							<lightning-button
+								label="Dismiss"
+								variant="base"
+								onclick={handleCoachingDismiss}
+							></lightning-button>
+						</div>
+					</div>
+				</div>
+			</template>
 
 			<div
 				class={pageWrapperClass}

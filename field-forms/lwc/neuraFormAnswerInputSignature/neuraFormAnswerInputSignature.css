@@ -77,3 +77,29 @@
     color: var(--neura-color-text-primary);
     font-weight: var(--neura-font-weight-medium);
 }
+/* Inline capture panel (Vignette 4 mobile fix). Rendered in normal document
+   flow — NOT a fixed bottom-sheet overlay — so it sits correctly under the
+   sticky page header like the rest of the form. Fixed overlays get trapped by
+   the page's transform/containing-block on FSL Mobile and bleed under the
+   title/footer. */
+.capture-panel {
+    border: 1px solid var(--neura-color-border, #e5e5e5);
+    border-radius: var(--neura-radius-md, 0.5rem);
+    background: var(--neura-color-surface, #ffffff);
+    box-shadow: var(--neura-shadow-raised, 0 2px 8px rgba(0,0,0,0.08));
+    padding: var(--neura-space-sm, 0.5rem);
+    margin: var(--neura-space-xs, 0.25rem) 0;
+}
+.capture-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--neura-space-sm, 0.5rem);
+    padding: var(--neura-space-2xs, 0.125rem) var(--neura-space-2xs, 0.125rem) var(--neura-space-xs, 0.25rem);
+    border-bottom: 1px solid var(--neura-color-border-subtle, #f3f3f3);
+    margin-bottom: var(--neura-space-sm, 0.5rem);
+}
+.capture-panel__title {
+    font-weight: var(--neura-font-weight-semibold, 600);
+    color: var(--neura-color-text-primary, #181818);
+}

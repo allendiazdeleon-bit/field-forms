@@ -283,18 +283,23 @@
     animation-duration: var(--neura-motion-base);
     animation-timing-function: var(--neura-motion-ease-out);
     animation-fill-mode: both;
-    will-change: opacity, transform;
+    /* Only hint opacity. `will-change: transform` (and a lingering non-none
+       transform from fill-mode:both) makes this element a containing block for
+       position:fixed descendants — which traps the signature bottom sheet
+       inside the page area so the sticky title/page-number bleed over it.
+       Keep the enter transform transient and end on `transform: none`. */
+    will-change: opacity;
 }
 .page-wrapper_a { animation-name: neura-page-enter-a; }
 .page-wrapper_b { animation-name: neura-page-enter-b; }
 
 @keyframes neura-page-enter-a {
     from { opacity: 0; transform: translate3d(0, 8px, 0); }
-    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    to   { opacity: 1; transform: none; }
 }
 @keyframes neura-page-enter-b {
     from { opacity: 0; transform: translate3d(0, 8px, 0); }
-    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    to   { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -313,3 +318,75 @@
     z-index: var(--neura-z-sticky, 10);
     margin-top: auto;
 }
+
+/* ============================================================
+   Real-time coaching card (Vignette 3)
+   ============================================================
+   Inline Einstein-style nudge surfaced as the inspector answers.
+   Uses design-system tokens only (no static resources) so it renders
+   the same in Lightning Experience and the FSL Mobile WebView. */
+.coaching-card {
+	display: flex;
+	gap: var(--neura-space-sm);
+	align-items: flex-start;
+	/* Sticky under the header: a nudge that lands while the inspector is
+	   scrolled deep into a long page must still be visible, and pinning it
+	   avoids the content-shift that pushing the page down mid-typing causes. */
+	position: sticky;
+	top: var(--neura-space-xs);
+	z-index: var(--neura-z-sticky, 10);
+	margin: var(--neura-space-xs) var(--neura-space-sm) var(--neura-space-sm);
+	padding: var(--neura-space-md);
+	background: var(--neura-color-info-bg);
+	border: 1px solid var(--neura-color-info-border);
+	border-left: 4px solid var(--neura-color-info);
+	border-radius: var(--neura-radius-md);
+	box-shadow: var(--neura-shadow-raised);
+	animation: coaching-enter var(--neura-motion-base) var(--neura-motion-ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.coaching-card {
+		animation: none;
+	}
+}
+
+.coaching-card__icon {
+	flex: 0 0 auto;
+	margin-top: 2px;
+	--slds-c-icon-color-foreground-default: var(--neura-color-info);
+}
+
+.coaching-card__body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.coaching-card__message {
+	margin: 0 0 var(--neura-space-sm);
+	color: var(--neura-color-text-primary);
+	font-weight: var(--neura-font-weight-medium);
+	line-height: var(--neura-line-height-base);
+}
+
+.coaching-card__actions {
+	display: flex;
+	gap: var(--neura-space-xs);
+	flex-wrap: wrap;
+}
+
+@keyframes coaching-enter {
+	from { opacity: 0; transform: translateY(-6px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+/* Page action toolbar (Same as last visit / Dictate this page) — group the
+   triggers into one tidy row instead of left-stacked blocks. */
+.form-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--neura-space-xs);
+	padding: var(--neura-space-sm) var(--neura-space-sm) 0;
+}
+.form-toolbar lightning-button { --sds-c-button-text-color: var(--neura-color-primary); }

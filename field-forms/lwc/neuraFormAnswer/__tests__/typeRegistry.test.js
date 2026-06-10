@@ -143,4 +143,51 @@ describe('TYPE_REGISTRY integrity', () => {
             expect(cfg.subtype).toBeTruthy();
         }
     });
+
+    test('every registry type has a Form_Setting record AND attribute mappings', () => {
+        // Two contracts in one sweep:
+        //   1. A registry type with no Form_Setting record can't be added
+        //      from the builder palette at all (Checkboxes shipped this way).
+        //   2. A Form_Setting record with ZERO Form_Setting_to_Field rows
+        //      renders an EMPTY attribute panel — not even Required — which
+        //      is how ten types shipped unconfigurable.
+        const settingFiles = listMatching('field-forms/customMetadata', (f) =>
+            /^Form_Setting\.[^.]+\.md-meta\.xml$/.test(f)
+        );
+        const settingDevNameByLabel = new Map();
+        for (const file of settingFiles) {
+            const xml = readFile(file);
+            if (extractStructure(xml) !== 'Component') continue;
+            const label = extractLabel(xml);
+            const devName = file.match(/Form_Setting\.([^.]+)\.md-meta\.xml$/)[1];
+            settingDevNameByLabel.set(label, devName);
+        }
+
+        const mappingFiles = listMatching('field-forms/customMetadata', (f) =>
+            /^Form_Setting_to_Field\./.test(f)
+        );
+        const mappedSettings = new Set();
+        for (const file of mappingFiles) {
+            const xml = readFile(file);
+            const m = xml.match(
+                /<field>Form_Setting__c<\/field>\s*<value[^>]*>([^<]+)<\/value>/
+            );
+            if (m) mappedSettings.add(m[1].trim());
+        }
+
+        const problems = [];
+        for (const [key, cfg] of Object.entries(TYPE_REGISTRY)) {
+            const devName = settingDevNameByLabel.get(cfg.picklist);
+            if (!devName) {
+                problems.push(`${key}: no Form_Setting record — can't be placed from the palette`);
+            } else if (!mappedSettings.has(devName)) {
+                problems.push(`${key}: Form_Setting "${devName}" has zero Form_Setting_to_Field mappings — empty attribute panel`);
+            }
+        }
+        if (problems.length) {
+            throw new Error(
+                `Registry types with broken builder coverage:\n  - ${problems.join('\n  - ')}`
+            );
+        }
+    });
 });
