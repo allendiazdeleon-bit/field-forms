@@ -20,7 +20,7 @@ Form_Template__c tpl;
 List<Form_Template__c> tpls = [SELECT Id FROM Form_Template__c
     WHERE Name = 'BK Food Safety Inspection' AND Scope__c = :BRAND LIMIT 1];
 if (tpls.isEmpty()) {
-    tpl = new Form_Template__c(Name = 'BK Food Safety Inspection', Scope__c = BRAND, Status__c = 'Active');
+    tpl = new Form_Template__c(Name = 'BK Food Safety Inspection', Scope__c = BRAND, Status__c = 'Active', Scoring_Enabled__c = true);
     insert tpl;
 } else {
     tpl = tpls[0];
@@ -75,7 +75,8 @@ List<String> questions = new List<String>{
     'Is there any evidence of pest activity?',
     'Are handwash stations stocked and accessible?',
     'Are cold-holding temperature logs current?',
-    'Are food-contact surfaces sanitized per schedule?'};
+    'Are food-contact surfaces sanitized per schedule?',
+    'Exterior and entry area clean'};
 Map<String, Id> catByQ = new Map<String, Id>();
 Set<String> wanted = new Set<String>(questions);
 for (Form_Question_Catalog__c c : [SELECT Id, Question__c FROM Form_Question_Catalog__c
@@ -131,7 +132,7 @@ if ([SELECT COUNT() FROM Form_Page__c WHERE Form_Template__c = :tpl.Id] == 0) {
     qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[0].Id, Form_Section__c = sections[0].Id,
         Order__c = 2, Type__c = 'Text', Question__c = 'Manager on duty', Required__c = true));
     qs.add(new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[0].Id, Form_Section__c = sections[0].Id,
-        Order__c = 3, Type__c = 'Pass Fail NA', Question__c = 'Exterior and entry area clean'));
+        Order__c = 3, Type__c = 'Pass Fail NA', Question__c = questions[6], Form_Question_Catalog__c = catByQ.get(questions[6])));
     // Page 2 — Food Safety
     Form_Question__c sealQ = new Form_Question__c(Form_Template__c = tpl.Id, Form_Page__c = pages[1].Id, Form_Section__c = sections[1].Id,
         Order__c = 1, Type__c = 'Pass Fail NA', Question__c = questions[0], Required__c = true,
