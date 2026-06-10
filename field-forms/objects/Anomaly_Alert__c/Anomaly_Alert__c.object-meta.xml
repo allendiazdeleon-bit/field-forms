@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>A detected cross-visit anomaly at a location (e.g. the same finding recurring across multiple inspections). Surfaced in the Ops Console and used to proactively draft a brand-facing communication before the customer escalates. (Vignette 3)</description>
+    <enableActivities>false</enableActivities>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <label>Anomaly Alert</label>
+    <pluralLabel>Anomaly Alerts</pluralLabel>
+    <nameField>
+        <displayFormat>AA-{00000}</displayFormat>
+        <label>Anomaly Alert Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <sharingModel>ReadWrite</sharingModel>
+</CustomObject>

@@ -2,22 +2,21 @@
 <ListView xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Assigned_To_Me</fullName>
     <columns>NAME</columns>
+    <columns>Assigned_To__c</columns>
     <columns>Severity__c</columns>
     <columns>Status__c</columns>
     <columns>Blocks_Submission__c</columns>
     <columns>Linked_Form__c</columns>
     <columns>Due_Date__c</columns>
     <columns>CREATED_DATE</columns>
-    <filterScope>Mine</filterScope>
-    <filters>
-        <field>Assigned_To__c</field>
-        <operation>equals</operation>
-        <value>$User.Id</value>
-    </filters>
+    <filterScope>Everything</filterScope>
+    <!-- Form_Finding__c is a master-detail child (no OwnerId), so the Mine
+         scope and a current-user filter aren't expressible in list-view
+         metadata. Surface the assignee as a column for triage instead. -->
     <filters>
         <field>Status__c</field>
         <operation>notEqual</operation>
         <value>Resolved,Resolved-Exception,Auto-Resolved,Waived</value>
     </filters>
-    <label>Assigned to Me</label>
+    <label>Open by Assignee</label>
 </ListView>

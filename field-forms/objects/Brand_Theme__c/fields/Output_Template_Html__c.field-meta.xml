@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Output_Template_Html__c</fullName>
+    <description>HTML output template (with {{merge}} tokens) that mirrors the customer's provided report layout. When present, the branded PDF renders from this template instead of the default fixed layout. AI-drafted from the customer's document, then polished. Tokens: {{brand.logo}}, {{brand.headerText}}, {{report.formName|status|completedDate|workOrder|serviceSummary}}, {{answers}}, {{findings}}, {{signature}}, {{answer:Question Label}}. (Vignette 4)</description>
+    <externalId>false</externalId>
+    <label>Output Template HTML</label>
+    <length>131072</length>
+    <type>LongTextArea</type>
+    <visibleLines>10</visibleLines>
+</CustomField>

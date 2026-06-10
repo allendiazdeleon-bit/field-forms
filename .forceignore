@@ -2,3 +2,8 @@
 # These appear under the project root but are independent repos with their
 # own staged changes; SF must NOT see them as duplicate source.
 .claude/worktrees/**
+**/jsconfig.json
+**/.eslintrc.json
+**/lwc/**/__tests__/**
+# Briefcase is configured manually in the org (Briefcase Builder UI)
+field-forms/briefcaseDefinitions/**

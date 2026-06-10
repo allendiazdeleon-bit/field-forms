@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Primary_Color__c</fullName>
+    <description>Brand primary color as a hex string (e.g. #E4002B). Drives the form accent and PDF header.</description>
+    <externalId>false</externalId>
+    <label>Primary Color</label>
+    <length>9</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

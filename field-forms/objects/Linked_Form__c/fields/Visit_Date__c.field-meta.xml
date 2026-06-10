@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Visit_Date__c</fullName>
+    <description>The date the inspection visit occurred. Drives chronological ordering of prior visits at a location (for coaching/anomaly history) and the time axis of the Ops ramp-curve dashboard.</description>
+    <externalId>false</externalId>
+    <label>Visit Date</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Date</type>
+</CustomField>

@@ -5,8 +5,12 @@ public with sharing class neuraFormExportController {
         'ownerid', 'createdbyid', 'isdeleted', 'lastmodifiedbyid', 'createddate', 'lastmodifieddate', 'systemmodstamp', 'lastvieweddate', 'lastreferenceddate'
     };
 
+    // questions_json_1__c/_2__c are the overflow snapshot fragments — they
+    // carry question Ids just like questions_json__c, and exporting them lets
+    // a post-import full-record update overwrite the freshly rebuilt snapshot
+    // (see NeuraFormBrandController.cloneTemplate).
     private static final Set<String> EXCLUDEDCUSTOMFIELDS = new Set<String> {
-        'pages_json__c', 'sections_json__c', 'questions_json__c', 'page_conditions__c', 'section_conditions__c', 'question_conditions__c'
+        'pages_json__c', 'sections_json__c', 'questions_json__c', 'questions_json_1__c', 'questions_json_2__c', 'page_conditions__c', 'section_conditions__c', 'question_conditions__c'
     };
 
     // Hard cap on how many templates a single export can include. Larger
@@ -87,12 +91,22 @@ public with sharing class neuraFormExportController {
             List<FormTemplateWrapper> wrappers = new List<FormTemplateWrapper>();
             for (Form_Template__c template : templates) {
                 Id tempId = template.Id;
-                wrappers.add(new FormTemplateWrapper(
+                // Capture Id->extref aliases BEFORE addExternalIdValue nulls
+                // the Ids out of the records. See FormTemplateWrapper.refAliases.
+                Map<String, String> aliases = new Map<String, String>();
+                collectRefAliases(new List<SObject>{ template }, aliases);
+                collectRefAliases(templateIdToPagesMap.get(tempId), aliases);
+                collectRefAliases(templateIdToSectionsMap.get(tempId), aliases);
+                collectRefAliases(templateIdToQuestionsMap.get(tempId), aliases);
+
+                FormTemplateWrapper wrapper = new FormTemplateWrapper(
                     (Form_Template__c) addExternalIdValue(template),
                     (List<Form_Page__c>) addExternalIdValues(templateIdToPagesMap.get(tempId)),
                     (List<Form_Section__c>) addExternalIdValues(templateIdToSectionsMap.get(tempId)),
                     (List<Form_Question__c>) addExternalIdValues(templateIdToQuestionsMap.get(tempId))
-                ));
+                );
+                if (!aliases.isEmpty()) wrapper.refAliases = aliases;
+                wrappers.add(wrapper);
             }
 
             return JSON.serialize(wrappers);
@@ -120,6 +134,19 @@ public with sharing class neuraFormExportController {
             ORDER BY Name ASC
             LIMIT 200
         ];
+    }
+
+    /** Record aliases for records whose External_Reference__c differs from
+     *  their Id — the import's FK/criteria maps are keyed by extref while
+     *  the exported child FK fields hold source Ids. */
+    private static void collectRefAliases(List<SObject> records, Map<String, String> aliases) {
+        String extField = NeuraFormUtils.getNamespacePrefix() + 'External_Reference__c';
+        for (SObject r : records) {
+            String ref = (String) r.get(extField);
+            if (r.Id != null && String.isNotBlank(ref) && ref != String.valueOf(r.Id)) {
+                aliases.put(String.valueOf(r.Id), ref);
+            }
+        }
     }
 
     public static SObject addExternalIdValue(SObject record){
@@ -554,6 +581,15 @@ public with sharing class neuraFormExportController {
                 }
             }
 
+            // Source-Id -> extref aliases from the export (records whose
+            // extref isn't their Id, e.g. AIGEN_ refs from AI doc-imports).
+            // Folded into each id map below so FK remaps and conditions
+            // rewriting resolve source-Id references for those records too.
+            Map<String, String> refAliases = new Map<String, String>();
+            for (FormTemplateWrapper wrapper : wrappers) {
+                if (wrapper.refAliases != null) refAliases.putAll(wrapper.refAliases);
+            }
+
             // Track created vs. updated by checking Id presence before upsert.
             // upsert with an external key returns Database.UpsertResult[] when
             // the typed wrapper isn't used, so we use the Database.upsert
@@ -570,6 +606,7 @@ public with sharing class neuraFormExportController {
             // ref (because that's still what's sitting on child FK fields).
             // In normal mode the OLD and current refs are identical.
             Map<String, Id> templateIdMap = buildIdMap(templates, externalReferenceField, newToOldRef);
+            addAliasKeys(templateIdMap, refAliases);
 
             for (Form_Page__c page : pages) {
                 page.Form_Template__c = templateIdMap.get((String) page.Form_Template__c);
@@ -579,6 +616,7 @@ public with sharing class neuraFormExportController {
             Database.UpsertResult[] pageResults = Database.upsert(pages, pageExt, false);
             throwOnFailures(pageResults, 'Form Page');
             Map<String, Id> pageIdMap = buildIdMap(pages, externalReferenceField, newToOldRef);
+            addAliasKeys(pageIdMap, refAliases);
 
             for (Form_Section__c section : sections) {
                 section.Form_Template__c = templateIdMap.get((String) section.Form_Template__c);
@@ -589,6 +627,7 @@ public with sharing class neuraFormExportController {
             Database.UpsertResult[] sectionResults = Database.upsert(sections, sectionExt, false);
             throwOnFailures(sectionResults, 'Form Section');
             Map<String, Id> sectionIdMap = buildIdMap(sections, externalReferenceField, newToOldRef);
+            addAliasKeys(sectionIdMap, refAliases);
 
             for (Form_Question__c question : questions) {
                 question.Form_Template__c = templateIdMap.get((String) question.Form_Template__c);
@@ -600,6 +639,7 @@ public with sharing class neuraFormExportController {
             Database.UpsertResult[] questionResults = Database.upsert(questions, questionExt, false);
             throwOnFailures(questionResults, 'Form Question');
             Map<String, Id> questionIdMap = buildIdMap(questions, externalReferenceField, newToOldRef);
+            addAliasKeys(questionIdMap, refAliases);
 
             // Second pass: rewrite Conditions JSON references from the source
             // org's Ids/UUIDs to the new org's Ids. Track which records
@@ -663,6 +703,18 @@ public with sharing class neuraFormExportController {
             );
             ahe.setMessage('Import failed and was rolled back: ' + e.getMessage());
             throw ahe;
+        }
+    }
+
+    /** Make a resolution map keyed by extref ALSO answer to the source-org
+     *  record Ids carried in the export's refAliases — child FK fields and
+     *  conditions JSON reference records by source Id. */
+    private static void addAliasKeys(Map<String, Id> idMap, Map<String, String> refAliases) {
+        for (String sourceId : refAliases.keySet()) {
+            String extRef = refAliases.get(sourceId);
+            if (idMap.containsKey(extRef) && !idMap.containsKey(sourceId)) {
+                idMap.put(sourceId, idMap.get(extRef));
+            }
         }
     }
 
@@ -920,6 +972,15 @@ public with sharing class neuraFormExportController {
         public List<Form_Section__c> sections;
         @AuraEnabled
         public List<Form_Question__c> questions;
+        // Source-record-Id -> External_Reference__c, for records whose extref
+        // differs from their Id (AI doc-imports use AIGEN_ refs; cross-org
+        // imports keep the origin org's refs). Child FK fields in this export
+        // hold SOURCE IDs, while import resolution maps are keyed by extref —
+        // without these aliases the lookups miss and pages import with a null
+        // Form_Template__c (REQUIRED_FIELD_MISSING, whole import rolled back).
+        // Optional: absent in hand-authored/legacy JSON, where extref == Id.
+        @AuraEnabled
+        public Map<String, String> refAliases;
 
         // constructor
 

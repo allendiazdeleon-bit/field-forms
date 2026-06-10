@@ -903,4 +903,56 @@ private class NeuraFormBuilderControllerTest {
         System.assertEquals('Catalog default', after.Question__c,
             'Override on the binding should prevent Question__c from syncing to catalog');
     }
+
+    @isTest
+    static void createCatalogEntryForBindingPromotesAndLinks() {
+        Form_Question__c q = [SELECT Id FROM Form_Question__c LIMIT 1];
+
+        Test.startTest();
+        Id catId = neuraFormBuilderController.createCatalogEntryForBinding(q.Id);
+        Test.stopTest();
+
+        System.assertNotEquals(null, catId);
+        Form_Question__c after = [
+            SELECT Form_Question_Catalog__c FROM Form_Question__c WHERE Id = :q.Id
+        ];
+        System.assertEquals(catId, after.Form_Question_Catalog__c,
+            'The binding must adopt the new catalog entry.');
+        Form_Question_Catalog__c cat = [
+            SELECT Question__c FROM Form_Question_Catalog__c WHERE Id = :catId
+        ];
+        System.assertEquals('Test Question?', cat.Question__c,
+            'Catalog content is copied from the binding.');
+    }
+
+    @isTest
+    static void scoringSummarySumsCatalogWeights() {
+        Form_Template__c tpl = [SELECT Id FROM Form_Template__c LIMIT 1];
+        tpl.Scoring_Enabled__c = true;
+        tpl.Max_Score__c = 100;
+        update tpl;
+        Form_Question__c q = [SELECT Id FROM Form_Question__c LIMIT 1];
+        Id catId = neuraFormBuilderController.createCatalogEntryForBinding(q.Id);
+        update new Form_Question_Catalog__c(Id = catId, Weight__c = 25);
+
+        Test.startTest();
+        neuraFormBuilderController.ScoringSummary s =
+            neuraFormBuilderController.getScoringSummary(tpl.Id);
+        Test.stopTest();
+
+        System.assertEquals(true, s.scoringEnabled);
+        System.assertEquals(25, s.weightSum, 'Weight comes from the linked catalog entry.');
+        System.assertEquals(100, s.declaredMaxScore);
+        System.assertEquals(1, s.scoredQuestionCount);
+        System.assertEquals(0, s.unscoredQuestionCount);
+    }
+
+    @isTest
+    static void createCatalogEntryForBindingIsIdempotent() {
+        Form_Question__c q = [SELECT Id FROM Form_Question__c LIMIT 1];
+        Id first = neuraFormBuilderController.createCatalogEntryForBinding(q.Id);
+        Id second = neuraFormBuilderController.createCatalogEntryForBinding(q.Id);
+        System.assertEquals(first, second,
+            'Already-linked bindings return the existing entry instead of duplicating.');
+    }
 }

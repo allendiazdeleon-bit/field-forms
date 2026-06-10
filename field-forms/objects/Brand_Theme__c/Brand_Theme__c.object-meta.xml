@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Per-brand (and optionally per-form) visual theme for Field Forms: logo, colors, header, section ordering and locale. Keyed by Scope__c (the same brand partition key as Account.Form_Scope__c / Form_Template__c.Scope__c). Consumed by both the live form renderer (CSS custom properties) and the branded PDF report. Resolution is most-specific-first: form-level (Form_Template__c set) -> brand-level (Scope__c set) -> global default (both null). (Vignette 4)</description>
+    <enableActivities>false</enableActivities>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <label>Brand Theme</label>
+    <pluralLabel>Brand Themes</pluralLabel>
+    <nameField>
+        <displayFormat>BT-{00000}</displayFormat>
+        <label>Brand Theme Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <sharingModel>ReadWrite</sharingModel>
+</CustomObject>

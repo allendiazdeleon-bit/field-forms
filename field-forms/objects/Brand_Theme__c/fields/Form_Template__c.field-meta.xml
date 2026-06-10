@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Form_Template__c</fullName>
+    <description>Optional. When set, this is a FORM-level theme that overrides the brand-level theme for that specific template.</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <externalId>false</externalId>
+    <label>Form Template</label>
+    <referenceTo>Form_Template__c</referenceTo>
+    <relationshipLabel>Brand Themes</relationshipLabel>
+    <relationshipName>Brand_Themes</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

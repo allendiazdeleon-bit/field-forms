@@ -335,6 +335,109 @@ public with sharing class neuraFormBuilderController {
         return [SELECT Id, Label, Icon__c, DeveloperName, MasterLabel, Structure__c, Display_Label__c, Order__c FROM Form_Setting__mdt ORDER BY Order__c ASC];
     }
 
+    public class ScoringSummary {
+        @AuraEnabled public Boolean scoringEnabled = false;
+        @AuraEnabled public Decimal weightSum = 0;
+        @AuraEnabled public Decimal declaredMaxScore;
+        @AuraEnabled public Integer scoredQuestionCount = 0;
+        @AuraEnabled public Integer unscoredQuestionCount = 0;
+    }
+
+    /**
+     * Authoring-time scoring sanity data for the Form settings panel: the
+     * sum of catalog Weight__c across this template's bindings vs the
+     * declared Max_Score__c. "Weights sum to 85 but Max Score is 100" is
+     * the most common scoring misconfiguration and was previously
+     * invisible until someone noticed wrong percentages on completed
+     * inspections.
+     */
+    @AuraEnabled(cacheable=false)
+    public static ScoringSummary getScoringSummary(Id formTemplateId) {
+        ScoringSummary summary = new ScoringSummary();
+        if (formTemplateId == null) return summary;
+
+        List<Form_Template__c> tpl = [
+            SELECT Scoring_Enabled__c, Max_Score__c
+            FROM Form_Template__c WHERE Id = :formTemplateId LIMIT 1
+        ];
+        if (tpl.isEmpty()) return summary;
+        summary.scoringEnabled = tpl[0].Scoring_Enabled__c == true;
+        summary.declaredMaxScore = tpl[0].Max_Score__c;
+
+        for (Form_Question__c q : [
+            SELECT Form_Question_Catalog__r.Weight__c, Type__c
+            FROM Form_Question__c
+            WHERE Form_Template__c = :formTemplateId
+        ]) {
+            if (q.Type__c == 'Display Text') continue;
+            Decimal w = q.Form_Question_Catalog__r != null
+                ? q.Form_Question_Catalog__r.Weight__c : null;
+            if (w != null && w > 0) {
+                summary.weightSum += w;
+                summary.scoredQuestionCount++;
+            } else {
+                summary.unscoredQuestionCount++;
+            }
+        }
+        return summary;
+    }
+
+    /**
+     * Promote an existing, catalog-less binding into its own catalog entry
+     * and link it. The scoring panel needs a catalog record to edit
+     * (Weight/Pass_Criteria live there), but bindings that predate the
+     * catalog — imports, clones of unmatched questions, AI drafts — have no
+     * link and previously no UI path to get one: the panel's directive
+     * pointed at a "Create catalog entry" button that didn't exist.
+     * Auto-create only covers NEW bindings saved while the flag is on.
+     *
+     * Content is copied with the same CATALOG_CONTENT_FIELDS list the
+     * auto-create and read-side resolution use, so all three stay in sync.
+     * Returns the new catalog Id for the panel to adopt immediately.
+     */
+    @AuraEnabled(cacheable=false)
+    public static Id createCatalogEntryForBinding(Id questionId) {
+        if (questionId == null) {
+            throw new AuraHandledException('A saved question is required.');
+        }
+        try {
+            String fieldList = String.join(CATALOG_CONTENT_FIELDS, ', ');
+            Form_Question__c binding = Database.query(
+                'SELECT Id, Form_Question_Catalog__c, Form_Template__r.Scope__c, '
+                + fieldList
+                + ' FROM Form_Question__c WHERE Id = :questionId LIMIT 1'
+            );
+            if (binding.Form_Question_Catalog__c != null) {
+                return binding.Form_Question_Catalog__c;
+            }
+
+            Form_Question_Catalog__c cat = new Form_Question_Catalog__c();
+            cat.External_Reference__c = 'builder_' + generateExternalRef();
+            // Partition the entry to the template's brand so catalog
+            // scoping/matching stays consistent with the brand spine.
+            cat.Scope__c = binding.Form_Template__r != null
+                ? binding.Form_Template__r.Scope__c : null;
+            for (String f : CATALOG_CONTENT_FIELDS) {
+                Object val = binding.get(f);
+                if (val != null) cat.put(f, val);
+            }
+            SObjectAccessDecision decision = Security.stripInaccessible(
+                AccessType.CREATABLE, new List<Form_Question_Catalog__c>{ cat }
+            );
+            insert decision.getRecords();
+            Id catId = decision.getRecords()[0].Id;
+
+            update new Form_Question__c(Id = questionId, Form_Question_Catalog__c = catId);
+            return catId;
+        } catch (AuraHandledException e) {
+            throw e;
+        } catch (Exception e) {
+            AuraHandledException ahe = new AuraHandledException(e.getMessage());
+            ahe.setMessage(e.getMessage());
+            throw ahe;
+        }
+    }
+
     @AuraEnabled(cacheable=false)
     public static List<SObject> processFormUpdate(List<SObject> toCreate, List<SObject> toUpdate, List<Id> toDelete){
         // Wrap every DML so the actual error message reaches the LWC. Raw

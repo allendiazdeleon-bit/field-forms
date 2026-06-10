@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Form_Scope__c</fullName>
+    <description>Brand partition key for Field Forms. Paired with Form_Template__c.Scope__c and Form_Question_Catalog__c.Scope__c: the brand form-management hub on this Account lists/creates/clones/imports templates stamped with this value (null on a catalog/template = globally available). Stable and rename-safe — the Account name can change in a rebrand without orphaning the brand's forms, since the partition key lives here independently. Free-form text matches the existing Scope__c convention (see Form_Question_Catalog__c.Scope__c).</description>
+    <externalId>false</externalId>
+    <label>Form Scope</label>
+    <length>80</length>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

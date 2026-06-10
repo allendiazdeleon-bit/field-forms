@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Dedupe_Key__c</fullName>
+    <caseSensitive>false</caseSensitive>
+    <description>Uniqueness guard for open alerts: Account Id + SHA-256 of the normalized pattern text, set by NeuraFormAnomalyEscalation. The unique index closes the check-then-insert race between concurrent queueables (two findings landing at once can both pass the open-alert query). When an alert closes (Sent/Dismissed), AnomalyAlertTrigger suffixes this with the record Id to free the slot so the same pattern can re-alert later.</description>
+    <externalId>true</externalId>
+    <label>Dedupe Key</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

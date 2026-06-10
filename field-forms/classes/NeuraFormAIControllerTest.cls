@@ -126,6 +126,24 @@ private class NeuraFormAIControllerTest {
         Integer questionCount = [SELECT COUNT() FROM Form_Question__c WHERE Form_Template__c = :result.formTemplateId];
         System.assertEquals(2, pageCount);
         System.assertEquals(3, questionCount);
+
+        // Guard the spec->import contract: the question text, type, and page FK
+        // must actually land. (A prior bug routed this through the adapter
+        // pipeline, which dropped Question__c/Type__c/Form_Page__c.) Question__c
+        // is a long-text field and can't be filtered in SOQL, so order by
+        // Order__c and assert on the first question ("Serial Number", Text, required).
+        List<Form_Question__c> qs = [
+            SELECT Question__c, Type__c, Required__c, Form_Page__c, Form_Section__c
+            FROM Form_Question__c
+            WHERE Form_Template__c = :result.formTemplateId
+            ORDER BY Order__c
+        ];
+        Form_Question__c serial = qs[0];
+        System.assertEquals('Serial Number', serial.Question__c, 'Question text should persist.');
+        System.assertEquals('Text', serial.Type__c, 'Question type should persist.');
+        System.assertEquals(true, serial.Required__c, 'Required flag should persist.');
+        System.assertNotEquals(null, serial.Form_Page__c, 'Question should be linked to a page.');
+        System.assertNotEquals(null, serial.Form_Section__c, 'Question should be linked to a section.');
     }
 
     @isTest
@@ -231,5 +249,173 @@ private class NeuraFormAIControllerTest {
         System.assert(systemPrompt.contains('JSON'));
         System.assert(userPrompt.contains('test'));
         System.assert(userPrompt.contains('industry'));
+    }
+
+    @isTest
+    static void generatesFromDocumentAndStampsScope() {
+        enableAI();
+        NeuraFormAIController.mockLLMResponse = validSpecJson();
+
+        Test.startTest();
+        NeuraFormAIController.GenerationResult result =
+            NeuraFormAIController.generateTemplateFromDocument(
+                'BURGER KING FOOD SAFETY AUDIT\nSection 1: Refrigeration\n1. Hardware Seal #3 (Intact/Damaged/Missing)',
+                'BURGER_KING', null);
+        Test.stopTest();
+
+        System.assertNotEquals(null, result.formTemplateId, 'Template should be created from the document.');
+        Form_Template__c tpl = [SELECT Scope__c FROM Form_Template__c WHERE Id = :result.formTemplateId];
+        System.assertEquals('BURGER_KING', tpl.Scope__c,
+            'Document import should land in the brand scope partition.');
+    }
+
+    @isTest
+    static void adoptsCatalogTypeOverLlmGuess() {
+        enableAI();
+        FieldForms_Configuration__c cfg = FieldForms_Configuration__c.getInstance();
+        cfg.Question_Catalog_Enabled__c = true;
+        upsert cfg;
+
+        // Curated catalog entry: canonical type is Radio Buttons (the LLM will guess Dropdown).
+        Form_Question_Catalog__c cat = new Form_Question_Catalog__c(
+            Question__c = 'Hardware Seal #3', Type__c = 'Radio Buttons', Scope__c = 'ACME_CAT'
+        );
+        insert cat;
+
+        NeuraFormAIController.mockLLMResponse = JSON.serialize(new Map<String, Object>{
+            'name' => 'Audit',
+            'pages' => new List<Object>{ new Map<String, Object>{
+                'title' => 'P1', 'sections' => new List<Object>{ new Map<String, Object>{
+                    'title' => 'S1', 'columns' => 1, 'questions' => new List<Object>{
+                        new Map<String, Object>{
+                            'label' => 'Hardware Seal #3', 'type' => 'Dropdown', 'required' => true,
+                            'valueSet' => new List<Object>{ 'Intact', 'Damaged' }
+                        }
+                    }
+                }}
+            }}
+        });
+
+        Test.startTest();
+        NeuraFormAIController.GenerationResult r =
+            NeuraFormAIController.generateTemplateFromDocument('A document long enough to pass.', 'ACME_CAT', null);
+        Test.stopTest();
+
+        Form_Question__c q = [
+            SELECT Type__c, Form_Question_Catalog__c
+            FROM Form_Question__c WHERE Form_Template__c = :r.formTemplateId LIMIT 1
+        ];
+        System.assertEquals('Radio Buttons', q.Type__c,
+            'Catalog canonical type should override the LLM guess.');
+        System.assertEquals(cat.Id, q.Form_Question_Catalog__c,
+            'Matched question should be bound to the catalog entry.');
+    }
+
+    @isTest
+    static void normalizeLabelMatchesIgnoringCaseAndPunctuation() {
+        System.assertEquals('hardware seal #3', NeuraFormAIController.normalizeLabel('  Hardware   Seal #3?  '));
+        System.assertEquals('prep surfaces sanitized', NeuraFormAIController.normalizeLabel('Prep surfaces sanitized?'));
+    }
+
+    @isTest
+    static void blocksOnEmptyDocument() {
+        enableAI();
+        Boolean threw = false;
+        try {
+            NeuraFormAIController.generateTemplateFromDocument('   ', 'BURGER_KING', null);
+        } catch (AuraHandledException e) {
+            threw = true;
+        }
+        System.assert(threw, 'Should reject an empty document.');
+    }
+
+    @isTest
+    static void draftsOutputTemplateAndStoresOnTheme() {
+        enableAI();
+        NeuraFormAIController.mockLLMResponse =
+            '```html\n<div style="border-top:6px solid {{brand.primaryColor}}">' +
+            '{{brand.headerText}}{{answers}}{{findings}}{{signature}}</div>\n```';
+
+        Test.startTest();
+        NeuraFormAIController.OutputTemplateResult r =
+            NeuraFormAIController.draftOutputTemplateFromDocument(
+                'ACME AUDIT\nSection 1: Safety\n1. Extinguisher present? Yes/No', 'ACME_OUT', null);
+        Test.stopTest();
+
+        System.assertNotEquals(null, r.brandThemeId, 'A brand theme should be created/updated.');
+        System.assert(r.htmlLength > 0);
+        Brand_Theme__c bt = [
+            SELECT Scope__c, Output_Template_Html__c FROM Brand_Theme__c WHERE Id = :r.brandThemeId
+        ];
+        System.assertEquals('ACME_OUT', bt.Scope__c);
+        System.assert(bt.Output_Template_Html__c.contains('{{answers}}'),
+            'Template should be stored with merge tokens.');
+        System.assert(!bt.Output_Template_Html__c.startsWith('```'),
+            'Code fence should be stripped.');
+    }
+
+    @isTest
+    static void draftOutputTemplateUpdatesExistingActiveTheme() {
+        enableAI();
+        Brand_Theme__c existing = new Brand_Theme__c(
+            Scope__c = 'ACME_OUT', Active__c = true, Primary_Color__c = '#E4002B'
+        );
+        insert existing;
+        NeuraFormAIController.mockLLMResponse = '<div>{{answers}}</div>';
+
+        Test.startTest();
+        NeuraFormAIController.OutputTemplateResult r =
+            NeuraFormAIController.draftOutputTemplateFromDocument('doc text here', 'ACME_OUT', null);
+        Test.stopTest();
+
+        System.assertEquals(existing.Id, r.brandThemeId,
+            'An existing active brand-level theme must be updated, not duplicated.');
+        System.assertEquals(1, [SELECT COUNT() FROM Brand_Theme__c WHERE Scope__c = 'ACME_OUT']);
+    }
+
+    @isTest
+    static void draftOutputTemplateRejectsTokenlessHtml() {
+        enableAI();
+        NeuraFormAIController.mockLLMResponse = '<div>no merge tokens at all</div>';
+        Boolean threw = false;
+        try {
+            NeuraFormAIController.draftOutputTemplateFromDocument('doc text here', 'ACME_OUT', null);
+        } catch (AuraHandledException e) {
+            threw = true;
+        }
+        System.assert(threw, 'HTML without merge tokens is not a usable template.');
+        System.assertEquals(0, [SELECT COUNT() FROM Brand_Theme__c WHERE Scope__c = 'ACME_OUT'],
+            'A rejected draft must not create a theme.');
+    }
+
+    @isTest
+    static void draftOutputTemplateRequiresScope() {
+        enableAI();
+        NeuraFormAIController.mockLLMResponse = '<div>{{answers}}</div>';
+        Boolean threw = false;
+        try {
+            NeuraFormAIController.draftOutputTemplateFromDocument('some doc', '  ', null);
+        } catch (AuraHandledException e) {
+            threw = true;
+        }
+        System.assert(threw, 'Should require a brand scope to attach the template.');
+    }
+
+    @isTest
+    static void stripCodeFenceUnwrapsFencedHtml() {
+        System.assertEquals('<div></div>',
+            NeuraFormAIController.stripCodeFence('```html\n<div></div>\n```'));
+        System.assertEquals('<p>x</p>',
+            NeuraFormAIController.stripCodeFence('<p>x</p>'));
+    }
+
+    @isTest
+    static void documentPromptCarriesFidelityRules() {
+        String sys = NeuraFormAIController.buildDocumentSystemPrompt();
+        System.assert(sys.contains('DOCUMENT-CONVERSION'), 'Doc system prompt should set conversion mode.');
+        System.assert(sys.contains('faithfully'), 'Doc system prompt should stress fidelity.');
+        String usr = NeuraFormAIController.buildDocumentUserPrompt('MY AUDIT DOC', 'pest control');
+        System.assert(usr.contains('MY AUDIT DOC'));
+        System.assert(usr.contains('pest control'));
     }
 }

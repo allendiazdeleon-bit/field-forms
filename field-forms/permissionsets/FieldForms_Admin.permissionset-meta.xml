@@ -9,6 +9,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>NeuraFormLLMService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>NeuraFormCatalogBackfillBatch</apexClass>
         <enabled>true</enabled>
     </classAccesses>
@@ -769,6 +773,31 @@
         <field>Linked_Form__c.Work_Order__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Page__c.Conditions__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Section__c.Conditions__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Question__c.Lookup_Child_Object__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Question__c.Lookup_Display_Field__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Question__c.Lookup_Related_List__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>FieldForms Admin</label>
     <objectPermissions>
@@ -874,6 +903,10 @@
     </tabSettings>
     <tabSettings>
         <tab>Linked_Form__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>Form_Question_Catalog__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
 </PermissionSet>

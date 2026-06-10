@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <description>When an inspection finding is created, evaluates the location's recent visit history and opens an Anomaly Alert (with an AI-drafted brand-facing message) once the same finding has recurred past threshold. (Vignette 3)</description>
+    <environments>Default</environments>
+    <interviewLabel>Field Forms Anomaly Escalation {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Field Forms Anomaly Escalation</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <actionCalls>
+        <name>Escalate_Anomalies</name>
+        <label>Escalate Anomalies</label>
+        <locationX>176</locationX>
+        <locationY>288</locationY>
+        <actionName>NeuraFormAnomalyEscalation</actionName>
+        <actionType>apex</actionType>
+        <flowTransactionModel>Automatic</flowTransactionModel>
+        <inputParameters>
+            <name>linkedFormId</name>
+            <value>
+                <elementReference>$Record.Linked_Form__c</elementReference>
+            </value>
+        </inputParameters>
+        <nameSegment>NeuraFormAnomalyEscalation</nameSegment>
+    </actionCalls>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Escalate_Anomalies</targetReference>
+        </connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Status__c</field>
+            <operator>EqualTo</operator>
+            <value>
+                <stringValue>Open</stringValue>
+            </value>
+        </filters>
+        <filters>
+            <field>Linked_Form__c</field>
+            <operator>IsNull</operator>
+            <value>
+                <booleanValue>false</booleanValue>
+            </value>
+        </filters>
+        <object>Form_Finding__c</object>
+        <recordTriggerType>Create</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>

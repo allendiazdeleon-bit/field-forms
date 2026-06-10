@@ -24,14 +24,17 @@
                 padding: 0;
             }
             .header {
-                border-bottom: 2px solid #0070d2;
+                border-bottom: 3px solid {!data.brandPrimaryColor};
                 padding-bottom: 8pt;
                 margin-bottom: 14pt;
             }
+            .header table { width: 100%; border-collapse: collapse; }
+            .header .logo-cell { width: 90pt; vertical-align: middle; }
+            .header .logo-cell img { max-height: 48pt; max-width: 90pt; }
             .header h1 {
                 margin: 0;
                 font-size: 18pt;
-                color: #0070d2;
+                color: {!data.brandPrimaryColor};
             }
             .header .meta {
                 font-size: 9pt;
@@ -39,24 +42,21 @@
                 margin-top: 4pt;
             }
             .summary-box {
-                background: #f5f9ff;
-                border: 1px solid #c9def7;
+                background: #f7f7f8;
+                border: 1px solid #e5e5e5;
+                border-left: 4px solid {!data.brandPrimaryColor};
                 border-radius: 4pt;
                 padding: 8pt 10pt;
                 margin-bottom: 14pt;
             }
             .summary-box h2 {
                 font-size: 10pt;
-                color: #0070d2;
+                color: {!data.brandPrimaryColor};
                 margin: 0 0 4pt;
                 text-transform: uppercase;
                 letter-spacing: 0.04em;
             }
-            .summary-box p {
-                margin: 0;
-                font-size: 10pt;
-                line-height: 1.4;
-            }
+            .summary-box p { margin: 0; font-size: 10pt; line-height: 1.4; }
             .page-group { page-break-inside: avoid; margin-bottom: 12pt; }
             .page-group h2 {
                 font-size: 13pt;
@@ -66,66 +66,76 @@
                 color: #181818;
             }
             .section-group { margin-bottom: 8pt; }
-            .section-group h3 {
-                font-size: 11pt;
-                margin: 8pt 0 4pt;
-                color: #444;
+            .section-group h3 { font-size: 11pt; margin: 8pt 0 4pt; color: #444; }
+            table.answers { width: 100%; border-collapse: collapse; margin-bottom: 4pt; }
+            table.answers td { padding: 5pt 6pt; vertical-align: top; border-bottom: 1px solid #f0f0f0; }
+            table.answers td.label { width: 38%; color: #555; font-size: 9pt; }
+            table.answers td.value { color: #181818; font-size: 10pt; font-weight: 500; }
+            .comment { font-size: 9pt; color: #888; font-style: italic; display: block; margin-top: 2pt; }
+            .findings { page-break-inside: avoid; margin: 14pt 0; }
+            .findings h2 {
+                font-size: 13pt; margin: 0 0 6pt; padding-bottom: 3pt;
+                border-bottom: 1px solid #e5e5e5; color: {!data.brandPrimaryColor};
             }
-            table.answers {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 4pt;
+            table.findings-tbl { width: 100%; border-collapse: collapse; }
+            table.findings-tbl th {
+                text-align: left; font-size: 8pt; text-transform: uppercase;
+                color: #888; padding: 4pt 6pt; border-bottom: 1px solid #e5e5e5;
             }
-            table.answers td {
-                padding: 5pt 6pt;
-                vertical-align: top;
-                border-bottom: 1px solid #f0f0f0;
+            table.findings-tbl td { padding: 5pt 6pt; font-size: 9pt; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+            .sev { font-weight: bold; }
+            .sev-Critical, .sev-High { color: #c23934; }
+            .sev-Medium { color: #8a6d00; }
+            .sev-Low { color: #555; }
+            .signature-block {
+                page-break-inside: avoid; margin-top: 22pt; padding-top: 10pt;
+                border-top: 2px solid {!data.brandPrimaryColor};
             }
-            table.answers td.label {
-                width: 38%;
-                color: #555;
-                font-size: 9pt;
-            }
-            table.answers td.value {
-                color: #181818;
-                font-size: 10pt;
-                font-weight: 500;
-            }
-            .comment {
-                font-size: 9pt;
-                color: #888;
-                font-style: italic;
-                display: block;
-                margin-top: 2pt;
-            }
+            .signature-block h2 { font-size: 11pt; color: {!data.brandPrimaryColor}; margin: 0 0 6pt; }
+            .signature-block .sig-meta { font-size: 9pt; color: #555; line-height: 1.5; }
+            .signature-block .sig-name { font-size: 13pt; color: #181818; font-weight: bold; }
             .footer-note {
-                margin-top: 18pt;
-                font-size: 8pt;
-                color: #888;
-                border-top: 1px solid #e5e5e5;
-                padding-top: 6pt;
+                margin-top: 18pt; font-size: 8pt; color: #888;
+                border-top: 1px solid #e5e5e5; padding-top: 6pt;
             }
         </style>
     </head>
     <body>
+        <!-- Brand-supplied output template (mirrors the customer's document):
+             render the merged HTML as-is. Falls back to the fixed layout below
+             when the brand has no output template. -->
+        <apex:outputText rendered="{!data.hasRenderedHtml}" escape="false" value="{!data.renderedHtml}"/>
+
+        <apex:outputPanel rendered="{!NOT(data.hasRenderedHtml)}" layout="none">
         <div class="header">
-            <h1>{!data.templateName}</h1>
-            <div class="meta">
-                <apex:outputText value="Form: {!data.linkedFormName}"/>
-                <apex:outputPanel rendered="{!NOT(ISBLANK(data.workOrderNumber))}">
-                    &nbsp;|&nbsp;
-                    <apex:outputText value="Work Order: {!data.workOrderNumber}"/>
-                </apex:outputPanel>
-                &nbsp;|&nbsp;
-                <apex:outputText value="Status: {!data.status}"/>
-                <br/>
-                <apex:outputText value="Completed: {0,date,MMM d, yyyy h:mm a}">
-                    <apex:param value="{!data.completedDate}"/>
-                </apex:outputText>
-            </div>
+            <table>
+                <tr>
+                    <apex:outputPanel rendered="{!NOT(ISBLANK(data.brandLogoUrl))}" layout="none">
+                        <td class="logo-cell">
+                            <img src="{!data.brandLogoUrl}" alt="logo"/>
+                        </td>
+                    </apex:outputPanel>
+                    <td>
+                        <h1>{!data.brandHeaderText}</h1>
+                        <div class="meta">
+                            <apex:outputText value="Form: {!data.linkedFormName}"/>
+                            <apex:outputPanel rendered="{!NOT(ISBLANK(data.workOrderNumber))}" layout="none">
+                                &nbsp;|&nbsp;
+                                <apex:outputText value="Work Order: {!data.workOrderNumber}"/>
+                            </apex:outputPanel>
+                            &nbsp;|&nbsp;
+                            <apex:outputText value="Status: {!data.status}"/>
+                            <br/>
+                            <apex:outputText value="Completed: {0,date,MMM d, yyyy h:mm a}">
+                                <apex:param value="{!data.completedDate}"/>
+                            </apex:outputText>
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </div>
 
-        <apex:outputPanel rendered="{!NOT(ISBLANK(data.serviceSummary))}">
+        <apex:outputPanel rendered="{!NOT(ISBLANK(data.serviceSummary))}" layout="none">
             <div class="summary-box">
                 <h2>Service Summary</h2>
                 <p>{!data.serviceSummary}</p>
@@ -137,7 +147,7 @@
                 <h2>{!pg.title}</h2>
                 <apex:repeat value="{!pg.sections}" var="sec">
                     <div class="section-group">
-                        <apex:outputPanel rendered="{!NOT(ISBLANK(sec.title))}">
+                        <apex:outputPanel rendered="{!NOT(ISBLANK(sec.title))}" layout="none">
                             <h3>{!sec.title}</h3>
                         </apex:outputPanel>
                         <table class="answers">
@@ -146,7 +156,7 @@
                                     <td class="label">{!row.label}</td>
                                     <td class="value">
                                         {!row.value}
-                                        <apex:outputPanel rendered="{!NOT(ISBLANK(row.comment))}">
+                                        <apex:outputPanel rendered="{!NOT(ISBLANK(row.comment))}" layout="none">
                                             <span class="comment">Note: {!row.comment}</span>
                                         </apex:outputPanel>
                                     </td>
@@ -158,8 +168,46 @@
             </div>
         </apex:repeat>
 
+        <apex:outputPanel rendered="{!AND(NOT(ISNULL(data.findings)), data.findings.size > 0)}" layout="none">
+            <div class="findings">
+                <h2>Findings &amp; Action Items</h2>
+                <table class="findings-tbl">
+                    <tr>
+                        <th style="width:14%">Severity</th>
+                        <th style="width:30%">Area</th>
+                        <th style="width:40%">Observation</th>
+                        <th style="width:16%">Status</th>
+                    </tr>
+                    <apex:repeat value="{!data.findings}" var="f">
+                        <tr>
+                            <td class="sev sev-{!f.severity}">{!f.severity}</td>
+                            <td>{!f.questionLabel}</td>
+                            <td>{!f.notes}</td>
+                            <td>{!f.status}</td>
+                        </tr>
+                    </apex:repeat>
+                </table>
+            </div>
+        </apex:outputPanel>
+
+        <apex:outputPanel rendered="{!data.hasSignature}" layout="none">
+            <div class="signature-block">
+                <h2>Signed On Site</h2>
+                <div class="sig-name">{!data.signedByName}</div>
+                <div class="sig-meta">
+                    <apex:outputText value="Signed: {0,date,MMM d, yyyy h:mm a}">
+                        <apex:param value="{!data.signatureCapturedAt}"/>
+                    </apex:outputText>
+                    <apex:outputPanel rendered="{!NOT(ISBLANK(data.signatureGeo))}" layout="none">
+                        <br/>Location: {!data.signatureGeo}
+                    </apex:outputPanel>
+                </div>
+            </div>
+        </apex:outputPanel>
+
         <div class="footer-note">
             Generated by NeuraFlash Field Forms.
         </div>
+        </apex:outputPanel>
     </body>
 </apex:page>

@@ -19,7 +19,6 @@
  */
 public with sharing class NeuraFormAIController {
 
-    @TestVisible private static final String DEFAULT_MODEL = 'sfdc_ai__DefaultGPT4Omni';
     @TestVisible private static Integer MAX_PAGES = 10;
     @TestVisible private static Integer MAX_QUESTIONS_PER_FORM = 200;
 
@@ -45,21 +44,120 @@ public with sharing class NeuraFormAIController {
             throw new AuraHandledException('Provide a description of the form you want to generate.');
         }
         ensureAIEnabled();
+        return runGeneration(buildSystemPrompt(), buildUserPrompt(prompt, context), null);
+    }
 
+    /**
+     * Draft a form from a customer-supplied document (Word/PDF) that they've
+     * asked us to follow. The binary -> text extraction happens upstream
+     * (client-side or a parse service); this takes the extracted text and the
+     * brand `scope` so the generated template lands in that brand's partition
+     * (Form_Template__c.Scope__c = scope), ready for review in the builder.
+     */
+    @AuraEnabled
+    public static GenerationResult generateTemplateFromDocument(String documentText, String scope, String context) {
+        if (String.isBlank(documentText)) {
+            throw new AuraHandledException('Provide the extracted text of the document to convert.');
+        }
+        ensureAIEnabled();
+        return runGeneration(
+            buildDocumentSystemPrompt(),
+            buildDocumentUserPrompt(documentText, context),
+            scope
+        );
+    }
+
+    public class OutputTemplateResult {
+        @AuraEnabled public Id brandThemeId;
+        @AuraEnabled public Integer htmlLength;
+    }
+
+    /**
+     * Draft the branded REPORT OUTPUT template (HTML with merge tokens) from the
+     * same customer document, mirroring its layout. Stored on the brand-level
+     * Brand_Theme__c for the scope (created if absent), where the branded PDF
+     * picks it up. This is the presentation half of "follow their template";
+     * the result is meant to be reviewed/polished by a human.
+     */
+    @AuraEnabled
+    public static OutputTemplateResult draftOutputTemplateFromDocument(
+        String documentText, String scope, String context
+    ) {
+        if (String.isBlank(documentText)) {
+            throw new AuraHandledException('Provide the extracted text of the document.');
+        }
+        if (String.isBlank(scope)) {
+            throw new AuraHandledException('A brand scope is required to attach the template.');
+        }
+        ensureAIEnabled();
         try {
-            String llmText = invokeLLM(buildSystemPrompt(), buildUserPrompt(prompt, context));
+            String llm = invokeLLM(
+                buildOutputTemplateSystemPrompt(),
+                buildDocumentUserPrompt(documentText, context)
+            );
+            String html = stripCodeFence(llm);
+            if (String.isBlank(html) || !html.contains('{{')) {
+                throw new AuraHandledException(
+                    'The model did not return a usable template (no merge tokens found).'
+                );
+            }
+            // Upsert the brand-level theme (Form_Template__c == null) for this
+            // scope. Filter to Active + order deterministically: stamping the
+            // HTML onto an inactive or arbitrary row is a silent no-op at
+            // render time because resolve() only reads active themes.
+            List<Brand_Theme__c> existing = [
+                SELECT Id FROM Brand_Theme__c
+                WHERE Scope__c = :scope AND Form_Template__c = null
+                  AND Active__c = true
+                ORDER BY LastModifiedDate DESC
+                LIMIT 1
+            ];
+            Brand_Theme__c bt = existing.isEmpty()
+                ? new Brand_Theme__c(Scope__c = scope, Active__c = true)
+                : existing[0];
+            bt.Output_Template_Html__c = html;
+            SObjectAccessDecision decision = Security.stripInaccessible(
+                bt.Id == null ? AccessType.CREATABLE : AccessType.UPDATABLE,
+                new List<Brand_Theme__c>{ bt }
+            );
+            upsert decision.getRecords();
+            bt = (Brand_Theme__c) decision.getRecords()[0];
+
+            OutputTemplateResult r = new OutputTemplateResult();
+            r.brandThemeId = bt.Id;
+            r.htmlLength = html.length();
+            return r;
+        } catch (AuraHandledException e) {
+            throw e;
+        } catch (Exception e) {
+            AuraHandledException w = new AuraHandledException(
+                'Output template drafting failed: ' + e.getMessage()
+            );
+            w.setMessage('Output template drafting failed: ' + e.getMessage());
+            throw w;
+        }
+    }
+
+    /**
+     * Shared LLM -> parse -> validate -> import core. `scope` (nullable) is
+     * stamped onto the generated template so document imports land in the
+     * brand's partition; freeform prompt generation passes null.
+     *
+     * Delegates to importTemplatesAsNew(): importTemplates() now routes through
+     * the adapter pipeline (expects native export format and silently drops
+     * Question__c/Type__c/Form_Page__c from this wrapper shape). importTemplatesAsNew()
+     * consumes the FormTemplateWrapper directly, populates every field + FK,
+     * regenerates External_Reference__c, and rebuilds the JSON snapshot in-txn.
+     */
+    private static GenerationResult runGeneration(String systemPrompt, String userPrompt, String scope) {
+        try {
+            String llmText = invokeLLM(systemPrompt, userPrompt);
             Map<String, Object> spec = extractJsonObject(llmText);
             validateSpec(spec);
 
-            // Transform the simple AI spec into the FormTemplateWrapper JSON
-            // consumed by the existing import pipeline, then delegate to it
-            // so all the FLS / sharing / upsert behavior is shared.
-            String wrapperJson = transformSpecToImportJson(spec);
-            // importTemplates now returns ImportResult and handles snapshot
-            // rebuild internally, so we no longer need a follow-up
-            // processTemplates call.
+            String wrapperJson = transformSpecToImportJson(spec, scope);
             neuraFormExportController.ImportResult imported =
-                neuraFormExportController.importTemplates(wrapperJson);
+                neuraFormExportController.importTemplatesAsNew(wrapperJson);
 
             if (imported == null || imported.templates == null || imported.templates.isEmpty()) {
                 throw new AuraHandledException('Import succeeded but no template was returned.');
@@ -113,30 +211,21 @@ public with sharing class NeuraFormAIController {
         if (mockLLMResponse != null) {
             return mockLLMResponse;
         }
-        // The exact ConnectApi.EinsteinLLM class names vary across Salesforce
-        // releases. To keep the package deployable on any org, this method
-        // is intentionally a stub: it throws a clear error unless wired up
-        // for the target org's Einstein API. Tests cover the parsing /
-        // transform / import path via the mockLLMResponse hook above.
-        //
-        // To enable AI form generation in your org:
-        //   1. Confirm Einstein Generative AI is provisioned.
-        //   2. Replace this method body with the ConnectApi.EinsteinLLM call
-        //      shape that compiles against your org's Salesforce release.
-        //      As of recent releases the input/output classes are roughly
-        //      EinsteinPromptTextGenerationsInput / EinsteinLlmGenerationsInput /
-        //      EinsteinLlmGenerationsResponseRepresentation - confirm in the
-        //      Apex Developer Guide for your org's API version.
-        //   3. Toggle FieldForms_Configuration__c.Enable_AI_Features__c on.
-        //
-        // Until then, the AI Generate button stays hidden (gated by the
-        // Enable_AI_Features__c flag) and this method is only reachable via
-        // tests that supply mockLLMResponse.
-        AuraHandledException notWired = new AuraHandledException(
-            'AI generation is not wired for this org. See NeuraFormAIController.invokeLLM() docstring.'
-        );
-        notWired.setMessage('AI generation is not wired for this org. See NeuraFormAIController.invokeLLM() docstring.');
-        throw notWired;
+        // Real call: NeuraFormLLMService (the package's single point of
+        // coupling to the Models API / Einstein Trust Layer). The service
+        // never throws; for this interactive path a failure must surface to
+        // the admin's toast, so re-raise its recorded cause (e.g. HTTP 403 =
+        // missing permission, 429 = rate/usage limit).
+        String text = NeuraFormLLMService.chat(systemPrompt, userPrompt);
+        if (text == null) {
+            String cause = String.isNotBlank(NeuraFormLLMService.lastError)
+                ? NeuraFormLLMService.lastError
+                : 'Einstein returned no generations.';
+            AuraHandledException e = new AuraHandledException(cause);
+            e.setMessage(cause);
+            throw e;
+        }
+        return text;
     }
 
     // ------------------------------------------------------------------------
@@ -190,6 +279,83 @@ public with sharing class NeuraFormAIController {
             result += '\n\nAdditional context: ' + context;
         }
         return result;
+    }
+
+    /**
+     * Same strict-JSON schema as buildSystemPrompt(), but the task is to
+     * FAITHFULLY REPRODUCE a customer-supplied document rather than invent a
+     * form. The fidelity rules matter: the customer asked us to follow their
+     * template, so preserve their wording, sections, ordering, and options.
+     */
+    @TestVisible
+    private static String buildDocumentSystemPrompt() {
+        return buildSystemPrompt() + '\n\n' +
+            'DOCUMENT-CONVERSION MODE:\n' +
+            '- The user message is the extracted text of a customer-provided inspection ' +
+            'document (e.g. a Word/PDF audit form) that we must follow exactly.\n' +
+            '- Reproduce the document faithfully: keep the section structure and the ' +
+            'order of sections and questions as they appear in the document.\n' +
+            '- Preserve the customer\'s question wording verbatim where practical.\n' +
+            '- Map each question to the closest field type; when the document lists ' +
+            'fixed answer options, use a choice type (Dropdown / Multiple Choice / ' +
+            'Radio Buttons) and put the options in "valueSet".\n' +
+            '- Use the document\'s own title as "name" when it has one.\n' +
+            '- Do NOT invent questions that are not present in the document.';
+    }
+
+    @TestVisible
+    private static String buildDocumentUserPrompt(String documentText, String context) {
+        String result = 'Convert the following customer document into the form JSON. ' +
+            'Follow its structure and wording faithfully:\n\n' + documentText;
+        if (String.isNotBlank(context)) {
+            result += '\n\nAdditional context: ' + context;
+        }
+        return result;
+    }
+
+    /**
+     * System prompt for drafting the branded report OUTPUT template: a single
+     * HTML fragment with merge tokens, laid out to mirror the customer's
+     * document. Rendered by NeuraFormReportPDF via renderAs="pdf".
+     */
+    @TestVisible
+    private static String buildOutputTemplateSystemPrompt() {
+        return
+            'You produce an HTML REPORT TEMPLATE that mirrors the layout of a ' +
+            'customer-provided inspection document, for a PDF generator.\n\n' +
+            'Output rules:\n' +
+            '- Output ONE HTML fragment only: a single root <div>. No markdown, no ' +
+            'commentary, no <html>/<head>/<body> tags.\n' +
+            '- Use INLINE styles only (style="..."). No <style> blocks, no external CSS, ' +
+            'no <script>, no remote fonts. Use web-safe fonts (Arial, Helvetica).\n' +
+            '- Reproduce the document\'s structure: header/title area, the section ' +
+            'headings in the same order, a findings/action area, and a sign-off area.\n\n' +
+            'Insert these MERGE TOKENS (they are replaced with live data at render time):\n' +
+            '  {{brand.logo}}          - brand logo <img>\n' +
+            '  {{brand.headerText}}    - report title / brand header\n' +
+            '  {{brand.primaryColor}}  - brand hex color (use in inline styles for accents)\n' +
+            '  {{report.formName}}     {{report.status}}   {{report.completedDate}}   {{report.workOrder}}\n' +
+            '  {{answers}}             - the full pages/sections/questions block\n' +
+            '  {{findings}}            - the findings/exceptions table\n' +
+            '  {{signature}}           - the on-site signature block\n' +
+            '  {{answer:Exact Question Label}} - a single answer value, for precise placement\n\n' +
+            '- Put {{answers}} where the body of results belongs, {{findings}} in the ' +
+            'findings/action section, and {{signature}} in the sign-off area.\n' +
+            '- Style headers/borders with {{brand.primaryColor}} so it looks on-brand.\n' +
+            '- Do NOT hardcode answer values you see in the document text; use tokens.';
+    }
+
+    /** Strip a leading ```lang fence and trailing ``` if the model wrapped output. */
+    @TestVisible
+    private static String stripCodeFence(String s) {
+        if (String.isBlank(s)) return s;
+        String t = s.trim();
+        if (t.startsWith('```')) {
+            Integer nl = t.indexOf('\n');
+            if (nl > 0) t = t.substring(nl + 1);
+            if (t.endsWith('```')) t = t.substring(0, t.length() - 3);
+        }
+        return t.trim();
     }
 
     // ------------------------------------------------------------------------
@@ -273,6 +439,11 @@ public with sharing class NeuraFormAIController {
 
     @TestVisible
     private static String transformSpecToImportJson(Map<String, Object> spec) {
+        return transformSpecToImportJson(spec, null);
+    }
+
+    @TestVisible
+    private static String transformSpecToImportJson(Map<String, Object> spec, String scope) {
         String ns = NeuraFormUtils.getNamespacePrefix();
         String extRef = ns + 'External_Reference__c';
         String fName = 'Name';
@@ -298,10 +469,20 @@ public with sharing class NeuraFormAIController {
         };
         String indicator = (String) spec.get('indicatorType');
         if (String.isNotBlank(indicator)) templateRec.put(fIndicator, indicator);
+        // Stamp the brand partition key so a document import lands in the
+        // brand's scope (matches Account.Form_Scope__c), ready in the brand hub.
+        if (String.isNotBlank(scope)) templateRec.put(ns + 'Scope__c', scope);
 
         List<Map<String, Object>> pageRecs = new List<Map<String, Object>>();
         List<Map<String, Object>> sectionRecs = new List<Map<String, Object>>();
         List<Map<String, Object>> questionRecs = new List<Map<String, Object>>();
+
+        // Catalog-match pass: where a generated question matches a curated
+        // Question Catalog entry (scope-eligible), adopt its CANONICAL type +
+        // value set and bind the catalog lookup, instead of trusting the LLM's
+        // guess. One SOQL, bulk-safe. No match -> keep the LLM's type.
+        String fCatLookup = ns + 'Form_Question_Catalog__c';
+        Map<String, CatalogHit> catalogByLabel = buildCatalogMatchMap(spec, scope);
 
         Integer pageOrder = 1;
         for (Object pObj : pagesIn(spec)) {
@@ -351,6 +532,13 @@ public with sharing class NeuraFormAIController {
                     String label = stringOr(question.get('label'), 'Question ' + qOrder);
                     String type = normalizeType((String) question.get('type'));
 
+                    // Adopt the catalog entry's canonical type when this
+                    // question matches one (curated truth beats LLM inference).
+                    CatalogHit hit = catalogByLabel.get(normalizeLabel(label));
+                    if (hit != null && String.isNotBlank(hit.type)) {
+                        type = normalizeType(hit.type);
+                    }
+
                     Map<String, Object> questionRec = new Map<String, Object>{
                         'attributes' => new Map<String, String>{ 'type' => ns + 'Form_Question__c' },
                         extRef => qRef,
@@ -366,7 +554,14 @@ public with sharing class NeuraFormAIController {
                     };
                     List<Object> valueSet = question.get('valueSet') instanceof List<Object>
                         ? (List<Object>) question.get('valueSet') : null;
-                    if (valueSet != null && !valueSet.isEmpty() && isChoiceType(type)) {
+                    if (hit != null) {
+                        // Bind the catalog entry so type/value-set/scoring resolve
+                        // from the curated row, and copy its value set inline too.
+                        questionRec.put(fCatLookup, hit.catalogId);
+                        if (String.isNotBlank(hit.valueSet) && isChoiceType(type)) {
+                            questionRec.put(fValueSet, hit.valueSet);
+                        }
+                    } else if (valueSet != null && !valueSet.isEmpty() && isChoiceType(type)) {
                         questionRec.put(fValueSet, buildValueSetJson(valueSet));
                     }
                     questionRecs.add(questionRec);
@@ -384,6 +579,80 @@ public with sharing class NeuraFormAIController {
             }
         };
         return JSON.serialize(wrappers);
+    }
+
+    // ------------------------------------------------------------------------
+    // Question Catalog matching (canonical types from the curated library)
+    // ------------------------------------------------------------------------
+
+    private class CatalogHit {
+        Id catalogId;
+        String type;
+        String valueSet;
+    }
+
+    @TestVisible
+    private static Boolean isCatalogEnabled() {
+        FieldForms_Configuration__c cfg = FieldForms_Configuration__c.getInstance();
+        return cfg != null && cfg.Question_Catalog_Enabled__c == true;
+    }
+
+    /**
+     * Build a normalized-label -> catalog entry map for the questions in the
+     * spec, scoped to the brand (universal Scope__c=null entries always
+     * eligible). Exact normalized-text match only - high precision, since a
+     * wrong type override is worse than falling back to the LLM's guess.
+     * One SOQL, gated by the catalog feature flag.
+     */
+    @TestVisible
+    private static Map<String, CatalogHit> buildCatalogMatchMap(Map<String, Object> spec, String scope) {
+        Map<String, CatalogHit> out = new Map<String, CatalogHit>();
+        if (!isCatalogEnabled()) return out;
+
+        Set<String> wanted = new Set<String>();
+        for (Object pObj : pagesIn(spec)) {
+            Map<String, Object> page = (Map<String, Object>) pObj;
+            List<Object> sections = page.get('sections') instanceof List<Object>
+                ? (List<Object>) page.get('sections') : new List<Object>();
+            for (Object sObj : sections) {
+                Map<String, Object> section = (Map<String, Object>) sObj;
+                List<Object> questions = section.get('questions') instanceof List<Object>
+                    ? (List<Object>) section.get('questions') : new List<Object>();
+                for (Object qObj : questions) {
+                    Map<String, Object> q = (Map<String, Object>) qObj;
+                    String key = normalizeLabel((String) q.get('label'));
+                    if (String.isNotBlank(key)) wanted.add(key);
+                }
+            }
+        }
+        if (wanted.isEmpty()) return out;
+
+        // Pull scope-eligible catalog entries (universal + this brand) and
+        // match in Apex (catalog question text isn't a simple SOQL filter).
+        for (Form_Question_Catalog__c cat : [
+            SELECT Id, Question__c, Type__c, Value_Set__c, Scope__c
+            FROM Form_Question_Catalog__c
+            WHERE Scope__c = null OR Scope__c = :scope
+            LIMIT 5000
+        ]) {
+            String key = normalizeLabel(cat.Question__c);
+            if (String.isNotBlank(key) && wanted.contains(key) && !out.containsKey(key)) {
+                CatalogHit h = new CatalogHit();
+                h.catalogId = cat.Id;
+                h.type = cat.Type__c;
+                h.valueSet = cat.Value_Set__c;
+                out.put(key, h);
+            }
+        }
+        return out;
+    }
+
+    /** Normalize question text for matching: lowercase, collapse whitespace,
+     *  drop trailing punctuation. */
+    @TestVisible
+    private static String normalizeLabel(String s) {
+        if (String.isBlank(s)) return '';
+        return s.toLowerCase().trim().replaceAll('\\s+', ' ').replaceAll('[?:.\\s]+$', '');
     }
 
     private static String newRef(String prefix) {

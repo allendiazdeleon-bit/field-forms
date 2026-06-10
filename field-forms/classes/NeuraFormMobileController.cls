@@ -204,7 +204,7 @@ public with sharing class NeuraFormMobileController {
             throw new AuraHandledException('Exception reason is required.');
         }
 
-        Form_Finding__c update_ = new Form_Finding__c(
+        Form_Finding__c findingUpdate = new Form_Finding__c(
             Id = findingId,
             Status__c = 'Resolved-Exception',
             Exception_Reason__c = reason,
@@ -214,11 +214,11 @@ public with sharing class NeuraFormMobileController {
         // though the finding is no longer blocking submit. The client
         // writes Photo_Attached__c when the camera/file picker succeeds.
         if (policyRequiresPhoto == true) {
-            update_.Photo_Required__c = true;
+            findingUpdate.Photo_Required__c = true;
         }
 
         try {
-            update update_;
+            update findingUpdate;
         } catch (DmlException e) {
             throw new AuraHandledException(e.getMessage());
         }
@@ -567,88 +567,16 @@ public with sharing class NeuraFormMobileController {
     }
 
     /**
-     * Invokes the Models API. Wrapped so the class names are isolated in
-     * one place — easier to swap if your org is on a different release.
-     *
-     * Current implementation uses aiplatform.ModelsAPI.createChatGenerations,
-     * which is the recommended surface for Agentforce-grade chat completions
-     * as of recent Salesforce releases.
+     * Invokes the Models API via NeuraFormLLMService — the package's single
+     * point of coupling to the aiplatform namespace. The service's typed
+     * response walk is verified working in this org (the string-extraction
+     * workaround this method used to carry predated the service and is
+     * retired). Blank/null on failure; both callers fall back to their
+     * heuristic paths.
      */
     @TestVisible
     private static String invokeModelsAPI(String systemPrompt, String userPrompt) {
-        // Build the chat-generations request. The exact class names live in
-        // the aiplatform namespace; reflecting via JSON keeps the Apex
-        // compilable on older releases that don't expose those classes
-        // (the call will fail at runtime there, which our caller catches).
-        Map<String, Object> body = new Map<String, Object>{
-            'messages' => new List<Object>{
-                new Map<String, Object>{ 'role' => 'system', 'content' => systemPrompt },
-                new Map<String, Object>{ 'role' => 'user',   'content' => userPrompt }
-            }
-        };
-
-        // The Models API in this org exposes createChatGenerations as an
-        // instance method, with body typed as ModelsAPI_ChatGenerationsRequest.
-        // The JSON-serialize round-trip lets us hand a generic Map to the
-        // typed body without depending on the (release-specific) builders for
-        // every nested message/content class.
-        aiplatform.ModelsAPI api = new aiplatform.ModelsAPI();
-        aiplatform.ModelsAPI.createChatGenerations_Request req =
-            new aiplatform.ModelsAPI.createChatGenerations_Request();
-        req.modelName = 'sfdc_ai__DefaultGPT4Omni';
-        req.body = (aiplatform.ModelsAPI_ChatGenerationsRequest)
-            JSON.deserialize(JSON.serialize(body), aiplatform.ModelsAPI_ChatGenerationsRequest.class);
-
-        aiplatform.ModelsAPI.createChatGenerations_Response res =
-            api.createChatGenerations(req);
-
-        if (res == null || res.Code200 == null) {
-            throw new AuraHandledException('Models API returned no Code200.');
-        }
-
-        // Extract content via string operations rather than the typical
-        // JSON deserialize → map walk path. Apex's typed Code200 class
-        // (aiplatform.ModelsAPI.createChatGenerations_Response.Code200)
-        // only exposes `id` and `generationDetails` as accessible fields,
-        // and JSON.deserializeUntyped of the full response drops the
-        // `generations` array on the round-trip — even though the
-        // serialized string clearly contains it. Net effect: we never
-        // managed to read content out of the typed model walking the
-        // deserialized map. String extraction is brittle but reliable
-        // given the consistent response shape from the Models API.
-        String fullJson = JSON.serialize(res);
-        String marker = '"content_set":true,"content":"';
-        Integer start = fullJson.indexOf(marker);
-        if (start < 0) {
-            marker = '"content":"';
-            start = fullJson.indexOf(marker);
-        }
-        if (start < 0) return null;
-        start += marker.length();
-
-        // Walk forward, respecting escaped quotes, until we hit the
-        // terminating unescaped double-quote.
-        String contentEscaped = '';
-        Integer i = start;
-        while (i < fullJson.length()) {
-            String ch = fullJson.substring(i, i + 1);
-            if (ch == '\\' && i + 1 < fullJson.length()) {
-                contentEscaped += fullJson.substring(i, i + 2);
-                i += 2;
-                continue;
-            }
-            if (ch == '"') break;
-            contentEscaped += ch;
-            i++;
-        }
-
-        // Unescape JSON string escapes back to the raw content.
-        return contentEscaped
-            .replace('\\"', '"')
-            .replace('\\n', '\n')
-            .replace('\\r', '\r')
-            .replace('\\t', '\t')
-            .replace('\\\\', '\\');
+        return NeuraFormLLMService.chat(systemPrompt, userPrompt);
     }
 
     private static String stripCodeFences(String s) {

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Brand_Contact__c</fullName>
+    <description>The brand-side contact to proactively notify (e.g. the brand quality manager).</description>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Brand Contact</label>
+    <referenceTo>Contact</referenceTo>
+    <relationshipLabel>Anomaly Alerts</relationshipLabel>
+    <relationshipName>Anomaly_Alerts</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

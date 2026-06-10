@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <baseObject>Linked_Form__c</baseObject>
+    <category>other</category>
+    <deployed>true</deployed>
+    <description>Inspections (Linked Forms) with location, tenure, score, visit date and re-roll - for Ops analytics.</description>
+    <label>Field Forms Inspections</label>
+    <sections>
+        <columns><field>Account__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Form_Template__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Status__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Visit_Date__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Inspector_Tenure_Months__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Score__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Max_Score__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Score_Percent__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Re_Roll__c</field><table>Linked_Form__c</table></columns>
+        <columns><field>Findings_Open_Count__c</field><table>Linked_Form__c</table></columns>
+        <masterLabel>Inspection Fields</masterLabel>
+    </sections>
+</ReportType>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Field Forms Brand Hub</label>
+    <description>Brand form-management hub on Account: controllers, Account.Form_Scope__c, hub template fields, and Brand_Theme__c (doc-import drafts the branded report template). Separate from FieldForms_Admin to deploy independently.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <classAccesses>
+        <apexClass>NeuraFormBrandController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormAIController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>NeuraFormLLMService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <objectPermissions>
+        <object>Brand_Theme__c</object>
+        <allowRead>true</allowRead>
+        <allowCreate>true</allowCreate>
+        <allowEdit>true</allowEdit>
+        <allowDelete>false</allowDelete>
+        <viewAllRecords>false</viewAllRecords>
+        <modifyAllRecords>false</modifyAllRecords>
+    </objectPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Form_Scope__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Template__c.Status__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <!-- Columns listTemplatesForScope SELECTs; without read FLS,
+         stripInaccessible silently blanks them in the hub's datatable. -->
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Form_Template__c.Scope__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Form_Template__c.Scoring_Enabled__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Form_Template__c.Max_Score__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Form_Template__c.Pass_Threshold_Percent__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Scope__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Form_Template__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Primary_Color__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Secondary_Color__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Logo_URL__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Header_Text__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Section_Order__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Locale__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Active__c</field><readable>true</readable></fieldPermissions>
+    <fieldPermissions><editable>true</editable><field>Brand_Theme__c.Output_Template_Html__c</field><readable>true</readable></fieldPermissions>
+</PermissionSet>

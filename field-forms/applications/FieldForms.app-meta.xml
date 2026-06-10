@@ -17,6 +17,8 @@
     <tabs>Form_Template__c</tabs>
     <tabs>Linked_Form__c</tabs>
     <tabs>Form_Answer__c</tabs>
+    <tabs>Form_Finding__c</tabs>
+    <tabs>Anomaly_Alert__c</tabs>
     <uiType>Lightning</uiType>
     <utilityBar>FieldForms_UtilityBar1</utilityBar>
 </CustomApplication>
