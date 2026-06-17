@@ -3,7 +3,7 @@
  *
  * Flow:
  *   1. LWC sends a natural-language prompt to generateTemplateFromPrompt().
- *   2. Apex calls the Einstein Models API via ConnectApi.EinsteinLLM.
+ *   2. Apex calls the Agentforce Models API (aiplatform.ModelsAPI namespace).
  *   3. The model is instructed to emit a strict JSON describing a form
  *      (pages -> sections -> questions). Conditional logic is intentionally
  *      out of scope for v1 - models are unreliable at producing valid
@@ -15,7 +15,7 @@
  *      navigates the admin to the freshly-created template.
  *
  * Opt-in gate: FieldForms_Configuration__c.Enable_AI_Features__c. Orgs
- * without Einstein Generative AI keep the flag off and never see the UI.
+ * without Agentforce keep the flag off and never see the UI.
  */
 public with sharing class NeuraFormAIController {
 
@@ -24,7 +24,7 @@ public with sharing class NeuraFormAIController {
 
     // Hook so tests can inject a deterministic LLM response without making
     // a network call. Production code path leaves this null and the real
-    // ConnectApi.EinsteinLLM is invoked.
+    // aiplatform.ModelsAPI call is invoked.
     @TestVisible private static String mockLLMResponse = null;
 
     public class GenerationResult {
@@ -212,7 +212,7 @@ public with sharing class NeuraFormAIController {
             return mockLLMResponse;
         }
         // Real call: NeuraFormLLMService (the package's single point of
-        // coupling to the Models API / Einstein Trust Layer). The service
+        // coupling to the Models API / Agentforce Trust Layer). The service
         // never throws; for this interactive path a failure must surface to
         // the admin's toast, so re-raise its recorded cause (e.g. HTTP 403 =
         // missing permission, 429 = rate/usage limit).
@@ -220,7 +220,7 @@ public with sharing class NeuraFormAIController {
         if (text == null) {
             String cause = String.isNotBlank(NeuraFormLLMService.lastError)
                 ? NeuraFormLLMService.lastError
-                : 'Einstein returned no generations.';
+                : 'Agentforce returned no generations.';
             AuraHandledException e = new AuraHandledException(cause);
             e.setMessage(cause);
             throw e;
@@ -365,7 +365,7 @@ public with sharing class NeuraFormAIController {
     @TestVisible
     private static Map<String, Object> extractJsonObject(String llmText) {
         if (String.isBlank(llmText)) {
-            throw new AuraHandledException('Einstein returned an empty response.');
+            throw new AuraHandledException('Agentforce returned an empty response.');
         }
         // Some models wrap JSON in ```json fences despite instructions. Strip
         // anything before the first '{' and after the matching last '}'.
@@ -373,7 +373,7 @@ public with sharing class NeuraFormAIController {
         Integer last = llmText.lastIndexOf('}');
         if (start < 0 || last < 0 || last <= start) {
             throw new AuraHandledException(
-                'Einstein response did not contain JSON. Try a clearer prompt.'
+                'Agentforce response did not contain JSON. Try a clearer prompt.'
             );
         }
         String trimmed = llmText.substring(start, last + 1);
@@ -382,11 +382,11 @@ public with sharing class NeuraFormAIController {
             parsed = JSON.deserializeUntyped(trimmed);
         } catch (Exception e) {
             throw new AuraHandledException(
-                'Einstein returned malformed JSON: ' + e.getMessage()
+                'Agentforce returned malformed JSON: ' + e.getMessage()
             );
         }
         if (!(parsed instanceof Map<String, Object>)) {
-            throw new AuraHandledException('Einstein response was not a JSON object.');
+            throw new AuraHandledException('Agentforce response was not a JSON object.');
         }
         return (Map<String, Object>) parsed;
     }

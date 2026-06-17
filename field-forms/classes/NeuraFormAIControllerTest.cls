@@ -1,5 +1,5 @@
 /**
- * Tests for NeuraFormAIController. Bypasses the live Einstein call via the
+ * Tests for NeuraFormAIController. Bypasses the live Agentforce call via the
  * NeuraFormAIController.mockLLMResponse @TestVisible hook.
  */
 @isTest

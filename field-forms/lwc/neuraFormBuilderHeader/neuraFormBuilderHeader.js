@@ -103,7 +103,7 @@ export default class NeuraFormBuilderHeader extends NavigationMixin(LightningEle
     async handleAIGenerate() {
         const result = await aiGenerateModal.open({
             size: 'medium',
-            label: 'Generate form with Einstein'
+            label: 'Generate form with Agentforce'
         });
         if (result?.action === 'generated' && result.formTemplateId) {
             this[NavigationMixin.Navigate]({

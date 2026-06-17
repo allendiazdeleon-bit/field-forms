@@ -322,7 +322,7 @@
 /* ============================================================
    Real-time coaching card (Vignette 3)
    ============================================================
-   Inline Einstein-style nudge surfaced as the inspector answers.
+   Inline Agentforce-style nudge surfaced as the inspector answers.
    Uses design-system tokens only (no static resources) so it renders
    the same in Lightning Experience and the FSL Mobile WebView. */
 .coaching-card {

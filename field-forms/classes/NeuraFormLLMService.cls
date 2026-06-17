@@ -3,8 +3,8 @@
  * (AI form generation, real-time coaching, anomaly-escalation drafts).
  *
  * This is deliberately the ONLY class that references the aiplatform
- * namespace — the single point of compile-time coupling to the Einstein
- * Generative AI platform. Features carry their own error semantics on top:
+ * namespace — the single point of compile-time coupling to the Agentforce
+ * platform. Features carry their own error semantics on top:
  * chat() never throws; it returns null and records the cause in lastError,
  * so best-effort callers (coaching, escalation) fall back silently and
  * interactive callers (AI generation) re-raise lastError as an
@@ -31,7 +31,7 @@ public with sharing class NeuraFormLLMService {
     }
 
     /**
-     * One chat round trip through the Einstein Trust Layer. Returns the
+     * One chat round trip through the Agentforce Trust Layer. Returns the
      * generation text, or null on ANY failure (timeout, HTTP error, empty
      * response) — callers own the fallback behavior.
      */
@@ -68,14 +68,14 @@ public with sharing class NeuraFormLLMService {
                 || response.Code200.generationDetails == null
                 || response.Code200.generationDetails.generations == null
                 || response.Code200.generationDetails.generations.isEmpty()) {
-                lastError = 'Einstein returned no generations.';
+                lastError = 'Agentforce returned no generations.';
                 return null;
             }
             return response.Code200.generationDetails.generations[0].content;
         } catch (aiplatform.ModelsAPI.createChatGenerations_ResponseException e) {
             // Keep the HTTP status: 403 = missing permission, 429 = usage
             // limit — that's the difference between "fix perms" and "wait".
-            lastError = 'Einstein Models API call failed (HTTP ' + e.responseCode + '): ' + e.getMessage();
+            lastError = 'Agentforce Models API call failed (HTTP ' + e.responseCode + '): ' + e.getMessage();
         } catch (Exception e) {
             lastError = e.getTypeName() + ': ' + e.getMessage();
         }

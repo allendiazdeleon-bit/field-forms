@@ -258,7 +258,7 @@ public with sharing class NeuraFormMobileController {
     // can apply to its in-memory answer map.
     //
     // Strategy:
-    //   1. If Einstein AI is enabled and wired (NeuraFormAIController.invokeLLM
+    //   1. If Agentforce is enabled and wired (NeuraFormAIController.invokeLLM
     //      returns a real response), prefer the LLM mapping — better at noisy
     //      transcripts and synonyms.
     //   2. Otherwise fall back to a deterministic heuristic that looks for
@@ -563,10 +563,10 @@ public with sharing class NeuraFormMobileController {
     /**
      * Agentforce / Models API call. The Salesforce unified Models API lives
      * under the `aiplatform.ModelsAPI` namespace and is available in orgs
-     * with Einstein Generative AI / Agentforce provisioned.
+     * with Agentforce provisioned.
      *
      * Org prerequisites:
-     *   1. Enable Einstein Generative AI: Setup → Einstein Setup → toggle on.
+     *   1. Enable Agentforce / generative AI: Setup → Einstein Setup → toggle on.
      *   2. Enable a default model: Setup → Models → enable
      *      "sfdc_ai__DefaultGPT4Omni" (or your org's preferred model).
      *   3. Grant the running user "Use Generative AI" + the per-model perm.

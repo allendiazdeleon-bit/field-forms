@@ -4,7 +4,7 @@ import { NavigationMixin } from 'lightning/navigation';
 
 /**
  * Modal that lets an admin describe a form in natural language and have
- * Einstein Generative AI build it. On success the modal closes and the
+ * Agentforce build it. On success the modal closes and the
  * caller (builder header) navigates the user to the newly-created template.
  *
  * Launched via `await NeuraFormAIGenerate.open({ size: 'medium' })`.
@@ -38,7 +38,7 @@ export default class NeuraFormAIGenerate extends NavigationMixin(LightningModal)
     }
 
     get spinnerMessage() {
-        return 'Generating form. Einstein is working on it...';
+        return 'Generating form. Agentforce is working on it...';
     }
 
     handlePromptChange(event) {
