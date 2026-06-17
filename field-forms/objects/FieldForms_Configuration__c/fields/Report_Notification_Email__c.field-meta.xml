@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Report_Notification_Email__c</fullName>
+    <description>Internal Ops / manager distribution address that receives a copy of every branded inspection report when it is sent at close-out (NeuraFormReportDistribution). Leave blank to send only to the brand contact. Per repo convention this is a hierarchy custom setting field and is intentionally NOT included in the perm sets (matches Scoring_Enabled__c et al).</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Ops/manager email that gets a copy of each branded report sent at inspection close-out. Blank = brand contact only.</inlineHelpText>
+    <label>Report Notification Email</label>
+    <required>false</required>
+    <type>Email</type>
+    <unique>false</unique>
+</CustomField>

@@ -10,6 +10,18 @@ export default class NeuraFormComplete extends LightningElement {
     @api pdfReady = false;
     @api pdfDownloadUrl;
 
+    // Branded-report distribution state, threaded down from the renderer.
+    @api reportSending = false;
+    @api reportSent = false;
+    @api reportSendSkipped = false;
+    @api reportRecipientsText;
+
+    get reportSentMessage() {
+        return this.reportRecipientsText
+            ? `Report sent to ${this.reportRecipientsText}`
+            : 'Report sent';
+    }
+
     get wrapperClasses(){
         return `slds-theme_default ${this.isDesktop ? 'wrapper-desktop' : 'wrapper-mobile'}`;
     }

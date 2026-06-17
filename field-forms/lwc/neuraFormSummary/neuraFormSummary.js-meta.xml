@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <isExposed>true</isExposed>
+    <targets>
+        <target>lightning__RecordPage</target>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <objects>
+                <object>Linked_Form__c</object>
+            </objects>
+            <property name="enableActions" type="Boolean" default="false"
+                label="Enable Resolve actions"
+                description="Show the Resolve action on open findings. Leave OFF for read-only / portal pages."/>
+        </targetConfig>
+        <targetConfig targets="lightningCommunity__Default">
+            <property name="recordId" type="String"
+                label="Record Id"
+                description="Linked Form record id. On a record-detail page use {!recordId}."/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

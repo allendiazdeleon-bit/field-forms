@@ -11,6 +11,23 @@
 
 .overflow-override {
     overflow: visible;
+    /* Lay the panel out as a column so the body can flex to the remaining
+       height under the header instead of overflowing past the panel edge
+       (which left the last fields unreachable by scroll). */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header keeps its intrinsic height; the body takes the rest and scrolls. */
+.slds-panel__header {
+    flex: 0 0 auto;
+}
+
+.neura-panel__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 1.5rem;
 }
 
 .custom-panel-width {

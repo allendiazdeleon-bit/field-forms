@@ -5,40 +5,6 @@
             Confirm the answers below. Tap any section to jump back and edit.
         </p>
 
-        <!-- AI summary block. Editable so the tech can tweak the wording
-             before submitting; it's the customer-facing report draft. -->
-        <div class="summary-card">
-            <div class="summary-card__header">
-                <strong>Service summary</strong>
-                <template if:true={summarySourceLabel}>
-                    <span class="summary-card__source">{summarySourceLabel}</span>
-                </template>
-            </div>
-            <template if:true={summaryLoading}>
-                <p class="summary-card__loading">Generating summary…</p>
-            </template>
-            <template if:false={summaryLoading}>
-                <lightning-textarea
-                    label="Summary"
-                    variant="label-hidden"
-                    value={summary}
-                    onchange={handleSummaryEdit}
-                    class="summary-card__text"
-                ></lightning-textarea>
-                <div class="summary-card__actions">
-                    <lightning-button
-                        label="Regenerate"
-                        variant="neutral"
-                        icon-name="utility:refresh"
-                        onclick={handleRegenerate}
-                    ></lightning-button>
-                </div>
-            </template>
-            <template if:true={summaryError}>
-                <p class="summary-card__error">{summaryError}</p>
-            </template>
-        </div>
-
         <!-- Answers list grouped by page, with Edit link per page. -->
         <template for:each={pages} for:item="page">
             <div key={page.Id} class="review-page">
@@ -75,6 +41,20 @@
                 </ul>
             </div>
         </template>
+
+        <!-- On-site sign-off: the signer's name pairs with the captured
+             signature image to form the who/when/where audit stamp recorded
+             on the Linked_Form at completion. -->
+        <div class="review-signoff">
+            <lightning-input
+                type="text"
+                label="Signed by"
+                placeholder="Name of the person signing"
+                value={signedByName}
+                onchange={handleSignedByChange}
+                class="review-signoff__input"
+            ></lightning-input>
+        </div>
 
         <div class="review-footer">
             <!-- Pillar 5 submit guard. When the template isn't scored the

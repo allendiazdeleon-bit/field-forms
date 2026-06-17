@@ -27,6 +27,29 @@
                 </template>
             </div>
 
+            <!-- Branded-report distribution status: emailed to the brand
+                 contact + Ops at close-out via NeuraFormReportDistribution. -->
+            <div class="slds-align_absolute-center slds-size_1-of-1 slds-m-top_x-small">
+                <template if:true={reportSending}>
+                    <div class="pdf-status">
+                        <lightning-spinner alternative-text="Sending report" size="small"></lightning-spinner>
+                        <span class="slds-m-left_small">Sending report…</span>
+                    </div>
+                </template>
+                <template if:true={reportSent}>
+                    <div class="pdf-status report-status_sent">
+                        <lightning-icon icon-name="utility:success" size="x-small" variant="success"></lightning-icon>
+                        <span class="slds-m-left_x-small">{reportSentMessage}</span>
+                    </div>
+                </template>
+                <template if:true={reportSendSkipped}>
+                    <div class="pdf-status report-status_skipped">
+                        <lightning-icon icon-name="utility:info" size="x-small"></lightning-icon>
+                        <span class="slds-m-left_x-small">No report recipients configured</span>
+                    </div>
+                </template>
+            </div>
+
             <c-neura-mobile-button class="slds-m-top_large" title="Back to Forms" onbuttonclick={handleBack} variant="success"></c-neura-mobile-button>
         </div>
     </div>

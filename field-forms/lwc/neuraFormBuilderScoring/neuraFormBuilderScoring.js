@@ -44,6 +44,9 @@ export default class NeuraFormBuilderScoring extends LightningElement {
     @track presetMax;
     @track presetText = '';
 
+    // Raw-JSON editor is opt-in; the common path is the quick-rule buttons.
+    @track showAdvanced = false;
+
     get catalogId() {
         return this.selection?.attributes?.Form_Question_Catalog__c || null;
     }
@@ -108,6 +111,70 @@ export default class NeuraFormBuilderScoring extends LightningElement {
 
     get hasChoiceOptions() {
         return this.isChoiceType && this.choiceOptions.length > 0;
+    }
+
+    // ----- Advanced (raw JSON) disclosure ------------------------------------
+
+    get advancedClass() {
+        return this.showAdvanced
+            ? 'builder-scoring__advanced'
+            : 'builder-scoring__advanced builder-scoring__advanced_hidden';
+    }
+
+    get advancedToggleLabel() {
+        return this.showAdvanced ? 'Hide rule JSON' : 'Advanced: edit rule JSON';
+    }
+
+    get advancedIcon() {
+        return this.showAdvanced ? 'utility:chevrondown' : 'utility:chevronright';
+    }
+
+    toggleAdvanced() {
+        this.showAdvanced = !this.showAdvanced;
+    }
+
+    // ----- Plain-English readback of the just-applied rule -------------------
+    // Turns the criteria JSON a preset wrote into one sentence, so a business
+    // user gets confirmation without reading JSON. Driven by criteriaDraft
+    // (set on preset tap); the stored value stays the source of truth in the
+    // Advanced editor.
+
+    get criteriaSummary() {
+        if (!this.criteriaDraft) return null;
+        let obj;
+        try {
+            obj = JSON.parse(this.criteriaDraft);
+        } catch (e) {
+            return null;
+        }
+        const leaves = obj.all || obj.any || [];
+        if (!Array.isArray(leaves) || !leaves.length) return null;
+        const joiner = obj.any ? ' or ' : ' and ';
+        const parts = leaves.map((leaf) => this._humanizeLeaf(leaf));
+        return `Passes when the answer ${parts.join(joiner)}.`;
+    }
+
+    _humanizeLeaf(leaf) {
+        const value = this._humanizeValue(leaf && leaf.value);
+        switch (leaf && leaf.operator) {
+            case 'equals': return `is ${value}`;
+            case 'notEquals': return `is not ${value}`;
+            case 'greaterThanOrEqual': return `is at least ${value}`;
+            case 'lessThanOrEqual': return `is at most ${value}`;
+            case 'contains': return `contains ${value}`;
+            default: return `${leaf && leaf.operator} ${value}`;
+        }
+    }
+
+    _humanizeValue(value) {
+        const s = String(value);
+        if (s === 'true') return 'checked / on';
+        if (s === 'false') return 'unchecked / off';
+        const lower = s.toLowerCase();
+        if (lower === 'pass') return 'Pass';
+        if (lower === 'fail') return 'Fail';
+        if (lower === 'na') return 'N/A';
+        return `"${s}"`;
     }
 
     _leaf(operator, value) {

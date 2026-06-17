@@ -69,6 +69,8 @@ import { reduceError } from 'c/nfCommonUtility';
 import mapTranscriptToQuestions from '@salesforce/apex/NeuraFormMobileController.mapTranscriptToQuestions';
 import getLastVisitAnswers from '@salesforce/apex/NeuraFormMobileController.getLastVisitAnswers';
 import generatePdfForLinkedForm from '@salesforce/apex/NeuraFormPdfController.generatePdfForLinkedForm';
+import captureSignatureContext from '@salesforce/apex/NeuraFormSignatureController.captureSignatureContext';
+import sendBrandedReport from '@salesforce/apex/NeuraFormReportDistribution.sendBrandedReport';
 import getCoaching from '@salesforce/apex/NeuraFormCoachingController.getCoaching';
 import getThemeForTemplate from '@salesforce/apex/NeuraFormBrandThemeController.getThemeForTemplate';
 
@@ -1205,6 +1207,37 @@ export default class NeuraFormRenderer extends LightningElement {
 		this._formObject = { ...this._formObject, pages: newPages };
 	}
 
+	// Hydrate a single page's questions from the authoritative
+	// questionAnswerMap right before we display it, so a navigated-to page
+	// reflects in-session answers regardless of which path got us there
+	// (footer, swipe, review "Edit"). This is what makes a captured-but-not-
+	// yet-merged signature/file show as already answered on re-entry instead
+	// of an empty capture prompt.
+	//
+	// filesData is protected: updateFormObjectWithNewAnswers empties the map
+	// entry's filesData once it has merged it into the form object, so we keep
+	// the form object's filesData whenever the map's is empty — never let a
+	// cleared map entry wipe an already-captured signature/photo.
+	hydratePageFromMap(page) {
+		if (!page?.sections) return page;
+		return {
+			...page,
+			sections: (page.sections || []).map((s) => ({
+				...s,
+				questions: (s.questions || []).map((q) => {
+					if (!this.questionAnswerMap.has(q.Id)) return q;
+					const ans = this.questionAnswerMap.get(q.Id);
+					const existing = (q.answers && q.answers[0]) || {};
+					const merged = { ...existing, ...ans };
+					const existingFiles = Array.isArray(existing.filesData) ? existing.filesData : [];
+					const mapFiles = Array.isArray(ans.filesData) ? ans.filesData : [];
+					merged.filesData = mapFiles.length ? mapFiles : existingFiles;
+					return { ...q, answers: [merged] };
+				})
+			}))
+		};
+	}
+
 	// Final commit. Wired to the review screen's `submit` event.
 	// Persists the (possibly tech-edited) service summary, marks the LF
 	// Completed, and triggers PDF generation. PDF generation is fire-and-
@@ -1221,6 +1254,15 @@ export default class NeuraFormRenderer extends LightningElement {
 			? `/sfc/servlet.shepherd/document/download/${this._generatedPdfId}`
 			: null;
 	}
+
+	// Branded-report distribution status, surfaced on the completion screen.
+	// 'skipped' = no recipients configured (no contact email + no ops email).
+	@track _reportSendStatus = 'idle'; // 'idle' | 'sending' | 'sent' | 'skipped' | 'error'
+	@track _reportRecipients = [];
+	get reportSending() { return this._reportSendStatus === 'sending'; }
+	get reportSent() { return this._reportSendStatus === 'sent'; }
+	get reportSendSkipped() { return this._reportSendStatus === 'skipped'; }
+	get reportRecipientsText() { return (this._reportRecipients || []).join(', '); }
 
 	// Re-entry latch: completion can be triggered twice (double-tap, or a
 	// duplicated submit event) and a second pass means duplicate DML and a
@@ -1258,6 +1300,12 @@ export default class NeuraFormRenderer extends LightningElement {
 			this._inReview = false;
 			this._completed = true;
 
+			// Stamp the signature audit context (who/when/where) before the
+			// PDF renders so the report's signature block reflects it. Entirely
+			// best-effort: a denied geolocation prompt or a missing signer name
+			// must never block close-out.
+			await this._stampSignatureContext(opts?.signedByName);
+
 			// Kick off PDF generation. Awaited so the success screen can show
 			// the download link the moment it's ready, but errors don't roll
 			// back the completion.
@@ -1272,8 +1320,75 @@ export default class NeuraFormRenderer extends LightningElement {
 				this._pdfGenerationStatus = 'error';
 				this._pdfGenerationError = reduceError(e);
 			}
+
+			// Send the branded report to the brand contact + Ops. Fire-and-
+			// forget (best-effort) — a send failure is reported on-screen but
+			// never blocks completion. Only attempt it once the PDF exists so
+			// there's something to attach.
+			if (this._pdfGenerationStatus === 'done') {
+				this._reportSendStatus = 'sending';
+				try {
+					const res = await sendBrandedReport({
+						linkedFormId: this.linkedFormId,
+						contentDocumentId: this._generatedPdfId
+					});
+					this._reportRecipients = res?.recipients || [];
+					this._reportSendStatus = res?.sent ? 'sent' : 'skipped';
+				} catch (e) {
+					this._reportSendStatus = 'error';
+					console.warn('Report send failed:', reduceError(e));
+				}
+			}
 		} finally {
 			this._completing = false;
+		}
+	}
+
+	// Best-effort device geolocation for the signature audit. Resolves to
+	// {latitude, longitude} or {null, null} — never rejects — so a denied
+	// permission or an environment without geolocation just yields no coords.
+	_getGeolocation() {
+		return new Promise((resolve) => {
+			if (typeof navigator === 'undefined' || !navigator.geolocation) {
+				resolve({ latitude: null, longitude: null });
+				return;
+			}
+			let settled = false;
+			const done = (coords) => {
+				if (settled) return;
+				settled = true;
+				resolve(coords);
+			};
+			try {
+				navigator.geolocation.getCurrentPosition(
+					(pos) => done({
+						latitude: pos?.coords?.latitude ?? null,
+						longitude: pos?.coords?.longitude ?? null
+					}),
+					() => done({ latitude: null, longitude: null }),
+					{ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+				);
+			} catch (e) {
+				done({ latitude: null, longitude: null });
+			}
+		});
+	}
+
+	async _stampSignatureContext(signedByName) {
+		// Nothing to stamp without a signer name — skip the geolocation prompt
+		// and the callout entirely rather than recording an empty attestation.
+		if (!signedByName || !this.linkedFormId) return;
+		try {
+			const { latitude, longitude } = await this._getGeolocation();
+			await captureSignatureContext({
+				linkedFormId: this.linkedFormId,
+				signedByName,
+				latitude,
+				longitude
+			});
+		} catch (e) {
+			// Already-signed or a transient failure: don't disrupt close-out.
+			console.warn('Signature context not recorded:', reduceError(e));
 		}
 	}
 
@@ -1283,11 +1398,14 @@ export default class NeuraFormRenderer extends LightningElement {
 		const pageIndex = event?.detail?.pageIndex ?? 0;
 		this._inReview = false;
 		this.currentPageIndex = pageIndex;
-		this.currentPage = this._formObject.pages[pageIndex];
+		this.currentPage = this.hydratePageFromMap(this._formObject.pages[pageIndex]);
 	}
 
 	handleReviewSubmit(event) {
-		this.completeFinish({ summary: event?.detail?.summary });
+		this.completeFinish({
+			summary: event?.detail?.summary,
+			signedByName: event?.detail?.signedByName
+		});
 	}
 
 	// Submit guard's "Save draft": leave the inspection In Progress and hand
@@ -1324,7 +1442,7 @@ export default class NeuraFormRenderer extends LightningElement {
 			if (!tempCurrentPage.shouldRender) {
 				await this.changePage(delta);
 			} else {
-				this.currentPage = { ...tempCurrentPage };
+				this.currentPage = this.hydratePageFromMap({ ...tempCurrentPage });
 
 				this.currentPageTitle = this.pageTitleList[newIndex];
 

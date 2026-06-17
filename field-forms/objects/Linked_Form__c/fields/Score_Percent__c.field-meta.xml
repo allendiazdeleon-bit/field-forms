@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Score_Percent__c</fullName>
-    <description>Score__c divided by Max_Score__c, expressed as a percent. Guarded against zero/null Max_Score__c to avoid a division-by-zero formula error — returns 0 when Max_Score__c is missing.</description>
+    <description>Score__c divided by Max_Score__c, expressed as a percent. The field is type Percent (Salesforce multiplies the formula result by 100 for display), so the formula returns the raw fraction — NOT *100, which would double-scale to e.g. 8571%. Guarded against zero/null Max_Score__c to avoid a division-by-zero formula error — returns 0 when Max_Score__c is missing.</description>
     <externalId>false</externalId>
-    <formula>IF( OR(ISBLANK(Max_Score__c), Max_Score__c = 0), 0, (Score__c / Max_Score__c) * 100 )</formula>
+    <formula>IF( OR(ISBLANK(Max_Score__c), Max_Score__c = 0), 0, Score__c / Max_Score__c )</formula>
     <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
     <label>Score Percent</label>
     <precision>5</precision>

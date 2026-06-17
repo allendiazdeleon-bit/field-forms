@@ -1,0 +1,165 @@
+<template>
+    <lightning-card icon-name="standard:form">
+        <span slot="title">Inspection Summary</span>
+
+        <!-- error -->
+        <template if:true={error}>
+            <div class="slds-p-horizontal_medium slds-p-bottom_medium slds-text-color_error">
+                {error}
+            </div>
+        </template>
+
+        <template if:true={summary}>
+            <!-- ===== Header: title + status + score badge ===== -->
+            <div class="ffs-header slds-p-horizontal_medium slds-p-bottom_small">
+                <div class="ffs-header__main">
+                    <div class="ffs-title">{summary.templateName}</div>
+                    <div class="ffs-subtitle">
+                        <span>{summary.accountName}</span>
+                        <template if:true={summary.name}>
+                            <span class="slds-text-color_weak"> · {summary.name}</span>
+                        </template>
+                        <span class={statusClass}>{summary.status}</span>
+                        <template if:true={summary.reRoll}>
+                            <span class="ffs-pill ffs-pill_high">Re-roll</span>
+                        </template>
+                    </div>
+                </div>
+                <template if:true={showScore}>
+                    <c-neura-form-score-badge
+                        score={summary.score}
+                        max-score={summary.maxScore}
+                        threshold={summary.passThreshold}
+                        label="Score">
+                    </c-neura-form-score-badge>
+                </template>
+            </div>
+
+            <!-- ===== Key facts ===== -->
+            <div class="ffs-facts slds-p-horizontal_medium slds-p-bottom_small">
+                <template if:true={summary.inspector}>
+                    <div class="ffs-fact"><span class="ffs-fact__label">Inspector</span>
+                        <span>{summary.inspector}</span></div>
+                </template>
+                <template if:true={summary.visitDate}>
+                    <div class="ffs-fact"><span class="ffs-fact__label">Visit date</span>
+                        <lightning-formatted-date-time value={summary.visitDate}></lightning-formatted-date-time></div>
+                </template>
+                <template if:true={summary.durationMinutes}>
+                    <div class="ffs-fact"><span class="ffs-fact__label">Duration</span>
+                        <span>{summary.durationMinutes} min</span></div>
+                </template>
+                <template if:true={summary.workOrderNumber}>
+                    <div class="ffs-fact"><span class="ffs-fact__label">Work order</span>
+                        <span>{summary.workOrderNumber}</span></div>
+                </template>
+                <template if:true={summary.signedByName}>
+                    <div class="ffs-fact"><span class="ffs-fact__label">Signed by</span>
+                        <span>{summary.signedByName}</span></div>
+                </template>
+                <template if:true={summary.completedAt}>
+                    <div class="ffs-fact"><span class="ffs-fact__label">Completed</span>
+                        <lightning-formatted-date-time value={summary.completedAt}></lightning-formatted-date-time></div>
+                </template>
+            </div>
+
+            <!-- service summary -->
+            <template if:true={summary.serviceSummary}>
+                <div class="ffs-summary slds-p-horizontal_medium slds-p-bottom_small">
+                    <span class="ffs-fact__label">Service summary</span>
+                    <p>{summary.serviceSummary}</p>
+                </div>
+            </template>
+
+            <!-- ===== Findings ===== -->
+            <div class="ffs-section slds-p-horizontal_medium">
+                <h3 class="ffs-section__title">{findingsHeading}</h3>
+                <template if:true={hasFindings}>
+                    <div class="ffs-chips">
+                        <span class="ffs-pill ffs-pill_critical">Critical {summary.criticalCount}</span>
+                        <span class="ffs-pill ffs-pill_high">High {summary.highCount}</span>
+                        <span class="ffs-pill ffs-pill_medium">Medium {summary.mediumCount}</span>
+                        <span class="ffs-pill ffs-pill_low">Low {summary.lowCount}</span>
+                    </div>
+                    <ul class="ffs-list">
+                        <template for:each={summary.findings} for:item="f">
+                            <li key={f.id} class="ffs-row">
+                                <span class={f.sevClass}>{f.severity}</span>
+                                <div class="ffs-row__body">
+                                    <div class="ffs-row__q">{f.question}</div>
+                                    <template if:true={f.notes}>
+                                        <div class="ffs-row__notes">{f.notes}</div>
+                                    </template>
+                                    <template if:true={f.photoThumb}>
+                                        <a class="ffs-thumb" href={f.photoHref} target="_blank"
+                                            title={f.photoTitle}>
+                                            <img src={f.photoThumb} alt={f.photoTitle} loading="lazy" />
+                                        </a>
+                                    </template>
+                                </div>
+                                <div class="ffs-row__meta">
+                                    <span class="ffs-row__status">{f.status}</span>
+                                    <template if:true={f.blocksSubmission}>
+                                        <span class="ffs-pill ffs-pill_critical">Blocks submit</span>
+                                    </template>
+                                    <template if:true={f.dueDate}>
+                                        <span class="slds-text-color_weak">Due
+                                            <lightning-formatted-date-time value={f.dueDate}></lightning-formatted-date-time></span>
+                                    </template>
+                                    <template if:true={f.photoLabel}>
+                                        <span class={f.photoClass}>
+                                            <lightning-icon icon-name={f.photoIcon} size="xx-small"></lightning-icon>
+                                            {f.photoLabel}
+                                        </span>
+                                    </template>
+                                    <template if:true={f.canResolve}>
+                                        <lightning-button label="Resolve" variant="brand-outline"
+                                            data-id={f.id} onclick={handleResolve}
+                                            disabled={f.resolving} class="ffs-resolve">
+                                        </lightning-button>
+                                    </template>
+                                </div>
+                            </li>
+                        </template>
+                    </ul>
+                </template>
+                <template if:false={hasFindings}>
+                    <div class="ffs-empty">No findings on this inspection.</div>
+                </template>
+            </div>
+
+            <!-- ===== Anomalies ===== -->
+            <div class="ffs-section slds-p-horizontal_medium slds-p-bottom_medium">
+                <h3 class="ffs-section__title">{anomaliesHeading}</h3>
+                <template if:true={hasAnomalies}>
+                    <ul class="ffs-list">
+                        <template for:each={summary.anomalies} for:item="a">
+                            <li key={a.id} class="ffs-row ffs-row_anomaly">
+                                <lightning-icon icon-name="utility:warning" size="small"
+                                    class="ffs-anomaly-icon"></lightning-icon>
+                                <div class="ffs-row__body">
+                                    <div class="ffs-row__q">{a.patternSummary}</div>
+                                    <template if:true={a.draftMessage}>
+                                        <div class="ffs-row__notes">{a.draftMessage}</div>
+                                    </template>
+                                </div>
+                                <div class="ffs-row__meta">
+                                    <span class="ffs-pill ffs-pill_high">{a.recurrenceLabel}</span>
+                                    <template if:true={a.status}>
+                                        <span class={a.statusClass}>{a.status}</span>
+                                    </template>
+                                    <template if:true={a.brandContact}>
+                                        <span class="slds-text-color_weak">→ {a.brandContact}</span>
+                                    </template>
+                                </div>
+                            </li>
+                        </template>
+                    </ul>
+                </template>
+                <template if:false={hasAnomalies}>
+                    <div class="ffs-empty">No anomaly alerts linked to this inspection.</div>
+                </template>
+            </div>
+        </template>
+    </lightning-card>
+</template>

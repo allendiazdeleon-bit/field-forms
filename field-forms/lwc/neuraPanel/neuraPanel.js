@@ -13,7 +13,13 @@ export default class Panel extends LightningElement {
     @api backgroundType = 'default'; // default and secondary
 
     get bodyClass(){
-        return this.applyBodyClass ? 'slds-panel__body' : '';
+        // neura-panel__body owns the scroll: it flexes to fill the space left
+        // under the header and scrolls internally (see CSS). Without it the
+        // body was height:100% of the whole panel, so its bottom spilled past
+        // the panel edge and the last fields couldn't be scrolled into view.
+        return this.applyBodyClass
+            ? 'slds-panel__body neura-panel__body'
+            : 'neura-panel__body';
     }
 
     get panelStyle(){

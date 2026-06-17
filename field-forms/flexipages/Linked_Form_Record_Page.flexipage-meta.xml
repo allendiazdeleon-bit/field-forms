@@ -3,6 +3,16 @@
     <flexiPageRegions>
         <itemInstances>
             <componentInstance>
+                <componentInstanceProperties>
+                    <name>enableActions</name>
+                    <value>true</value>
+                </componentInstanceProperties>
+                <componentName>c:neuraFormSummary</componentName>
+                <identifier>c_neuraFormSummary</identifier>
+            </componentInstance>
+        </itemInstances>
+        <itemInstances>
+            <componentInstance>
                 <componentName>c:neuraFormMobile</componentName>
                 <identifier>c_neuraFormMobile</identifier>
             </componentInstance>

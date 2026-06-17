@@ -1,4 +1,4 @@
-/* Form review screen — summary card + per-page rollup + sticky submit.
+/* Form review screen — per-page rollup + sticky submit.
    All colors/spacing/shadows now flow from design system tokens. */
 
 .review-wrapper {
@@ -20,49 +20,6 @@
     margin: 0 0 var(--neura-space-lg);
 }
 
-.summary-card {
-    background: var(--neura-color-info-bg);
-    border: 1px solid var(--neura-color-info-border);
-    border-radius: var(--neura-radius-md);
-    padding: var(--neura-space-lg);
-    margin-bottom: var(--neura-space-xl);
-}
-
-.summary-card__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--neura-space-sm);
-    color: var(--neura-color-primary);
-    font-size: var(--neura-text-md);
-}
-
-.summary-card__source {
-    font-size: var(--neura-text-xs);
-    color: var(--neura-color-text-muted);
-    font-weight: var(--neura-font-weight-medium);
-}
-
-.summary-card__loading {
-    color: var(--neura-color-text-muted);
-    font-style: italic;
-    margin: 0;
-}
-
-.summary-card__text {
-    margin-bottom: var(--neura-space-sm);
-}
-
-.summary-card__actions {
-    display: flex;
-    gap: var(--neura-space-sm);
-}
-
-.summary-card__error {
-    color: var(--neura-color-error-strong);
-    font-size: var(--neura-text-base);
-    margin: var(--neura-space-sm) 0 0;
-}
 
 .review-page {
     background: var(--neura-color-surface);
@@ -136,6 +93,10 @@
 .review-row__value_missing {
     color: var(--neura-color-error);
     font-style: italic;
+}
+
+.review-signoff {
+    padding: var(--neura-space-md) var(--neura-space-lg) 0;
 }
 
 .review-footer {
