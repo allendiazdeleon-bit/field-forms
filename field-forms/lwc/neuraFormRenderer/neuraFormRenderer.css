@@ -314,7 +314,11 @@
    rule only positions it. */
 .renderer-findings-panel {
     position: sticky;
-    bottom: 0;
+    /* Sit directly above the fixed footer so the collapsed summary handle
+       never overlaps the Previous / Next buttons. The footer is ~73px tall
+       (48px button + 0.75rem×2 padding + 1px border); 78px clears it with a
+       small safety margin. Expands upward from here when opened. */
+    bottom: calc(78px + var(--neura-safe-bottom, 0px));
     z-index: var(--neura-z-sticky, 10);
     margin-top: auto;
 }

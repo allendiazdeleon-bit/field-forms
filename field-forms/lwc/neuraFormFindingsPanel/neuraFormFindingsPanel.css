@@ -149,6 +149,16 @@
     color: var(--neura-color-text-muted, #706e6b);
 }
 
+/* "Tap to open this question" affordance on the card header. */
+.finding-card__goto {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--neura-color-primary, #0070d2);
+}
+
 .finding-card__actions {
     display: flex;
     flex-wrap: wrap;
@@ -202,4 +212,22 @@
     color: var(--neura-color-text-secondary, #444);
     border-left: 2px solid var(--neura-color-border-subtle, #e5e5e5);
     padding-left: 0.625rem;
+}
+
+/* "How to resolve" guidance — the next step to clear the finding. */
+.finding-card__resolution {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.8125rem;
+    color: var(--neura-color-text-secondary, #444);
+    background: var(--neura-color-info-bg, rgba(0, 112, 210, 0.08));
+    border-radius: 0.25rem;
+}
+
+.finding-card__resolution lightning-icon {
+    flex: 0 0 auto;
+    margin-top: 0.0625rem;
 }

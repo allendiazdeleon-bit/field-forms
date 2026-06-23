@@ -151,6 +151,17 @@ public with sharing class NeuraFormCoachingController {
             if (!qs.isEmpty()) qLabel = qs[0].Question__c;
         }
 
+        // Contextual gate: only coach when the question the inspector is
+        // actually on relates to the recurring finding (shared keyword between
+        // the question text and the finding note). Without this the nudge
+        // fired on whatever question was answered first — e.g. surfacing the
+        // freezer pattern while the inspector is still on "Store number".
+        // Returns an empty result so the UI waits until they reach the
+        // freezer/seal question.
+        if (!isRelevantToFinding(qLabel, top.notes)) {
+            return result;
+        }
+
         // Build the message BEFORE flagging hasCoaching: the LWC contract is
         // that hasCoaching=true always carries a displayable message, so an
         // LLM failure falls back to the deterministic nudge instead of
@@ -170,6 +181,40 @@ public with sharing class NeuraFormCoachingController {
         result.suggestedAction =
             (top.severity == 'Critical' || top.severity == 'High') ? 'photo' : 'review';
         return result;
+    }
+
+    // Generic words to ignore when deciding whether a question relates to a
+    // finding — they'd create false matches across unrelated questions.
+    private static final Set<String> STOPWORDS = new Set<String>{
+        'the','and','for','are','any','per','was','this','that','with','from',
+        'have','near','your','area','clean','current','reading','taken','action',
+        'observed','observations','condition','intact','confirmed','arrival'
+    };
+
+    /**
+     * True when the current question text and the recurring finding note share
+     * a meaningful keyword (length >= 4, not a stopword). Keeps the real-time
+     * nudge tied to the question that's actually about the pattern (e.g. the
+     * freezer/seal question) instead of firing on the first answer of any kind.
+     */
+    @TestVisible
+    private static Boolean isRelevantToFinding(String questionLabel, String findingNote) {
+        if (String.isBlank(questionLabel) || String.isBlank(findingNote)) return false;
+        Set<String> qWords = significantWords(questionLabel);
+        for (String w : significantWords(findingNote)) {
+            if (qWords.contains(w)) return true;
+        }
+        return false;
+    }
+
+    private static Set<String> significantWords(String text) {
+        Set<String> out = new Set<String>();
+        if (String.isBlank(text)) return out;
+        for (String raw : text.toLowerCase().replaceAll('[^a-z0-9]+', ' ').split(' ')) {
+            String w = raw.trim();
+            if (w.length() >= 4 && !STOPWORDS.contains(w)) out.add(w);
+        }
+        return out;
     }
 
     /** Deterministic nudge from the already-computed pattern, used when the

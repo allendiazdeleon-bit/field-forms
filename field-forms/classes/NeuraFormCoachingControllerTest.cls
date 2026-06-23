@@ -143,7 +143,10 @@ private class NeuraFormCoachingControllerTest {
     @isTest
     static void suggestsPhotoForHighSeverity() {
         enableAI();
-        Fixture f = buildHistory(3, 'Exposed wiring near fryer station.');
+        // Note must relate to the current question ("Upper freezer hinge
+        // condition") so the contextual gate lets coaching through; this test
+        // is about severity -> photo, not relevance.
+        Fixture f = buildHistory(3, 'Exposed gasket and frost near the upper freezer hinge.');
         // Re-grade the seeded findings to Critical.
         List<Form_Finding__c> findings = [SELECT Id FROM Form_Finding__c];
         for (Form_Finding__c fin : findings) fin.Severity__c = 'Critical';
@@ -157,6 +160,29 @@ private class NeuraFormCoachingControllerTest {
 
         System.assertEquals('photo', r.suggestedAction,
             'Critical severity should ask for photo evidence.');
+    }
+
+    @isTest
+    static void suppressesCoachingWhenQuestionUnrelated() {
+        enableAI();
+        // Recurring pattern exists, but the inspector is on a question that has
+        // nothing to do with it — the nudge must wait, not fire early.
+        Fixture f = buildHistory(3, 'Condensation observed on upper freezer hinge.');
+        Form_Question__c unrelated = new Form_Question__c(
+            Question__c = 'Store number confirmed on arrival',
+            Type__c = 'Text',
+            Form_Template__c = [SELECT Form_Template__c FROM Form_Question__c WHERE Id = :f.questionId].Form_Template__c
+        );
+        insert unrelated;
+        NeuraFormCoachingController.mockLLMResponse = 'should not be used';
+
+        Test.startTest();
+        NeuraFormCoachingController.CoachingResult r =
+            NeuraFormCoachingController.getCoaching(f.currentId, unrelated.Id, '4421');
+        Test.stopTest();
+
+        System.assertEquals(false, r.hasCoaching,
+            'Coaching should not fire on a question unrelated to the recurring finding.');
     }
 
     @isTest

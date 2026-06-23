@@ -75,6 +75,12 @@ export default class NeuraFormFindingsPanel extends LightningElement {
                 ).toLowerCase()}`,
                 severityLabel: (f.Severity__c || 'Medium').toUpperCase(),
                 blocksLabel: f.Blocks_Submission__c ? ' · BLOCKS' : '',
+                // Where the finding came from: the source question (falls back
+                // to the auto-number) plus its page/section.
+                titleText: f.questionLabel || f.Name,
+                locationText: this._locationText(f),
+                // What to do about it.
+                resolutionHint: this._resolutionHint(f),
                 showAddPhoto:
                     f.Photo_Required__c === true && f.Photo_Attached__c !== true,
                 photoSatisfied:
@@ -125,6 +131,25 @@ export default class NeuraFormFindingsPanel extends LightningElement {
             ? 'blocking'
             : 'open';
         return `findings-panel findings-panel--${state} findings-panel--${tone}`;
+    }
+
+    /** "Page 2 · Cold storage" — whichever parts the enriched finding has. */
+    _locationText(f) {
+        const parts = [];
+        if (f.pageNumber) parts.push(`Page ${f.pageNumber}`);
+        if (f.sectionName) parts.push(f.sectionName);
+        return parts.join(' · ');
+    }
+
+    /** Plain-language next step, so the tech knows how to clear the finding. */
+    _resolutionHint(f) {
+        if (f.Photo_Required__c === true && f.Photo_Attached__c !== true) {
+            return 'Add a photo of the issue as evidence, then correct it on site.';
+        }
+        if (f.Blocks_Submission__c === true) {
+            return 'Correct the issue and change the answer so it passes — or mark an exception with a reason to submit.';
+        }
+        return 'Re-inspect, correct the issue, then update the answer so it passes.';
     }
 
     handleToggle() {

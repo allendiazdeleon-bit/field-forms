@@ -1294,6 +1294,14 @@ export default class NeuraFormMobile extends LightningElement {
         // in sync; the open renderer already owns the live state.
     }
 
+    // Dismiss handler for the inline banner's X. Closable banners come from
+    // handleFormRendererMessage (info/validation nudges like "No prior visit
+    // found" or "Please complete: …"); without this the X dispatched a 'close'
+    // event nobody listened to, so the banner could never be cleared.
+    handleMessageClose() {
+        this.messageObj = { message: null, variant: null, isClosable: false };
+    }
+
     setCriticalInlineMessage(message, variant) {
         this.messageObj = {
             ...this.messageObj,

@@ -34,3 +34,26 @@ export function findQuestionLocation(formObject, externalRef) {
     }
     return null;
 }
+
+/**
+ * Like findQuestionLocation, but returns the matched question object, its
+ * section, and a 1-based page number — so the findings panel can show WHERE a
+ * finding came from (the question text + page/section) without each card
+ * re-walking the form. Returns null when no question matches the ref.
+ */
+export function findQuestionByRef(formObject, externalRef) {
+    if (!externalRef) return null;
+    const pages = formObject?.pages || [];
+    for (let i = 0; i < pages.length; i++) {
+        const sections = pages[i]?.sections || [];
+        for (const section of sections) {
+            const questions = section?.questions || [];
+            for (const q of questions) {
+                if (q?.External_Reference__c === externalRef) {
+                    return { question: q, section, pageNumber: i + 1 };
+                }
+            }
+        }
+    }
+    return null;
+}

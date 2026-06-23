@@ -62,7 +62,7 @@ function summarizeMissingByPage(missing) {
 		.map(([page, labels]) => `${page}: ${labels.join(', ')}`)
 		.join(' · ');
 }
-import { findQuestionLocation } from './findingsHelpers';
+import { findQuestionLocation, findQuestionByRef } from './findingsHelpers';
 
 import { reduceError } from 'c/nfCommonUtility';
 
@@ -163,9 +163,27 @@ export default class NeuraFormRenderer extends LightningElement {
 	   formObject.findings; desktop neuraForm doesn't carry them today so
 	   the array falls back to empty and the panel doesn't mount. */
 	get findings() {
-		return Array.isArray(this._formObject?.findings)
+		const raw = Array.isArray(this._formObject?.findings)
 			? this._formObject.findings
 			: [];
+		if (!raw.length) return raw;
+		// Enrich each finding with WHERE it came from — the source question
+		// text, its page, and section — resolved via External_Reference__c
+		// against the live form object. The panel can't do this lookup itself
+		// (it doesn't hold the form structure), so a finding card would
+		// otherwise only show an auto-number with no context.
+		const qField = FIELDS.Form_Question__c.Question.fieldApiName;
+		const sField = FIELDS.Form_Section__c.Title.fieldApiName;
+		return raw.map((f) => {
+			const loc = findQuestionByRef(this._formObject, f.External_Reference__c);
+			if (!loc) return f;
+			return {
+				...f,
+				questionLabel: loc.question?.[qField] || loc.question?.Name || null,
+				pageNumber: loc.pageNumber,
+				sectionName: loc.section?.[sField] || null
+			};
+		});
 	}
 
 	/* The findings panel only mounts when the template has scoring on.
@@ -1254,6 +1272,10 @@ export default class NeuraFormRenderer extends LightningElement {
 			? `/sfc/servlet.shepherd/document/download/${this._generatedPdfId}`
 			: null;
 	}
+	// The PDF's ContentDocumentId, passed to the completion screen so it can
+	// open the file via NavigationMixin filePreview (works on FSL Mobile,
+	// unlike the raw shepherd download URL).
+	get generatedPdfId() { return this._generatedPdfId; }
 
 	// Branded-report distribution status, surfaced on the completion screen.
 	// 'skipped' = no recipients configured (no contact email + no ops email).

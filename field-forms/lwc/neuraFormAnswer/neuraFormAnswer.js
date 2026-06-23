@@ -326,11 +326,19 @@ export default class NeuraFormAnswer extends LightningElement {
 	}
 
 	get value() {
-		const answer = getValue(
-			this.answerToQuestion,
-			AnswerField.fieldApiName,
-			''
-		);
+		// Prefer the live in-session value so the input reflects a tap or
+		// selection IMMEDIATELY. Every input binds to this getter; without the
+		// answerValue branch it read only the saved answer record, which isn't
+		// written until the debounced save round-trips (~2-3s) — so taps on
+		// data-driven inputs (Pass/Fail/NA, choice pills, toggle) appeared to
+		// lag. On a fresh mount (navigated back) hasAnswerChanged is false, so
+		// it falls back to the stored value as before.
+		let answer;
+		if (this.hasAnswerChanged && this.answerValue !== undefined && this.answerValue !== null) {
+			answer = this.answerValue;
+		} else {
+			answer = getValue(this.answerToQuestion, AnswerField.fieldApiName, '');
+		}
 		if (this.isSlider) {
 			return Number(answer);
 		} else if (this.isCheckbox || this.isToggle) {

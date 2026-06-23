@@ -81,6 +81,12 @@
     background: var(--neura-color-primary);
     color: var(--neura-color-primary-contrast);
     text-decoration: none;
+    /* Rendered as a <button> now (opens the file via NavigationMixin instead
+       of a target=_blank link); reset UA button chrome so it still reads as
+       the primary CTA. */
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
     border-radius: var(--neura-radius-sm);
     font-weight: var(--neura-font-weight-semibold);
     font-size: var(--neura-text-md);

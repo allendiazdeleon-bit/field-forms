@@ -49,12 +49,20 @@
                                     <span class="finding-card__severity">
                                         {f.severityLabel}{f.blocksLabel}
                                     </span>
-                                    <span class="finding-card__title">{f.Name}</span>
-                                    <template if:true={f.sectionName}>
+                                    <span class="finding-card__title">{f.titleText}</span>
+                                    <template if:true={f.locationText}>
                                         <span class="finding-card__section">
-                                            Section: {f.sectionName}
+                                            {f.locationText}
                                         </span>
                                     </template>
+                                    <span class="finding-card__goto">
+                                        <lightning-icon
+                                            icon-name="utility:forward"
+                                            size="xx-small"
+                                            alternative-text="">
+                                        </lightning-icon>
+                                        Tap to open this question
+                                    </span>
                                 </button>
 
                                 <div class="finding-card__actions">
@@ -101,6 +109,15 @@
                                 <template if:true={f.hasNotes}>
                                     <p class="finding-card__notes">{f.Notes__c}</p>
                                 </template>
+
+                                <p class="finding-card__resolution">
+                                    <lightning-icon
+                                        icon-name="utility:info"
+                                        size="xx-small"
+                                        alternative-text="How to resolve">
+                                    </lightning-icon>
+                                    <span>{f.resolutionHint}</span>
+                                </p>
                             </li>
                         </template>
                     </ul>
